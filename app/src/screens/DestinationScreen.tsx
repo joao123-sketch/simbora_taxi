@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { ChoiceCard } from '../components/ChoiceCard';
@@ -20,11 +20,9 @@ export function DestinationScreen({ otherCities, onPickOnMap, onPickCity, onBack
       {otherCities.length > 0 ? (
         <>
           <Text style={styles.section}>Outra cidade (preço fechado)</Text>
-          <ScrollView contentContainerStyle={styles.list}>
-            {otherCities.map((city) => (
-              <ChoiceCard key={city.id} label={city.name} onPress={() => onPickCity(city)} />
-            ))}
-          </ScrollView>
+          {otherCities.map((city) => (
+            <ChoiceCard key={city.id} label={city.name} onPress={() => onPickCity(city)} />
+          ))}
         </>
       ) : null}
       <BigButton label="Voltar" onPress={onBack} variant="link" />
@@ -38,8 +36,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textMuted,
     marginTop: 8,
-  },
-  list: {
-    gap: 12,
   },
 });

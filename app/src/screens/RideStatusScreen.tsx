@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { Screen } from '../components/Screen';
-import { cancelRide, formatMoney, paymentLabel, type Ride, type RideStatus } from '../lib/rides';
-import { supabase } from '../lib/supabase';
+import {
+  cancelRide,
+  fetchRide,
+  formatMoney,
+  formatPhoneNumber,
+  paymentLabel,
+  subscribeToRides,
+  type Ride,
+  type RideStatus,
+} from '../lib/rides';
 import { colors, fontSize } from '../theme';
 
 type Props = {
@@ -23,29 +31,27 @@ const statusText: Record<RideStatus, string> = {
 
 const CANCELABLE: RideStatus[] = ['requested', 'accepted', 'arrived'];
 
-export function RideStatusScreen({ ride, onFinished }: Props) {
-  const [status, setStatus] = useState<RideStatus>(ride.status);
+export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
+  const [ride, setRide] = useState(initialRide);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { status } = ride;
 
-  // Escuta as mudanças da corrida em tempo real (motorista aceitou, chegou...).
-  useEffect(() => {
-    const channel = supabase
-      .channel(`ride-${ride.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'rides', filter: `id=eq.${ride.id}` },
-        (payload) => setStatus((payload.new as Ride).status),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [ride.id]);
+  // A cada mudança (motorista aceitou, chegou...) busca de novo os detalhes,
+  // que trazem nome, carro e placa do motorista.
+  useEffect(
+    () =>
+      subscribeToRides(
+        `ride-${initialRide.id}`,
+        () => fetchRide(initialRide.id).then(setRide).catch(() => {}),
+        `id=eq.${initialRide.id}`,
+      ),
+    [initialRide.id],
+  );
 
   useEffect(() => {
     if (status === 'completed' || status === 'cancelled') {
-      const timer = setTimeout(onFinished, 2500);
+      const timer = setTimeout(onFinished, 4000);
       return () => clearTimeout(timer);
     }
   }, [status, onFinished]);
@@ -55,7 +61,7 @@ export function RideStatusScreen({ ride, onFinished }: Props) {
     setError(null);
     try {
       await cancelRide(ride.id);
-      setStatus('cancelled');
+      setRide({ ...ride, status: 'cancelled' });
     } catch {
       setError('Não conseguimos cancelar. Tente de novo.');
     } finally {
@@ -63,9 +69,29 @@ export function RideStatusScreen({ ride, onFinished }: Props) {
     }
   }
 
+  const hasDriver = ride.driver_name && status !== 'requested';
+
   return (
     <Screen title={statusText[status]} error={error}>
       {status === 'requested' ? <ActivityIndicator size="large" color={colors.primary} /> : null}
+
+      {hasDriver ? (
+        <View style={styles.driverCard}>
+          <Text style={styles.driverName}>{ride.driver_name}</Text>
+          <Text style={styles.line}>
+            {ride.vehicle_model} {ride.vehicle_color}
+          </Text>
+          <Text style={styles.plate}>{ride.vehicle_plate}</Text>
+          {ride.driver_phone && CANCELABLE.includes(status) ? (
+            <BigButton
+              label={`Ligar: ${formatPhoneNumber(ride.driver_phone)}`}
+              onPress={() => Linking.openURL(`tel:+${ride.driver_phone}`)}
+              variant="link"
+            />
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={styles.details}>
         <Text style={styles.line}>De: {ride.origin_address}</Text>
         <Text style={styles.line}>Para: {ride.destination_address}</Text>
@@ -81,6 +107,31 @@ export function RideStatusScreen({ ride, onFinished }: Props) {
 }
 
 const styles = StyleSheet.create({
+  driverCard: {
+    gap: 4,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  driverName: {
+    fontSize: fontSize.body + 6,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  plate: {
+    alignSelf: 'flex-start',
+    fontSize: fontSize.body + 4,
+    fontWeight: '700',
+    letterSpacing: 2,
+    color: colors.text,
+    borderWidth: 2,
+    borderColor: colors.text,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    marginTop: 4,
+  },
   details: {
     gap: 4,
   },

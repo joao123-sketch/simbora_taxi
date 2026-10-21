@@ -23,14 +23,30 @@ export type Quote = {
   distance_km: number;
 };
 
+// Linha da view ride_details: nomes e telefones só vêm preenchidos
+// quando o RLS permite (ex.: o motorista vê o passageiro depois de aceitar).
 export type Ride = {
   id: number;
   status: RideStatus;
   vehicle_type: VehicleType;
   payment_method: PaymentMethod;
+  passenger_id: string;
+  driver_id: string | null;
   origin_address: string;
+  origin_lat: number;
+  origin_lng: number;
   destination_address: string;
+  destination_lat: number;
+  destination_lng: number;
+  distance_km: number;
   estimated_price: number;
+  passenger_name: string | null;
+  passenger_phone: string | null;
+  driver_name: string | null;
+  driver_phone: string | null;
+  vehicle_model: string | null;
+  vehicle_color: string | null;
+  vehicle_plate: string | null;
 };
 
 export const ACTIVE_STATUSES: RideStatus[] = ['requested', 'accepted', 'arrived', 'in_progress'];
@@ -48,16 +64,63 @@ export async function fetchCities(): Promise<City[]> {
   return data as City[];
 }
 
-export async function fetchActiveRide(): Promise<Ride | null> {
+export async function fetchActiveRide(role: 'passenger' | 'driver', userId: string): Promise<Ride | null> {
   const { data, error } = await supabase
-    .from('rides')
-    .select('id, status, vehicle_type, payment_method, origin_address, destination_address, estimated_price')
+    .from('ride_details')
+    .select('*')
+    .eq(role === 'passenger' ? 'passenger_id' : 'driver_id', userId)
     .in('status', ACTIVE_STATUSES)
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
   return data as Ride | null;
+}
+
+export async function fetchRide(rideId: number): Promise<Ride> {
+  const { data, error } = await supabase.from('ride_details').select('*').eq('id', rideId).single();
+  if (error) throw error;
+  return data as Ride;
+}
+
+// Chamados abertos que o motorista online pode aceitar (o RLS já filtra
+// pelo tipo de veículo dele).
+export async function fetchOpenRequests(): Promise<Ride[]> {
+  const { data, error } = await supabase
+    .from('ride_details')
+    .select('*')
+    .eq('status', 'requested')
+    .order('requested_at');
+  if (error) throw error;
+  return data as Ride[];
+}
+
+export async function acceptRide(rideId: number): Promise<void> {
+  const { error } = await supabase.rpc('accept_ride', { p_ride_id: rideId });
+  if (error) throw error;
+}
+
+export async function advanceRide(rideId: number): Promise<RideStatus> {
+  const { data, error } = await supabase.rpc('advance_ride', { p_ride_id: rideId });
+  if (error) throw error;
+  return data as RideStatus;
+}
+
+// Chama onChange sempre que uma corrida visível para o usuário muda.
+export function subscribeToRides(channelName: string, onChange: () => void, filter?: string) {
+  const channel = supabase
+    .channel(channelName)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'rides', filter }, onChange)
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+export function formatPhoneNumber(phone: string | null): string {
+  if (!phone) return '';
+  const local = phone.replace(/^\+?55/, '');
+  return local.length === 11 ? `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}` : phone;
 }
 
 export async function quoteRide(cityId: number, origin: Place, destination: Place): Promise<Quote[]> {

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fontSize } from '../theme';
 
@@ -17,19 +17,21 @@ export function Screen({ title, subtitle, error, children }: Props) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.content}>
-        <Text style={styles.brand}>Simbora</Text>
-        <Text accessibilityRole="header" style={styles.title}>
-          {title}
-        </Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-        {error ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {error}
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <View style={styles.content}>
+          <Text style={styles.brand}>Simbora</Text>
+          <Text accessibilityRole="header" style={styles.title}>
+            {title}
           </Text>
-        ) : null}
-        {children}
-      </View>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          {error ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          ) : null}
+          {children}
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -38,6 +40,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scroll: {
+    flexGrow: 1,
   },
   content: {
     flex: 1,

@@ -56,7 +56,7 @@ export default function App() {
   } else if (!name) {
     content = <NameScreen userId={userId} onSaved={setName} />;
   } else {
-    content = <PassengerFlow name={name} />;
+    content = <PassengerFlow userId={userId} name={name} />;
   }
 
   return (

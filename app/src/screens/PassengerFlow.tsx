@@ -9,6 +9,7 @@ import { fetchActiveRide, fetchCities, type City, type Place, type Ride } from '
 import { colors } from '../theme';
 import { ConfirmRideScreen } from './ConfirmRideScreen';
 import { DestinationScreen } from './DestinationScreen';
+import { DriverFlow } from './driver/DriverFlow';
 import { HomeScreen } from './HomeScreen';
 import { MapPickScreen } from './MapPickScreen';
 import { RideStatusScreen } from './RideStatusScreen';
@@ -19,13 +20,15 @@ type Step =
   | { kind: 'destination'; origin: Place }
   | { kind: 'destinationMap'; origin: Place }
   | { kind: 'confirm'; origin: Place; destination: Place }
-  | { kind: 'ride'; ride: Ride };
+  | { kind: 'ride'; ride: Ride }
+  | { kind: 'driver' };
 
 type Props = {
+  userId: string;
   name: string;
 };
 
-export function PassengerFlow({ name }: Props) {
+export function PassengerFlow({ userId, name }: Props) {
   const [cities, setCities] = useState<City[] | null>(null);
   const [step, setStep] = useState<Step | null>(null);
   const [here, setHere] = useState<Coord | null>(null);
@@ -34,13 +37,13 @@ export function PassengerFlow({ name }: Props) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [cityList, activeRide] = await Promise.all([fetchCities(), fetchActiveRide()]);
+      const [cityList, activeRide] = await Promise.all([fetchCities(), fetchActiveRide('passenger', userId)]);
       setCities(cityList);
       setStep(activeRide ? { kind: 'ride', ride: activeRide } : { kind: 'home' });
     } catch {
       setError('Sem conexão com o Simbora. Confira a internet.');
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     load();
@@ -79,7 +82,9 @@ export function PassengerFlow({ name }: Props) {
 
   switch (step.kind) {
     case 'home':
-      return <HomeScreen name={name} onRequestRide={startRequest} />;
+      return (
+        <HomeScreen name={name} onRequestRide={startRequest} onDriverMode={() => setStep({ kind: 'driver' })} />
+      );
 
     case 'origin':
       return (
@@ -136,6 +141,9 @@ export function PassengerFlow({ name }: Props) {
 
     case 'ride':
       return <RideStatusScreen ride={step.ride} onFinished={goHome} />;
+
+    case 'driver':
+      return <DriverFlow userId={userId} cityId={city.id} onExit={load} />;
   }
 }
 
