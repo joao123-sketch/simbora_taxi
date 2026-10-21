@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { supabase } from './src/lib/supabase';
 import { CodeScreen } from './src/screens/CodeScreen';
@@ -60,10 +61,10 @@ export default function App() {
   }
 
   return (
-    <>
+    <SafeAreaProvider>
       {content}
       <StatusBar style="dark" />
-    </>
+    </SafeAreaProvider>
   );
 }
 

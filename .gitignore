@@ -2,3 +2,4 @@
 .env.local
 supabase/.branches
 supabase/.temp
+expo-go-qr.png

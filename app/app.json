@@ -31,7 +31,8 @@
         {
           "locationWhenInUsePermission": "O Simbora usa sua localização para encontrar o carro mais perto de você."
         }
-      ]
+      ],
+      "expo-status-bar"
     ]
   }
 }

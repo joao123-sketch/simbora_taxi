@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, fontSize } from '../theme';
 
@@ -11,28 +12,29 @@ type Props = {
 };
 
 // Moldura comum das telas: título grande, explicação curta e erro em destaque.
+// Fica dentro da área segura (fora da barra de status e dos botões do
+// Android) e sobe junto com o teclado.
 export function Screen({ title, subtitle, error, children }: Props) {
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.content}>
-          <Text style={styles.brand}>Simbora</Text>
-          <Text accessibilityRole="header" style={styles.title}>
-            {title}
-          </Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-          {error ? (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {error}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView style={styles.container} behavior="padding">
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <View style={styles.content}>
+            <Text style={styles.brand}>Simbora</Text>
+            <Text accessibilityRole="header" style={styles.title}>
+              {title}
             </Text>
-          ) : null}
-          {children}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            {error ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+            ) : null}
+            {children}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '../components/BigButton';
 import { BigInput } from '../components/BigInput';
@@ -25,11 +26,13 @@ export function MapPickScreen({ title, hint, buttonLabel, center, fallbackAddres
   const [reference, setReference] = useState('');
 
   return (
-    <View style={styles.container}>
+    // O mapa pode ficar atrás da barra de status; o painel fica acima dos
+    // botões do Android e sobe junto com o teclado.
+    <KeyboardAvoidingView style={styles.container} behavior="padding">
       <View style={styles.map}>
         <PinMap center={center} onCenterChange={setPoint} />
       </View>
-      <View style={styles.panel}>
+      <SafeAreaView edges={['bottom']} style={styles.panel}>
         <Text accessibilityRole="header" style={styles.title}>
           {title}
         </Text>
@@ -46,8 +49,8 @@ export function MapPickScreen({ title, hint, buttonLabel, center, fallbackAddres
           onPress={() => onConfirm({ ...point, address: reference.trim() || fallbackAddress })}
         />
         <BigButton label="Voltar" onPress={onBack} variant="link" />
-      </View>
-    </View>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -1,5 +1,5 @@
-// No navegador o react-native-maps não funciona; usamos Leaflet + OpenStreetMap
-// só para desenvolver e testar. O app de celular usa PinMap.tsx.
+// No navegador o Leaflet roda direto na página. No celular, PinMap.tsx usa o
+// mesmo Leaflet dentro de um WebView.
 import 'leaflet/dist/leaflet.css';
 
 import L from 'leaflet';
