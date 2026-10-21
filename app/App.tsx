@@ -5,8 +5,8 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { supabase } from './src/lib/supabase';
 import { CodeScreen } from './src/screens/CodeScreen';
-import { HomeScreen } from './src/screens/HomeScreen';
 import { NameScreen } from './src/screens/NameScreen';
+import { PassengerFlow } from './src/screens/PassengerFlow';
 import { PhoneScreen } from './src/screens/PhoneScreen';
 import { colors } from './src/theme';
 
@@ -56,7 +56,7 @@ export default function App() {
   } else if (!name) {
     content = <NameScreen userId={userId} onSaved={setName} />;
   } else {
-    content = <HomeScreen name={name} />;
+    content = <PassengerFlow name={name} />;
   }
 
   return (
