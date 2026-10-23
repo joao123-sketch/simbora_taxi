@@ -11,6 +11,7 @@ import { CityDropoffScreen } from './CityDropoffScreen';
 import { ConfirmRideScreen } from './ConfirmRideScreen';
 import { DestinationScreen } from './DestinationScreen';
 import { DriverFlow } from './driver/DriverFlow';
+import { HistoryScreen } from './HistoryScreen';
 import { HomeScreen } from './HomeScreen';
 import { MapPickScreen } from './MapPickScreen';
 import { RideStatusScreen } from './RideStatusScreen';
@@ -23,6 +24,7 @@ type Step =
   | { kind: 'cityDropoff'; origin: Place; city: City }
   | { kind: 'confirm'; origin: Place; destination: Place }
   | { kind: 'ride'; ride: Ride }
+  | { kind: 'history' }
   | { kind: 'driver' };
 
 type Props = {
@@ -85,7 +87,12 @@ export function PassengerFlow({ userId, name }: Props) {
   switch (step.kind) {
     case 'home':
       return (
-        <HomeScreen name={name} onRequestRide={startRequest} onDriverMode={() => setStep({ kind: 'driver' })} />
+        <HomeScreen
+          name={name}
+          onRequestRide={startRequest}
+          onDriverMode={() => setStep({ kind: 'driver' })}
+          onOpenHistory={() => setStep({ kind: 'history' })}
+        />
       );
 
     case 'origin':
@@ -146,6 +153,9 @@ export function PassengerFlow({ userId, name }: Props) {
 
     case 'ride':
       return <RideStatusScreen ride={step.ride} onFinished={goHome} />;
+
+    case 'history':
+      return <HistoryScreen role="passenger" userId={userId} onBack={goHome} />;
 
     case 'driver':
       return <DriverFlow userId={userId} cityId={city.id} onExit={load} />;

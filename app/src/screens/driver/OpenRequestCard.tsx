@@ -15,9 +15,19 @@ type Props = {
   onAccept: () => void;
   onPropose: (extra: number) => Promise<void>;
   onWithdraw: () => Promise<void>;
+  onDecline: () => Promise<void>;
 };
 
-export function OpenRequestCard({ ride, awayKm, proposal, accepting, onAccept, onPropose, onWithdraw }: Props) {
+export function OpenRequestCard({
+  ride,
+  awayKm,
+  proposal,
+  accepting,
+  onAccept,
+  onPropose,
+  onWithdraw,
+  onDecline,
+}: Props) {
   const [proposing, setProposing] = useState(false);
   const [extraText, setExtraText] = useState('');
   const [sending, setSending] = useState(false);
@@ -31,6 +41,15 @@ export function OpenRequestCard({ ride, awayKm, proposal, accepting, onAccept, o
       await onPropose(extra);
       setProposing(false);
       setExtraText('');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function decline() {
+    setSending(true);
+    try {
+      await onDecline();
     } finally {
       setSending(false);
     }
@@ -70,6 +89,7 @@ export function OpenRequestCard({ ride, awayKm, proposal, accepting, onAccept, o
             Proposta de + {formatMoney(proposal.extra_amount)} enviada. Aguardando o passageiro.
           </Text>
           <BigButton label="Retirar proposta" onPress={withdraw} loading={sending} variant="link" />
+          <BigButton label="Recusar pedido" onPress={decline} variant="link" />
         </>
       ) : proposing ? (
         <>
@@ -92,6 +112,7 @@ export function OpenRequestCard({ ride, awayKm, proposal, accepting, onAccept, o
           {ride.destination_place ? (
             <BigButton label="Propor acréscimo" onPress={() => setProposing(true)} variant="link" />
           ) : null}
+          <BigButton label="Recusar pedido" onPress={decline} loading={sending} variant="link" />
         </>
       )}
     </View>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
+import { RatingPrompt } from '../components/RatingPrompt';
 import { Screen } from '../components/Screen';
 import {
   cancelRide,
@@ -40,6 +41,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [proposals, setProposals] = useState<RideProposal[]>([]);
   const [answering, setAnswering] = useState<number | null>(null);
+  const [rated, setRated] = useState(false);
   const { status } = ride;
   const waitingProposals = status === 'requested' && !!ride.destination_place;
 
@@ -93,12 +95,18 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
     }
   }
 
+  // Corrida cancelada fecha sozinha; a concluída espera a avaliação (ou o "Pular").
   useEffect(() => {
-    if (status === 'completed' || status === 'cancelled') {
+    if (status === 'cancelled') {
       const timer = setTimeout(onFinished, 4000);
       return () => clearTimeout(timer);
     }
   }, [status, onFinished]);
+
+  function finishRating() {
+    setRated(true);
+    setTimeout(onFinished, 1200);
+  }
 
   async function cancel() {
     setCancelling(true);
@@ -169,6 +177,14 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
       </View>
       {CANCELABLE.includes(status) ? (
         <BigButton label="Cancelar corrida" onPress={cancel} loading={cancelling} variant="link" />
+      ) : null}
+
+      {status === 'completed' ? (
+        rated ? (
+          <Text style={styles.line}>Obrigado!</Text>
+        ) : (
+          <RatingPrompt rideId={ride.id} question="Como foi o motorista?" onDone={finishRating} />
+        )
       ) : null}
     </Screen>
   );

@@ -52,6 +52,12 @@ export type Ride = {
   distance_km: number;
   estimated_price: number;
   extra_amount: number;
+  final_price: number | null;
+  requested_at: string;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  // A nota que o próprio usuário deu na corrida (passageiro avalia o motorista e vice-versa).
+  my_rating: number | null;
   passenger_name: string | null;
   driver_name: string | null;
   vehicle_model: string | null;
@@ -250,4 +256,44 @@ export async function fetchPaymentOptions(cityId: number, vehicleType: VehicleTy
   const { data, error } = await supabase.rpc('payment_options', { p_city_id: cityId, p_vehicle_type: vehicleType });
   if (error) throw error;
   return data as PaymentMethod[];
+}
+
+// --- Despacho, avaliação e histórico ---
+
+// Quem ficou online depois, ou passou a aceitar a forma de pagamento, entra na fila
+// dos pedidos que ainda estão abertos.
+export async function claimOpenRequests(): Promise<void> {
+  const { error } = await supabase.rpc('claim_open_requests');
+  if (error) throw error;
+}
+
+// Recusar o pedido libera o próximo motorista da fila na hora.
+export async function declineRide(rideId: number): Promise<void> {
+  const { error } = await supabase.rpc('decline_ride', { p_ride_id: rideId });
+  if (error) throw error;
+}
+
+export async function rateRide(rideId: number, stars: number): Promise<void> {
+  const { error } = await supabase.rpc('rate_ride', { p_ride_id: rideId, p_stars: stars });
+  if (error) throw error;
+}
+
+// Corridas já encerradas (concluídas ou canceladas) do usuário, as mais novas primeiro.
+export async function fetchHistory(role: 'passenger' | 'driver', userId: string): Promise<Ride[]> {
+  const { data, error } = await supabase
+    .from('ride_details')
+    .select('*')
+    .eq(role === 'passenger' ? 'passenger_id' : 'driver_id', userId)
+    .in('status', ['completed', 'cancelled'])
+    .order('requested_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data as Ride[];
+}
+
+// "2026-10-23T20:08:43Z" -> "23/10 17:08" (hora local).
+export function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${two(d.getDate())}/${two(d.getMonth() + 1)} ${two(d.getHours())}:${two(d.getMinutes())}`;
 }

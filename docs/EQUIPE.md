@@ -36,6 +36,14 @@ Todo motorista aprovado volta a ser avaliado de 6 em 6 meses, sem aviso a ele. N
 3. Se estiver tudo certo, abra a tabela **driver_reviews** e coloque a data de hoje em `last_reviewed_on`. A próxima data (`next_review_on`) é calculada sozinha, 6 meses depois. Se quiser, anote em `notes`.
 4. Se não estiver, suspenda ou bloqueie o motorista (próxima seção).
 
+## Nota dos motoristas
+
+A view **driver_stats** mostra, para cada motorista: corridas concluídas, quantas avaliações recebeu, a nota média e a **nota ajustada** (com poucas avaliações ela puxa para 4,5, para não oscilar), a taxa de aceite, a taxa de cancelamento e a **score** de 0 a 100.
+
+- Motorista com menos de 20 corridas aparece como `is_new` e sem score: a prioridade dele é neutra.
+- A taxa de aceite conta só o que o motorista decidiu: aceitou contra recusou. Pedido que ele deixou passar não conta.
+- Por enquanto a score só é calculada. No despacho, o motorista mais próximo chama primeiro. Os pesos (60% nota, 20% aceite, 20% sem cancelamento) e as faixas de prioridade valem ser ajustados depois de 30 dias de dados reais.
+
 ## Suspender ou bloquear
 
 Na mesma tabela, mude `status` para:

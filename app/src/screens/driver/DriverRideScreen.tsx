@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
+import { RatingPrompt } from '../../components/RatingPrompt';
 import { Screen } from '../../components/Screen';
 import { directionsUrl } from '../../lib/geo';
 import {
@@ -39,6 +40,7 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
   const [ride, setRide] = useState(initialRide);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rated, setRated] = useState(false);
 
   // Atualiza se o passageiro cancelar.
   useEffect(
@@ -102,7 +104,12 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
       </View>
 
       {finished ? (
-        <BigButton label="Voltar aos chamados" onPress={onFinished} />
+        <>
+          {ride.status === 'completed' && !rated ? (
+            <RatingPrompt rideId={ride.id} question="Como foi o passageiro?" onDone={() => setRated(true)} />
+          ) : null}
+          <BigButton label="Voltar aos chamados" onPress={onFinished} />
+        </>
       ) : (
         <>
           <BigButton label={nextAction[ride.status] ?? ''} onPress={advance} loading={loading} />

@@ -7,6 +7,7 @@ import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { fetchMyDriver, setOnline, type Driver } from '../../lib/drivers';
 import { fetchActiveRide, type Ride } from '../../lib/rides';
 import { colors } from '../../theme';
+import { HistoryScreen } from '../HistoryScreen';
 import { DriverHomeScreen } from './DriverHomeScreen';
 import { DriverPendingScreen } from './DriverPendingScreen';
 import { PaymentSettingsScreen } from './PaymentSettingsScreen';
@@ -25,6 +26,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   const [ride, setRide] = useState<Ride | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingPayments, setEditingPayments] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const online = driver?.status === 'approved' && driver.is_online;
   const { position, denied } = useDriverLocation(online);
@@ -88,6 +90,10 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     return <DriverRideScreen ride={ride} onFinished={load} />;
   }
 
+  if (showHistory) {
+    return <HistoryScreen role="driver" userId={userId} onBack={() => setShowHistory(false)} />;
+  }
+
   if (editingPayments) {
     return (
       <PaymentSettingsScreen
@@ -111,6 +117,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
       onToggleOnline={toggleOnline}
       onAccepted={load}
       onCheckActive={checkActiveRide}
+      onOpenHistory={() => setShowHistory(true)}
       onExit={onExit}
     />
   );

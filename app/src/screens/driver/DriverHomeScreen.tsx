@@ -7,6 +7,8 @@ import { Screen } from '../../components/Screen';
 import { distanceKm } from '../../lib/geo';
 import {
   acceptRide,
+  claimOpenRequests,
+  declineRide,
   fetchMyProposals,
   fetchOpenRequests,
   proposeExtra,
@@ -31,10 +33,13 @@ type Props = {
   onAccepted: () => void;
   // Confere se o passageiro aceitou uma proposta e a corrida passou a ser deste motorista.
   onCheckActive: () => void;
+  onOpenHistory: () => void;
   onExit: () => void;
 };
 
-const POLL_MS = 10000;
+// Cada motorista passa a ver o pedido alguns segundos depois do anterior da fila,
+// então a consulta é frequente.
+const POLL_MS = 5000;
 
 export function DriverHomeScreen({
   online,
@@ -45,6 +50,7 @@ export function DriverHomeScreen({
   onToggleOnline,
   onAccepted,
   onCheckActive,
+  onOpenHistory,
   onExit,
 }: Props) {
   const [requests, setRequests] = useState<Ride[]>([]);
@@ -54,7 +60,10 @@ export function DriverHomeScreen({
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
-    fetchOpenRequests()
+    // Entra na fila dos pedidos abertos (se acabou de ficar online) e só então lê a lista.
+    claimOpenRequests()
+      .catch(() => {})
+      .then(() => fetchOpenRequests())
       .then(setRequests)
       .catch(() => {});
     fetchMyProposals()
@@ -118,6 +127,16 @@ export function DriverHomeScreen({
     }
   }
 
+  async function decline(rideId: number) {
+    setError(null);
+    try {
+      await declineRide(rideId);
+    } catch {
+      setError('Esse pedido não está mais disponível.');
+    }
+    refresh();
+  }
+
   async function withdraw(rideId: number) {
     setError(null);
     try {
@@ -158,9 +177,11 @@ export function DriverHomeScreen({
           onAccept={() => accept(ride.id)}
           onPropose={(extra) => propose(ride.id, extra)}
           onWithdraw={() => withdraw(ride.id)}
+          onDecline={() => decline(ride.id)}
         />
       ))}
 
+      <BigButton label="Minhas corridas" onPress={onOpenHistory} variant="link" />
       <BigButton label="Voltar para passageiro" onPress={onExit} variant="link" />
     </Screen>
   );
