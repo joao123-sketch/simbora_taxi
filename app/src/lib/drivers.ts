@@ -1,4 +1,4 @@
-import type { VehicleType } from './rides';
+import type { PaymentMethod, VehicleType } from './rides';
 import { supabase } from './supabase';
 
 export type DriverStatus = 'pending' | 'approved' | 'suspended' | 'blocked';
@@ -14,6 +14,7 @@ export type Driver = {
   vehicle_year: number;
   pix_key: string | null;
   is_online: boolean;
+  accepted_payments: PaymentMethod[];
 };
 
 export type DriverSignup = Pick<
@@ -55,4 +56,10 @@ export function normalizePlate(plate: string): string {
 
 export function isValidPlate(plate: string): boolean {
   return /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(normalizePlate(plate));
+}
+
+// Marca como o motorista recebe (Pix, dinheiro, maquininha); precisa de ao menos uma.
+export async function setAcceptedPayments(methods: PaymentMethod[]): Promise<void> {
+  const { error } = await supabase.rpc('set_accepted_payments', { p_methods: methods });
+  if (error) throw error;
 }

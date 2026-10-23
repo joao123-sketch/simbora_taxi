@@ -2,7 +2,7 @@ import type { Coord } from '../components/PinMap.types';
 import { supabase } from './supabase';
 
 export type VehicleType = 'car' | 'moto';
-export type PaymentMethod = 'cash' | 'pix';
+export type PaymentMethod = 'cash' | 'pix' | 'card';
 export type RideStatus = 'requested' | 'accepted' | 'arrived' | 'in_progress' | 'completed' | 'cancelled';
 
 export type City = Coord & {
@@ -23,8 +23,14 @@ export type Place = Coord & {
 export type Quote = {
   vehicle_type: VehicleType;
   price: number;
+  // Cartão custa 5% a mais; o banco já devolve o valor calculado.
+  card_price: number;
   distance_km: number;
 };
+
+export function priceFor(quote: Quote, method: PaymentMethod): number {
+  return method === 'card' ? quote.card_price : quote.price;
+}
 
 // Linha da view ride_details: os nomes só vêm preenchidos quando o RLS
 // permite (ex.: o motorista vê o passageiro depois de aceitar). Telefone não
@@ -56,7 +62,12 @@ export type Ride = {
 export const ACTIVE_STATUSES: RideStatus[] = ['requested', 'accepted', 'arrived', 'in_progress'];
 
 export const vehicleLabel: Record<VehicleType, string> = { car: 'Carro', moto: 'Moto' };
-export const paymentLabel: Record<PaymentMethod, string> = { cash: 'Dinheiro', pix: 'Pix' };
+export const paymentLabel: Record<PaymentMethod, string> = { cash: 'Dinheiro', pix: 'Pix', card: 'Cartão' };
+
+// Como o motorista vê cada forma: o cartão é a maquininha dele.
+export const receiveLabel: Record<PaymentMethod, string> = { cash: 'Dinheiro', pix: 'Pix', card: 'Maquininha (cartão)' };
+
+export const PAYMENT_ORDER: PaymentMethod[] = ['cash', 'pix', 'card'];
 
 export function formatMoney(value: number): string {
   return `R$ ${Number(value).toFixed(2).replace('.', ',')}`;
@@ -90,11 +101,12 @@ export async function fetchRide(rideId: number): Promise<Ride> {
 // Chamados abertos que o motorista online pode aceitar (o RLS já filtra
 // pelo tipo de veículo dele).
 export async function fetchOpenRequests(): Promise<Ride[]> {
-  const { data, error } = await supabase
-    .from('ride_details')
-    .select('*')
-    .eq('status', 'requested')
-    .order('requested_at');
+  // Quem é passageiro e motorista na mesma conta não vê o próprio pedido na lista de chamados.
+  const { data: auth } = await supabase.auth.getSession();
+  const me = auth.session?.user.id;
+  let query = supabase.from('ride_details').select('*').eq('status', 'requested');
+  if (me) query = query.neq('passenger_id', me);
+  const { data, error } = await query.order('requested_at');
   if (error) throw error;
   return data as Ride[];
 }
@@ -231,4 +243,11 @@ export function subscribeToProposals(channelName: string, onChange: () => void) 
 export function parseMoney(text: string): number | null {
   const value = Number(text.trim().replace(',', '.'));
   return Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : null;
+}
+
+// Formas de pagamento que algum motorista online do tipo de veículo aceita.
+export async function fetchPaymentOptions(cityId: number, vehicleType: VehicleType): Promise<PaymentMethod[]> {
+  const { data, error } = await supabase.rpc('payment_options', { p_city_id: cityId, p_vehicle_type: vehicleType });
+  if (error) throw error;
+  return data as PaymentMethod[];
 }

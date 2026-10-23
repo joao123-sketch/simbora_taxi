@@ -13,7 +13,9 @@ import {
   subscribeToProposals,
   subscribeToRides,
   withdrawProposal,
+  receiveLabel,
   type MyProposal,
+  type PaymentMethod,
   type Ride,
 } from '../../lib/rides';
 import { colors, fontSize } from '../../theme';
@@ -21,6 +23,8 @@ import { OpenRequestCard } from './OpenRequestCard';
 
 type Props = {
   online: boolean;
+  acceptedPayments: PaymentMethod[];
+  onOpenPayments: () => void;
   position: Coord | null;
   locationDenied: boolean;
   onToggleOnline: () => Promise<void>;
@@ -34,6 +38,8 @@ const POLL_MS = 10000;
 
 export function DriverHomeScreen({
   online,
+  acceptedPayments,
+  onOpenPayments,
   position,
   locationDenied,
   onToggleOnline,
@@ -137,6 +143,9 @@ export function DriverHomeScreen({
 
       <BigButton label={online ? 'Ficar offline' : 'Ficar online'} onPress={toggle} loading={toggling} />
 
+      <Text style={styles.receives}>Você recebe por: {acceptedPayments.map((m) => receiveLabel[m]).join(', ')}</Text>
+      <BigButton label="Como eu recebo" onPress={onOpenPayments} variant="link" />
+
       {online && visible.length === 0 ? <Text style={styles.empty}>Nenhum chamado agora.</Text> : null}
 
       {visible.map((ride) => (
@@ -162,6 +171,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body - 2,
     fontWeight: '700',
     color: colors.primaryDark,
+  },
+  receives: {
+    fontSize: fontSize.body - 2,
+    color: colors.textMuted,
+    textAlign: 'center',
   },
   empty: {
     fontSize: fontSize.body,

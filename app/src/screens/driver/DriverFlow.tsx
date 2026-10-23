@@ -9,6 +9,7 @@ import { fetchActiveRide, type Ride } from '../../lib/rides';
 import { colors } from '../../theme';
 import { DriverHomeScreen } from './DriverHomeScreen';
 import { DriverPendingScreen } from './DriverPendingScreen';
+import { PaymentSettingsScreen } from './PaymentSettingsScreen';
 import { DriverRideScreen } from './DriverRideScreen';
 import { DriverSignupScreen } from './DriverSignupScreen';
 
@@ -23,6 +24,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   const [driver, setDriver] = useState<Driver | null | undefined>(undefined);
   const [ride, setRide] = useState<Ride | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingPayments, setEditingPayments] = useState(false);
 
   const online = driver?.status === 'approved' && driver.is_online;
   const { position, denied } = useDriverLocation(online);
@@ -86,9 +88,24 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     return <DriverRideScreen ride={ride} onFinished={load} />;
   }
 
+  if (editingPayments) {
+    return (
+      <PaymentSettingsScreen
+        accepted={driver.accepted_payments}
+        onSaved={(methods) => {
+          setDriver({ ...driver, accepted_payments: methods });
+          setEditingPayments(false);
+        }}
+        onBack={() => setEditingPayments(false)}
+      />
+    );
+  }
+
   return (
     <DriverHomeScreen
       online={online}
+      acceptedPayments={driver.accepted_payments}
+      onOpenPayments={() => setEditingPayments(true)}
       position={position}
       locationDenied={denied}
       onToggleOnline={toggleOnline}

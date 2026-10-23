@@ -35,4 +35,5 @@ Abra no celular com o app Expo Go, ou rode `npm run android` com um emulador.
 - Receita: mensalidade fixa do motorista (mês 1 grátis, mês 2 R$ 200, a partir do mês 3 R$ 300), sem comissão por corrida. A cobrança entra na Etapa 10 do checklist.
 - Tarifas em `fares`, com data de vigência (`effective_from`); a mais recente que já começou vale.
 - Dentro da cidade o destino é livre (inclusive de e para sítios e distritos). Em viagem para outra cidade, o passageiro pode pedir um ponto combinado (`rides.destination_negotiated`): o motorista vê o pedido e decide se aceita.
+- Pagamento direto ao motorista. Cada motorista marca o que aceita (`drivers.accepted_payments`: Pix, dinheiro, maquininha); o passageiro só vê as formas que algum motorista online aceita, e o pedido só chega a quem aceita a escolhida. Cartão custa 5% a mais, calculado no banco.
 - Telefone não aparece para passageiro nem motorista: o perfil só libera `id`, `full_name` e `created_at`.

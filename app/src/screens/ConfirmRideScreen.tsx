@@ -5,8 +5,10 @@ import { BigButton } from '../components/BigButton';
 import { ChoiceCard } from '../components/ChoiceCard';
 import { Screen } from '../components/Screen';
 import {
+  fetchPaymentOptions,
   formatMoney,
   paymentLabel,
+  priceFor,
   quoteRide,
   requestRide,
   vehicleLabel,
@@ -25,12 +27,14 @@ type Props = {
   onBack: () => void;
 };
 
-const PAYMENTS: PaymentMethod[] = ['cash', 'pix'];
+// Enquanto as formas não chegam do banco, o padrão é dinheiro e Pix.
+const DEFAULT_OPTIONS: PaymentMethod[] = ['cash', 'pix'];
 
 export function ConfirmRideScreen({ cityId, origin, destination, onRequested, onBack }: Props) {
   const [quotes, setQuotes] = useState<Quote[] | null>(null);
   const [vehicle, setVehicle] = useState<VehicleType>('car');
   const [payment, setPayment] = useState<PaymentMethod>('cash');
+  const [options, setOptions] = useState<PaymentMethod[]>(DEFAULT_OPTIONS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +49,16 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
       // As mensagens do banco (ex.: destino fora da cidade) já vêm em português.
       .catch((e) => setError((e as { message?: string }).message || 'Não conseguimos calcular o preço. Tente de novo.'));
   }, [cityId, origin, destination]);
+
+  // Só aparecem as formas que algum motorista online desse veículo aceita.
+  useEffect(() => {
+    fetchPaymentOptions(cityId, vehicle)
+      .then((list) => {
+        setOptions(list);
+        setPayment((current) => (list.includes(current) ? current : list[0]));
+      })
+      .catch(() => setOptions(DEFAULT_OPTIONS));
+  }, [cityId, vehicle]);
 
   async function confirm() {
     setLoading(true);
@@ -77,7 +91,7 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
         <ChoiceCard
           key={quote.vehicle_type}
           label={vehicleLabel[quote.vehicle_type]}
-          detail={formatMoney(quote.price)}
+          detail={formatMoney(priceFor(quote, payment))}
           selected={vehicle === quote.vehicle_type}
           onPress={() => setVehicle(quote.vehicle_type)}
         />
@@ -86,17 +100,15 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
       {quotes?.length ? (
         <>
           <Text style={styles.section}>Como vai pagar?</Text>
-          <View style={styles.row}>
-            {PAYMENTS.map((method) => (
-              <View key={method} style={styles.rowItem}>
-                <ChoiceCard
-                  label={paymentLabel[method]}
-                  selected={payment === method}
-                  onPress={() => setPayment(method)}
-                />
-              </View>
-            ))}
-          </View>
+          {options.map((method) => (
+            <ChoiceCard
+              key={method}
+              label={paymentLabel[method]}
+              detail={method === 'card' ? '+5%' : undefined}
+              selected={payment === method}
+              onPress={() => setPayment(method)}
+            />
+          ))}
           <BigButton label={`Chamar ${vehicleLabel[vehicle].toLowerCase()}`} onPress={confirm} loading={loading} />
         </>
       ) : null}
@@ -118,12 +130,5 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
     fontWeight: '700',
     color: colors.textMuted,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  rowItem: {
-    flex: 1,
   },
 });
