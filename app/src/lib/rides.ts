@@ -22,6 +22,11 @@ export type Place = Coord & {
 
 export type Quote = {
   vehicle_type: VehicleType;
+  // A cotação vale 2 minutos e é o único preço que o banco aceita no pedido.
+  quote_id: string;
+  expires_at: string;
+  // Já vem com o fator de demanda aplicado (1 = preço normal).
+  factor: number;
   price: number;
   // Cartão custa 5% a mais; o banco já devolve o valor calculado.
   card_price: number;
@@ -159,8 +164,9 @@ export async function requestRide(params: {
   paymentMethod: PaymentMethod;
   origin: Place;
   destination: Place;
+  quoteId: string;
 }): Promise<number> {
-  const { cityId, vehicleType, paymentMethod, origin, destination } = params;
+  const { cityId, vehicleType, paymentMethod, origin, destination, quoteId } = params;
   const { data, error } = await supabase.rpc('request_ride', {
     p_city_id: cityId,
     p_vehicle_type: vehicleType,
@@ -171,6 +177,7 @@ export async function requestRide(params: {
     p_destination_lng: destination.lng,
     p_destination_lat: destination.lat,
     p_destination_address: destination.address,
+    p_quote_id: quoteId,
     p_destination_city_id: destination.cityId ?? null,
     p_destination_place: destination.dropoffPlace ?? null,
   });

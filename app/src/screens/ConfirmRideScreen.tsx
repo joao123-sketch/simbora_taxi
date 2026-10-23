@@ -38,16 +38,23 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Busca os preços de agora. Cada cotação vale 2 minutos; depois disso o
+  // preço pode ter mudado e o passageiro precisa ver o novo valor.
+  async function loadQuotes(): Promise<Quote[]> {
+    const result = await quoteRide(cityId, origin, destination);
+    setQuotes(result);
+    setVehicle((current) =>
+      result.length && !result.some((q) => q.vehicle_type === current) ? result[0].vehicle_type : current,
+    );
+    return result;
+  }
+
   useEffect(() => {
-    quoteRide(cityId, origin, destination)
-      .then((result) => {
-        setQuotes(result);
-        if (result.length && !result.some((q) => q.vehicle_type === 'car')) {
-          setVehicle(result[0].vehicle_type);
-        }
-      })
-      // As mensagens do banco (ex.: destino fora da cidade) já vêm em português.
-      .catch((e) => setError((e as { message?: string }).message || 'Não conseguimos calcular o preço. Tente de novo.'));
+    // As mensagens do banco (ex.: destino fora da cidade) já vêm em português.
+    loadQuotes().catch((e) =>
+      setError((e as { message?: string }).message || 'Não conseguimos calcular o preço. Tente de novo.'),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityId, origin, destination]);
 
   // Só aparecem as formas que algum motorista online desse veículo aceita.
@@ -64,7 +71,30 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
     setLoading(true);
     setError(null);
     try {
-      const rideId = await requestRide({ cityId, vehicleType: vehicle, paymentMethod: payment, origin, destination });
+      const current = quotes?.find((q) => q.vehicle_type === vehicle);
+      if (!current) throw new Error('Confira o preço de novo antes de chamar');
+
+      // Passou dos 2 minutos: mostra o preço novo e deixa o passageiro decidir.
+      if (new Date(current.expires_at).getTime() <= Date.now()) {
+        const fresh = await loadQuotes();
+        const next = fresh.find((q) => q.vehicle_type === vehicle);
+        setLoading(false);
+        setError(
+          next && priceFor(next, payment) !== priceFor(current, payment)
+            ? `O preço mudou para ${formatMoney(priceFor(next, payment))}. Se estiver bom, chame de novo.`
+            : 'Atualizamos o preço. Pode chamar.',
+        );
+        return;
+      }
+
+      const rideId = await requestRide({
+        cityId,
+        vehicleType: vehicle,
+        paymentMethod: payment,
+        origin,
+        destination,
+        quoteId: current.quote_id,
+      });
       onRequested(rideId);
     } catch (e) {
       setLoading(false);
@@ -72,6 +102,14 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
       setError((e as { message?: string }).message || 'Não conseguimos pedir a corrida.');
     }
   }
+
+  const selected = quotes?.find((q) => q.vehicle_type === vehicle);
+  const factorNote =
+    selected && selected.factor > 1
+      ? `Muita gente chamando agora: o preço está ${Math.round((selected.factor - 1) * 100)}% acima do normal.`
+      : selected && selected.factor < 1
+        ? `Poucos pedidos agora: o preço está ${Math.round((1 - selected.factor) * 100)}% abaixo do normal.`
+        : null;
 
   return (
     <Screen title="Confira e chame" error={error}>
@@ -96,6 +134,8 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
           onPress={() => setVehicle(quote.vehicle_type)}
         />
       ))}
+
+      {factorNote ? <Text style={styles.factorNote}>{factorNote}</Text> : null}
 
       {quotes?.length ? (
         <>
@@ -125,6 +165,10 @@ const styles = StyleSheet.create({
   routeLine: {
     fontSize: fontSize.body,
     color: colors.text,
+  },
+  factorNote: {
+    fontSize: fontSize.body,
+    color: colors.textMuted,
   },
   section: {
     fontSize: fontSize.body,
