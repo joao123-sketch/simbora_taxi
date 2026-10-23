@@ -1,4 +1,4 @@
-// Identidade do Simbora: vermelho simpático e tudo grande o bastante
+// Identidade do Simbora Car: vermelho simpático e tudo grande o bastante
 // para um idoso de 90 anos usar sem ajuda.
 export const colors = {
   primary: '#D62828',

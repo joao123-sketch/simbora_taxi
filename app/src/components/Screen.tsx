@@ -20,7 +20,7 @@ export function Screen({ title, subtitle, error, children }: Props) {
       <KeyboardAvoidingView style={styles.container} behavior="padding">
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
-            <Text style={styles.brand}>Simbora</Text>
+            <Text style={styles.brand}>Simbora Car</Text>
             <Text accessibilityRole="header" style={styles.title}>
               {title}
             </Text>

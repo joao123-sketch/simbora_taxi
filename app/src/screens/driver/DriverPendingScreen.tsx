@@ -14,15 +14,15 @@ const messages: Record<Props['status'], { title: string; subtitle: string }> = {
   pending: {
     title: 'Cadastro recebido!',
     subtitle:
-      'A equipe do Simbora vai te chamar para uma conversa. Leve CNH, documento do veículo e comprovante de residência.',
+      'A equipe do Simbora Car vai te chamar para uma conversa. Leve CNH, documento do veículo e comprovante de residência.',
   },
   suspended: {
     title: 'Cadastro suspenso',
-    subtitle: 'Fale com a equipe do Simbora para entender o que aconteceu.',
+    subtitle: 'Fale com a equipe do Simbora Car para entender o que aconteceu.',
   },
   blocked: {
     title: 'Cadastro bloqueado',
-    subtitle: 'Fale com a equipe do Simbora para mais informações.',
+    subtitle: 'Fale com a equipe do Simbora Car para mais informações.',
   },
 };
 
@@ -45,7 +45,7 @@ export function DriverPendingScreen({ status, onRefresh, onBack }: Props) {
     <Screen
       title={title}
       subtitle={subtitle}
-      error={notYet ? 'Ainda não foi aprovado. Aguarde o contato da equipe do Simbora.' : null}
+      error={notYet ? 'Ainda não foi aprovado. Aguarde o contato da equipe do Simbora Car.' : null}
     >
       <BigButton label="Já fui aprovado" onPress={check} loading={checking} />
       <BigButton label="Voltar para passageiro" onPress={onBack} variant="link" />

@@ -7,6 +7,7 @@ import type { Coord } from '../components/PinMap.types';
 import { Screen } from '../components/Screen';
 import { fetchActiveRide, fetchCities, type City, type Place, type Ride } from '../lib/rides';
 import { colors } from '../theme';
+import { CityDropoffScreen } from './CityDropoffScreen';
 import { ConfirmRideScreen } from './ConfirmRideScreen';
 import { DestinationScreen } from './DestinationScreen';
 import { DriverFlow } from './driver/DriverFlow';
@@ -19,6 +20,7 @@ type Step =
   | { kind: 'origin' }
   | { kind: 'destination'; origin: Place }
   | { kind: 'destinationMap'; origin: Place }
+  | { kind: 'cityDropoff'; origin: Place; city: City }
   | { kind: 'confirm'; origin: Place; destination: Place }
   | { kind: 'ride'; ride: Ride }
   | { kind: 'driver' };
@@ -41,7 +43,7 @@ export function PassengerFlow({ userId, name }: Props) {
       setCities(cityList);
       setStep(activeRide ? { kind: 'ride', ride: activeRide } : { kind: 'home' });
     } catch {
-      setError('Sem conexão com o Simbora. Confira a internet.');
+      setError('Sem conexão com o Simbora Car. Confira a internet.');
     }
   }, [userId]);
 
@@ -104,13 +106,7 @@ export function PassengerFlow({ userId, name }: Props) {
         <DestinationScreen
           otherCities={cities.filter((c) => c.id !== city.id)}
           onPickOnMap={() => setStep({ kind: 'destinationMap', origin: step.origin })}
-          onPickCity={(dest) =>
-            setStep({
-              kind: 'confirm',
-              origin: step.origin,
-              destination: { lat: dest.lat, lng: dest.lng, address: dest.name, cityId: dest.id },
-            })
-          }
+          onPickCity={(dest) => setStep({ kind: 'cityDropoff', origin: step.origin, city: dest })}
           onBack={() => setStep({ kind: 'origin' })}
         />
       );
@@ -123,6 +119,15 @@ export function PassengerFlow({ userId, name }: Props) {
           buttonLabel="É aqui"
           center={step.origin}
           fallbackAddress="Destino marcado no mapa"
+          onConfirm={(destination) => setStep({ kind: 'confirm', origin: step.origin, destination })}
+          onBack={() => setStep({ kind: 'destination', origin: step.origin })}
+        />
+      );
+
+    case 'cityDropoff':
+      return (
+        <CityDropoffScreen
+          city={step.city}
           onConfirm={(destination) => setStep({ kind: 'confirm', origin: step.origin, destination })}
           onBack={() => setStep({ kind: 'destination', origin: step.origin })}
         />

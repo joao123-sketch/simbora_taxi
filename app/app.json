@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Simbora",
-    "slug": "simbora",
-    "scheme": "simbora",
+    "name": "Simbora Car",
+    "slug": "simbora-car",
+    "scheme": "simboracar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,10 +10,10 @@
     "primaryColor": "#D62828",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "br.com.simbora.app"
+      "bundleIdentifier": "br.com.simboracar.app"
     },
     "android": {
-      "package": "br.com.simbora.app",
+      "package": "br.com.simboracar.app",
       "adaptiveIcon": {
         "backgroundColor": "#D62828",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -29,7 +29,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "O Simbora usa sua localização para encontrar o carro mais perto de você."
+          "locationWhenInUsePermission": "O Simbora Car usa sua localização para encontrar o carro mais perto de você."
         }
       ],
       "expo-status-bar"

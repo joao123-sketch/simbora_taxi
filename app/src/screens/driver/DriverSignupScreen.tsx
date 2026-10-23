@@ -57,7 +57,7 @@ export function DriverSignupScreen({ userId, cityId, onRegistered, onBack }: Pro
   return (
     <Screen
       title="Quero dirigir"
-      subtitle="Preencha os dados do veículo. Depois a equipe do Simbora marca uma conversa com você."
+      subtitle="Preencha os dados do veículo. Depois a equipe do Simbora Car marca uma conversa com você."
       error={error}
     >
       <Text style={styles.label}>Você vai dirigir</Text>
@@ -98,7 +98,7 @@ export function DriverSignupScreen({ userId, cityId, onRegistered, onBack }: Pro
         onChangeText={(text) => setYear(text.replace(/\D/g, ''))}
       />
       {year.length === 4 && !yearOk ? (
-        <Text style={styles.warning}>O Simbora aceita veículos de {MIN_VEHICLE_YEAR} em diante.</Text>
+        <Text style={styles.warning}>O Simbora Car aceita veículos de {MIN_VEHICLE_YEAR} em diante.</Text>
       ) : null}
 
       <Text style={styles.label}>Chave Pix (opcional)</Text>

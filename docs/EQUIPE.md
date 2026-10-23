@@ -1,6 +1,6 @@
-# Guia da equipe Simbora
+# Guia da equipe Simbora Car
 
-Tudo é feito no painel do Supabase (supabase.com → projeto Simbora → **Table Editor**).
+Tudo é feito no painel do Supabase (supabase.com → projeto Simbora Car → **Table Editor**).
 
 ## Aprovar um motorista (depois da reunião presencial)
 
@@ -16,7 +16,7 @@ Tudo é feito no painel do Supabase (supabase.com → projeto Simbora → **Tabl
 Na mesma tabela, mude `status` para:
 
 - `suspended`: afastado por um tempo (reclamação, documento vencido).
-- `blocked`: fora do Simbora.
+- `blocked`: fora do Simbora Car.
 
 Se ele estiver online, mude também `is_online` para `false`.
 
@@ -28,7 +28,3 @@ Tabela **rides**. Filtre por `status`:
 - `accepted`, `arrived`, `in_progress`: em andamento
 - `completed`: concluídas
 - `cancelled`: canceladas
-
-## Faturas semanais
-
-Tabela **invoices**: uma linha por motorista e semana, com o valor da comissão (`amount`). Quando o motorista pagar o Pix, mude `status` para `paid` e preencha `paid_at`.

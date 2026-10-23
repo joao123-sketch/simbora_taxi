@@ -34,13 +34,23 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
       setRide(me?.status === 'approved' ? await fetchActiveRide('driver', userId) : null);
       setDriver(me);
     } catch {
-      setError('Sem conexão com o Simbora. Confira a internet.');
+      setError('Sem conexão com o Simbora Car. Confira a internet.');
     }
   }, [userId]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // O passageiro pode aceitar uma proposta deste motorista a qualquer momento;
+  // quando isso acontece a corrida passa a ser dele e a tela troca sozinha.
+  const checkActiveRide = useCallback(() => {
+    fetchActiveRide('driver', userId)
+      .then((active) => {
+        if (active) setRide(active);
+      })
+      .catch(() => {});
+  }, [userId]);
 
   async function toggleOnline() {
     if (!driver) return;
@@ -83,6 +93,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
       locationDenied={denied}
       onToggleOnline={toggleOnline}
       onAccepted={load}
+      onCheckActive={checkActiveRide}
       onExit={onExit}
     />
   );

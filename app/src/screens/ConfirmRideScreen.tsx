@@ -42,7 +42,8 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
           setVehicle(result[0].vehicle_type);
         }
       })
-      .catch(() => setError('Não conseguimos calcular o preço. Tente de novo.'));
+      // As mensagens do banco (ex.: destino fora da cidade) já vêm em português.
+      .catch((e) => setError((e as { message?: string }).message || 'Não conseguimos calcular o preço. Tente de novo.'));
   }, [cityId, origin, destination]);
 
   async function confirm() {
@@ -62,7 +63,10 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
     <Screen title="Confira e chame" error={error}>
       <View style={styles.route}>
         <Text style={styles.routeLine}>De: {origin.address}</Text>
-        <Text style={styles.routeLine}>Para: {destination.address}</Text>
+        <Text style={styles.routeLine}>
+          Para: {destination.address}
+          {destination.dropoffPlace ? ` — ${destination.dropoffPlace}` : ''}
+        </Text>
       </View>
 
       {quotes === null && !error ? (

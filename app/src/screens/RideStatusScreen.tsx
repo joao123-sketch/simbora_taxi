@@ -1,16 +1,19 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { Screen } from '../components/Screen';
 import {
   cancelRide,
   fetchRide,
+  fetchRideProposals,
   formatMoney,
-  formatPhoneNumber,
   paymentLabel,
+  respondProposal,
+  subscribeToProposals,
   subscribeToRides,
   type Ride,
+  type RideProposal,
   type RideStatus,
 } from '../lib/rides';
 import { colors, fontSize } from '../theme';
@@ -35,7 +38,10 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   const [ride, setRide] = useState(initialRide);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [proposals, setProposals] = useState<RideProposal[]>([]);
+  const [answering, setAnswering] = useState<number | null>(null);
   const { status } = ride;
+  const waitingProposals = status === 'requested' && !!ride.destination_place;
 
   // A cada mudança (motorista aceitou, chegou...) busca de novo os detalhes,
   // que trazem nome, carro e placa do motorista.
@@ -48,6 +54,44 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
       ),
     [initialRide.id],
   );
+
+  // Motoristas podem propor um acréscimo quando o passageiro pediu um lugar
+  // fora do centro de outra cidade; as propostas chegam em tempo real.
+  const loadProposals = useCallback(() => {
+    fetchRideProposals(initialRide.id)
+      .then(setProposals)
+      .catch(() => {});
+  }, [initialRide.id]);
+
+  useEffect(() => {
+    if (!waitingProposals) {
+      setProposals([]);
+      return;
+    }
+    loadProposals();
+    const unsubscribe = subscribeToProposals(`proposals-${initialRide.id}`, loadProposals);
+    const timer = setInterval(loadProposals, 8000);
+    return () => {
+      unsubscribe();
+      clearInterval(timer);
+    };
+  }, [waitingProposals, loadProposals, initialRide.id]);
+
+  async function answer(proposal: RideProposal, accept: boolean) {
+    setAnswering(proposal.proposal_id);
+    setError(null);
+    try {
+      await respondProposal(proposal.proposal_id, accept);
+      // Aceitar fecha a corrida com o motorista; recusar só tira a proposta da lista.
+      setRide(await fetchRide(initialRide.id));
+      loadProposals();
+    } catch (e) {
+      setError((e as { message?: string }).message || 'Não conseguimos responder a proposta.');
+      loadProposals();
+    } finally {
+      setAnswering(null);
+    }
+  }
 
   useEffect(() => {
     if (status === 'completed' || status === 'cancelled') {
@@ -82,22 +126,46 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
             {ride.vehicle_model} {ride.vehicle_color}
           </Text>
           <Text style={styles.plate}>{ride.vehicle_plate}</Text>
-          {ride.driver_phone && CANCELABLE.includes(status) ? (
-            <BigButton
-              label={`Ligar: ${formatPhoneNumber(ride.driver_phone)}`}
-              onPress={() => Linking.openURL(`tel:+${ride.driver_phone}`)}
-              variant="link"
-            />
-          ) : null}
         </View>
       ) : null}
 
+      {waitingProposals ? (
+        <Text style={styles.hint}>
+          Você pediu para ser deixado em {ride.destination_place}. O motorista pode aceitar pelo valor ou propor um
+          acréscimo.
+        </Text>
+      ) : null}
+
+      {proposals.map((proposal) => (
+        <View key={proposal.proposal_id} style={styles.driverCard}>
+          <Text style={styles.driverName}>{proposal.driver_name}</Text>
+          <Text style={styles.line}>
+            {proposal.vehicle_model} {proposal.vehicle_color} · {proposal.vehicle_plate}
+          </Text>
+          <Text style={styles.price}>
+            Propõe + {formatMoney(proposal.extra_amount)} (total {formatMoney(ride.estimated_price + proposal.extra_amount)})
+          </Text>
+          <BigButton
+            label="Aceitar proposta"
+            onPress={() => answer(proposal, true)}
+            loading={answering === proposal.proposal_id}
+          />
+          <BigButton label="Recusar" onPress={() => answer(proposal, false)} variant="link" />
+        </View>
+      ))}
+
       <View style={styles.details}>
         <Text style={styles.line}>De: {ride.origin_address}</Text>
-        <Text style={styles.line}>Para: {ride.destination_address}</Text>
+        <Text style={styles.line}>
+          Para: {ride.destination_address}
+          {ride.destination_place ? ` — ${ride.destination_place}` : ''}
+        </Text>
         <Text style={styles.price}>
           {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}
         </Text>
+        {ride.extra_amount > 0 ? (
+          <Text style={styles.line}>Já inclui o acréscimo combinado de {formatMoney(ride.extra_amount)}</Text>
+        ) : null}
       </View>
       {CANCELABLE.includes(status) ? (
         <BigButton label="Cancelar corrida" onPress={cancel} loading={cancelling} variant="link" />
@@ -107,6 +175,10 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
 }
 
 const styles = StyleSheet.create({
+  hint: {
+    fontSize: fontSize.body - 2,
+    color: colors.textMuted,
+  },
   driverCard: {
     gap: 4,
     padding: 16,

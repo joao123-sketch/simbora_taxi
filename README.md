@@ -1,4 +1,4 @@
-# Simbora
+# Simbora Car
 
 App de corridas (carro e moto) de Guaraciaba do Norte (CE). Um único app com modo passageiro e modo motorista; a equipe administra pelo painel do Supabase.
 
@@ -22,23 +22,17 @@ Abra no celular com o app Expo Go, ou rode `npm run android` com um emulador.
 
 ## Banco (Supabase)
 
-1. Crie o projeto em supabase.com (região São Paulo).
+1. Crie o projeto em supabase.com (o nosso está numa região dos EUA; a de São Paulo não estava disponível).
 2. Aplique o schema: `npx supabase link --project-ref <ref>` e depois `npx supabase db push`.
-3. Em desenvolvimento, rode `supabase/seed.sql` no SQL Editor (as tarifas ali são exemplos).
+3. Em desenvolvimento, rode `supabase/seed.sql` no SQL Editor (as tarifas da cidade são as decididas; os preços entre cidades são exemplos).
 4. Ative o login por telefone em Authentication > Providers > Phone, com um provedor de SMS.
-5. Ative a extensão `pg_cron` (Database > Extensions) e agende a fatura semanal no SQL Editor (toda segunda, 6h de Fortaleza = 9h UTC):
-
-```sql
-select cron.schedule(
-  'faturas-semanais',
-  '0 9 * * 1',
-  $$select public.generate_weekly_invoices((date_trunc('week', now() at time zone 'America/Fortaleza') - interval '7 days')::date)$$
-);
-```
 
 ## Regras de negócio no banco
 
 - Motorista se cadastra como `pending`; a equipe muda para `approved` depois da reunião presencial.
 - Veículos 2010 ou mais novos (`drivers.vehicle_year`).
 - O app nunca altera `rides` direto: usa as funções `accept_ride`, `advance_ride`, `cancel_ride` e `set_driver_online`.
-- Comissão: 8% por corrida, com teto de R$ 300 acumulado no mês (`generate_weekly_invoices`).
+- Receita: mensalidade fixa do motorista (mês 1 grátis, mês 2 R$ 200, a partir do mês 3 R$ 300), sem comissão por corrida. A cobrança entra na Etapa 10 do checklist.
+- Tarifas em `fares`, com data de vigência (`effective_from`); a mais recente que já começou vale.
+- Dentro da cidade o destino é livre (inclusive de e para sítios e distritos). Em viagem para outra cidade, o passageiro pode pedir um ponto combinado (`rides.destination_negotiated`): o motorista vê o pedido e decide se aceita.
+- Telefone não aparece para passageiro nem motorista: o perfil só libera `id`, `full_name` e `created_at`.

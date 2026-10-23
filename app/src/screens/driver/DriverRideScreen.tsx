@@ -9,7 +9,6 @@ import {
   cancelRide,
   fetchRide,
   formatMoney,
-  formatPhoneNumber,
   paymentLabel,
   subscribeToRides,
   type Ride,
@@ -90,10 +89,16 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
         <Text style={styles.name}>{ride.passenger_name ?? 'Passageiro'}</Text>
         <Text style={styles.line}>Buscar: {ride.origin_address}</Text>
         <Text style={styles.line}>Levar: {ride.destination_address}</Text>
+        {ride.destination_place ? (
+          <Text style={styles.place}>Deixar em: {ride.destination_place}</Text>
+        ) : null}
         <Text style={styles.price}>
           {ride.status === 'completed' ? 'Receba ' : ''}
           {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}
         </Text>
+        {ride.extra_amount > 0 ? (
+          <Text style={styles.line}>Já inclui o acréscimo combinado de {formatMoney(ride.extra_amount)}</Text>
+        ) : null}
       </View>
 
       {finished ? (
@@ -106,13 +111,6 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
             onPress={() => Linking.openURL(directionsUrl(target))}
             variant="link"
           />
-          {ride.passenger_phone ? (
-            <BigButton
-              label={`Ligar: ${formatPhoneNumber(ride.passenger_phone)}`}
-              onPress={() => Linking.openURL(`tel:+${ride.passenger_phone}`)}
-              variant="link"
-            />
-          ) : null}
           {ride.status !== 'in_progress' ? (
             <BigButton label="Cancelar corrida" onPress={cancel} variant="link" />
           ) : null}
@@ -130,6 +128,16 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body + 6,
     fontWeight: '700',
     color: colors.text,
+  },
+  place: {
+    fontSize: fontSize.body + 2,
+    fontWeight: '700',
+    color: colors.primaryDark,
+  },
+  warning: {
+    fontSize: fontSize.body - 2,
+    fontWeight: '700',
+    color: colors.primaryDark,
   },
   line: {
     fontSize: fontSize.body,

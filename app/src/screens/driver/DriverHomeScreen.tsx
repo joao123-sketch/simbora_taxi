@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
 import type { Coord } from '../../components/PinMap.types';
 import { Screen } from '../../components/Screen';
-import { distanceKm, formatKm } from '../../lib/geo';
-import { acceptRide, fetchOpenRequests, formatMoney, paymentLabel, subscribeToRides, type Ride } from '../../lib/rides';
+import { distanceKm } from '../../lib/geo';
+import {
+  acceptRide,
+  fetchMyProposals,
+  fetchOpenRequests,
+  proposeExtra,
+  subscribeToProposals,
+  subscribeToRides,
+  withdrawProposal,
+  type MyProposal,
+  type Ride,
+} from '../../lib/rides';
 import { colors, fontSize } from '../../theme';
+import { OpenRequestCard } from './OpenRequestCard';
 
 type Props = {
   online: boolean;
@@ -14,13 +25,24 @@ type Props = {
   locationDenied: boolean;
   onToggleOnline: () => Promise<void>;
   onAccepted: () => void;
+  // Confere se o passageiro aceitou uma proposta e a corrida passou a ser deste motorista.
+  onCheckActive: () => void;
   onExit: () => void;
 };
 
 const POLL_MS = 10000;
 
-export function DriverHomeScreen({ online, position, locationDenied, onToggleOnline, onAccepted, onExit }: Props) {
+export function DriverHomeScreen({
+  online,
+  position,
+  locationDenied,
+  onToggleOnline,
+  onAccepted,
+  onCheckActive,
+  onExit,
+}: Props) {
   const [requests, setRequests] = useState<Ride[]>([]);
+  const [proposals, setProposals] = useState<Record<number, MyProposal>>({});
   const [toggling, setToggling] = useState(false);
   const [accepting, setAccepting] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +51,11 @@ export function DriverHomeScreen({ online, position, locationDenied, onToggleOnl
     fetchOpenRequests()
       .then(setRequests)
       .catch(() => {});
-  }, []);
+    fetchMyProposals()
+      .then((list) => setProposals(Object.fromEntries(list.map((p) => [p.ride_id, p]))))
+      .catch(() => {});
+    onCheckActive();
+  }, [onCheckActive]);
 
   // Realtime avisa na hora; a consulta periódica cobre chamados que outro
   // motorista aceitou (que somem da visão deste sem gerar evento).
@@ -39,10 +65,12 @@ export function DriverHomeScreen({ online, position, locationDenied, onToggleOnl
       return;
     }
     refresh();
-    const unsubscribe = subscribeToRides('driver-requests', refresh);
+    const unsubscribeRides = subscribeToRides('driver-requests', refresh);
+    const unsubscribeProposals = subscribeToProposals('driver-proposals', refresh);
     const timer = setInterval(refresh, POLL_MS);
     return () => {
-      unsubscribe();
+      unsubscribeRides();
+      unsubscribeProposals();
       clearInterval(timer);
     };
   }, [online, refresh]);
@@ -73,6 +101,30 @@ export function DriverHomeScreen({ online, position, locationDenied, onToggleOnl
     }
   }
 
+  async function propose(rideId: number, extra: number) {
+    setError(null);
+    try {
+      await proposeExtra(rideId, extra);
+      refresh();
+    } catch (e) {
+      setError((e as { message?: string }).message || 'Não conseguimos enviar a proposta.');
+      throw e;
+    }
+  }
+
+  async function withdraw(rideId: number) {
+    setError(null);
+    try {
+      await withdrawProposal(rideId);
+      refresh();
+    } catch {
+      setError('Não conseguimos retirar a proposta.');
+    }
+  }
+
+  // Pedido cuja proposta o passageiro recusou some da lista deste motorista.
+  const visible = requests.filter((ride) => proposals[ride.id]?.status !== 'declined');
+
   return (
     <Screen
       title={online ? 'Você está online' : 'Você está offline'}
@@ -85,22 +137,20 @@ export function DriverHomeScreen({ online, position, locationDenied, onToggleOnl
 
       <BigButton label={online ? 'Ficar offline' : 'Ficar online'} onPress={toggle} loading={toggling} />
 
-      {online && requests.length === 0 ? <Text style={styles.empty}>Nenhum chamado agora.</Text> : null}
+      {online && visible.length === 0 ? <Text style={styles.empty}>Nenhum chamado agora.</Text> : null}
 
-      {requests.map((ride) => {
-        const away = position ? distanceKm(position, { lat: ride.origin_lat, lng: ride.origin_lng }) : null;
-        return (
-          <View key={ride.id} style={styles.card}>
-            <Text style={styles.price}>
-              {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}
-            </Text>
-            {away !== null ? <Text style={styles.line}>Passageiro a {formatKm(away)} de você</Text> : null}
-            <Text style={styles.line}>Buscar: {ride.origin_address}</Text>
-            <Text style={styles.line}>Levar: {ride.destination_address}</Text>
-            <BigButton label="Aceitar" onPress={() => accept(ride.id)} loading={accepting === ride.id} />
-          </View>
-        );
-      })}
+      {visible.map((ride) => (
+        <OpenRequestCard
+          key={ride.id}
+          ride={ride}
+          awayKm={position ? distanceKm(position, { lat: ride.origin_lat, lng: ride.origin_lng }) : null}
+          proposal={proposals[ride.id]}
+          accepting={accepting === ride.id}
+          onAccept={() => accept(ride.id)}
+          onPropose={(extra) => propose(ride.id, extra)}
+          onWithdraw={() => withdraw(ride.id)}
+        />
+      ))}
 
       <BigButton label="Voltar para passageiro" onPress={onExit} variant="link" />
     </Screen>
@@ -117,21 +167,5 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
     color: colors.textMuted,
     textAlign: 'center',
-  },
-  card: {
-    gap: 6,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  price: {
-    fontSize: fontSize.body + 4,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  line: {
-    fontSize: fontSize.body,
-    color: colors.text,
   },
 });

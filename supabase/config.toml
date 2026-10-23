@@ -261,7 +261,7 @@ enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
 # Template for sending OTP to users
-template = "Seu código do Simbora é {{ .Code }}"
+template = "Seu código do Simbora Car é {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 

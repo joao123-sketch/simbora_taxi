@@ -15,6 +15,9 @@ export type City = Coord & {
 export type Place = Coord & {
   address: string;
   cityId?: number;
+  // Viagem para outra cidade: onde o passageiro quer ser deixado, se não for o
+  // centro. O motorista vê o lugar e decide se aceita ou propõe um acréscimo.
+  dropoffPlace?: string;
 };
 
 export type Quote = {
@@ -23,8 +26,9 @@ export type Quote = {
   distance_km: number;
 };
 
-// Linha da view ride_details: nomes e telefones só vêm preenchidos
-// quando o RLS permite (ex.: o motorista vê o passageiro depois de aceitar).
+// Linha da view ride_details: os nomes só vêm preenchidos quando o RLS
+// permite (ex.: o motorista vê o passageiro depois de aceitar). Telefone não
+// é exposto: passageiro e motorista falam pelo chat do app.
 export type Ride = {
   id: number;
   status: RideStatus;
@@ -36,14 +40,14 @@ export type Ride = {
   origin_lat: number;
   origin_lng: number;
   destination_address: string;
+  destination_place: string | null;
   destination_lat: number;
   destination_lng: number;
   distance_km: number;
   estimated_price: number;
+  extra_amount: number;
   passenger_name: string | null;
-  passenger_phone: string | null;
   driver_name: string | null;
-  driver_phone: string | null;
   vehicle_model: string | null;
   vehicle_color: string | null;
   vehicle_plate: string | null;
@@ -117,11 +121,6 @@ export function subscribeToRides(channelName: string, onChange: () => void, filt
   };
 }
 
-export function formatPhoneNumber(phone: string | null): string {
-  if (!phone) return '';
-  const local = phone.replace(/^\+?55/, '');
-  return local.length === 11 ? `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}` : phone;
-}
 
 export async function quoteRide(cityId: number, origin: Place, destination: Place): Promise<Quote[]> {
   const { data, error } = await supabase.rpc('quote_ride', {
@@ -155,6 +154,7 @@ export async function requestRide(params: {
     p_destination_lat: destination.lat,
     p_destination_address: destination.address,
     p_destination_city_id: destination.cityId ?? null,
+    p_destination_place: destination.dropoffPlace ?? null,
   });
   if (error) throw error;
   return data as number;
@@ -163,4 +163,72 @@ export async function requestRide(params: {
 export async function cancelRide(rideId: number): Promise<void> {
   const { error } = await supabase.rpc('cancel_ride', { p_ride_id: rideId });
   if (error) throw error;
+}
+
+// --- Proposta de acréscimo (viagem para outra cidade com lugar combinado) ---
+
+export type ProposalStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn';
+
+// A proposta do próprio motorista, para ele acompanhar.
+export type MyProposal = {
+  ride_id: number;
+  extra_amount: number;
+  status: ProposalStatus;
+};
+
+// A proposta como o passageiro vê: quem propõe e quanto.
+export type RideProposal = {
+  proposal_id: number;
+  extra_amount: number;
+  driver_name: string;
+  vehicle_model: string;
+  vehicle_color: string;
+  vehicle_plate: string;
+};
+
+export async function proposeExtra(rideId: number, extra: number): Promise<void> {
+  const { error } = await supabase.rpc('propose_extra', { p_ride_id: rideId, p_extra: extra });
+  if (error) throw error;
+}
+
+export async function withdrawProposal(rideId: number): Promise<void> {
+  const { error } = await supabase.rpc('withdraw_proposal', { p_ride_id: rideId });
+  if (error) throw error;
+}
+
+export async function fetchMyProposals(): Promise<MyProposal[]> {
+  const { data, error } = await supabase
+    .from('ride_proposals')
+    .select('ride_id, extra_amount, status')
+    .in('status', ['pending', 'declined']);
+  if (error) throw error;
+  return data as MyProposal[];
+}
+
+export async function fetchRideProposals(rideId: number): Promise<RideProposal[]> {
+  const { data, error } = await supabase.rpc('get_ride_proposals', { p_ride_id: rideId });
+  if (error) throw error;
+  return data as RideProposal[];
+}
+
+export async function respondProposal(proposalId: number, accept: boolean): Promise<void> {
+  const { error } = await supabase.rpc('respond_proposal', { p_proposal_id: proposalId, p_accept: accept });
+  if (error) throw error;
+}
+
+// Chama onChange quando uma proposta muda (o RLS só entrega as do usuário).
+export function subscribeToProposals(channelName: string, onChange: () => void) {
+  const channel = supabase
+    .channel(channelName)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ride_proposals' }, onChange)
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+// "20", "20,50" ou "20.5" -> 20.5; vazio ou inválido -> null.
+export function parseMoney(text: string): number | null {
+  const value = Number(text.trim().replace(',', '.'));
+  return Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : null;
 }
