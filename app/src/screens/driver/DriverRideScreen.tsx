@@ -3,6 +3,7 @@ import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
 import { RatingPrompt } from '../../components/RatingPrompt';
+import { useChat } from '../../hooks/useChat';
 import { Screen } from '../../components/Screen';
 import { directionsUrl } from '../../lib/geo';
 import {
@@ -16,6 +17,7 @@ import {
   type RideStatus,
 } from '../../lib/rides';
 import { colors, fontSize } from '../../theme';
+import { ChatScreen } from '../ChatScreen';
 
 type Props = {
   ride: Ride;
@@ -41,6 +43,15 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rated, setRated] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const inRide = ['accepted', 'arrived', 'in_progress'].includes(ride.status);
+  const myId = ride.driver_id ?? '';
+  const { messages, unread } = useChat(ride.id, myId, inRide && !!myId, chatOpen);
+
+  // Quando a corrida acaba o chat fecha sozinho, para a avaliação aparecer.
+  useEffect(() => {
+    if (!inRide) setChatOpen(false);
+  }, [inRide]);
 
   // Atualiza se o passageiro cancelar.
   useEffect(
@@ -85,6 +96,19 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
     : { lat: ride.origin_lat, lng: ride.origin_lng };
   const finished = ride.status === 'completed' || ride.status === 'cancelled';
 
+  if (chatOpen) {
+    return (
+      <ChatScreen
+        rideId={ride.id}
+        myId={myId}
+        role="driver"
+        messages={messages}
+        canSend={inRide}
+        onClose={() => setChatOpen(false)}
+      />
+    );
+  }
+
   return (
     <Screen title={titles[ride.status] ?? ''} error={error}>
       <View style={styles.details}>
@@ -113,6 +137,11 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
       ) : (
         <>
           <BigButton label={nextAction[ride.status] ?? ''} onPress={advance} loading={loading} />
+          <BigButton
+            label={unread > 0 ? `Mensagens (${unread} nova${unread > 1 ? 's' : ''})` : 'Mensagens'}
+            onPress={() => setChatOpen(true)}
+            variant="link"
+          />
           <BigButton
             label={goingToDestination ? 'Rota até o destino' : 'Rota até o passageiro'}
             onPress={() => Linking.openURL(directionsUrl(target))}

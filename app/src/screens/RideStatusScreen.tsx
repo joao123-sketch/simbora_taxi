@@ -4,6 +4,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { BigButton } from '../components/BigButton';
 import { RatingPrompt } from '../components/RatingPrompt';
 import { Screen } from '../components/Screen';
+import { TrackingCard } from '../components/TrackingCard';
+import { useChat } from '../hooks/useChat';
 import {
   cancelRide,
   fetchRide,
@@ -18,6 +20,7 @@ import {
   type RideStatus,
 } from '../lib/rides';
 import { colors, fontSize } from '../theme';
+import { ChatScreen } from './ChatScreen';
 
 type Props = {
   ride: Ride;
@@ -42,7 +45,16 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   const [proposals, setProposals] = useState<RideProposal[]>([]);
   const [answering, setAnswering] = useState<number | null>(null);
   const [rated, setRated] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const { status } = ride;
+  // Mapa e conversa existem enquanto a corrida está em andamento.
+  const inRide = !!ride.driver_id && ['accepted', 'arrived', 'in_progress'].includes(status);
+  const { messages, unread } = useChat(ride.id, ride.passenger_id, inRide, chatOpen);
+
+  // Quando a corrida acaba o chat fecha sozinho, para a avaliação aparecer.
+  useEffect(() => {
+    if (!inRide) setChatOpen(false);
+  }, [inRide]);
   const waitingProposals = status === 'requested' && !!ride.destination_place;
 
   // A cada mudança (motorista aceitou, chegou...) busca de novo os detalhes,
@@ -123,9 +135,24 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
 
   const hasDriver = ride.driver_name && status !== 'requested';
 
+  if (chatOpen) {
+    return (
+      <ChatScreen
+        rideId={ride.id}
+        myId={ride.passenger_id}
+        role="passenger"
+        messages={messages}
+        canSend={inRide}
+        onClose={() => setChatOpen(false)}
+      />
+    );
+  }
+
   return (
     <Screen title={statusText[status]} error={error}>
       {status === 'requested' ? <ActivityIndicator size="large" color={colors.primary} /> : null}
+
+      {inRide ? <TrackingCard ride={ride} /> : null}
 
       {hasDriver ? (
         <View style={styles.driverCard}>
@@ -175,6 +202,10 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
           <Text style={styles.line}>Já inclui o acréscimo combinado de {formatMoney(ride.extra_amount)}</Text>
         ) : null}
       </View>
+      {inRide ? (
+        <BigButton label={unread > 0 ? `Mensagens (${unread} nova${unread > 1 ? 's' : ''})` : 'Mensagens'} onPress={() => setChatOpen(true)} />
+      ) : null}
+
       {CANCELABLE.includes(status) ? (
         <BigButton label="Cancelar corrida" onPress={cancel} loading={cancelling} variant="link" />
       ) : null}

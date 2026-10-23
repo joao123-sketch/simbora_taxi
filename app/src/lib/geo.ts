@@ -17,3 +17,9 @@ export function formatKm(km: number): string {
 export function directionsUrl(to: Coord): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${to.lat},${to.lng}&travelmode=driving`;
 }
+
+// Minutos até chegar, com a mesma conta do preço: rota é a linha reta x 1,3 e a
+// velocidade média é de 30 km/h.
+export function etaMinutes(straightKm: number): number {
+  return Math.max(1, Math.round(((straightKm * 1.3) / 30) * 60));
+}
