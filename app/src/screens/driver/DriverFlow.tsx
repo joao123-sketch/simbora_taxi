@@ -77,7 +77,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   }
 
   if (driver === null) {
-    return <DriverSignupScreen userId={userId} cityId={cityId} onRegistered={load} onBack={onExit} />;
+    return <DriverSignupScreen cityId={cityId} onRegistered={load} onBack={onExit} />;
   }
 
   if (driver.status !== 'approved') {

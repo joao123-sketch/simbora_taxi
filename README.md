@@ -29,7 +29,8 @@ Abra no celular com o app Expo Go, ou rode `npm run android` com um emulador.
 
 ## Regras de negócio no banco
 
-- Motorista se cadastra como `pending`; a equipe muda para `approved` depois da reunião presencial.
+- Motorista se cadastra pelo app (função `register_driver`) como `pending`. CPF, nascimento e CNH ficam em `driver_private`, que só o próprio motorista lê. A equipe confere o `driver_checklist` e muda para `approved` depois da reunião presencial; o banco recusa a aprovação se faltar algo.
+- Mensalidade: mês grátis a partir da aprovação (um por CPF), depois R$ 200 e R$ 300 (`fee_schedule`, `driver_fee_periods`). Quem volta sem nunca ter pago paga R$ 200 e depois R$ 300; quem já pagou volta pagando R$ 300. O contrato começa no mês 2 (`continue_contract`) e faz aniversário em 12 meses.
 - Veículos 2010 ou mais novos (`drivers.vehicle_year`).
 - O app nunca altera `rides` direto: usa as funções `accept_ride`, `advance_ride`, `cancel_ride` e `set_driver_online`.
 - Receita: mensalidade fixa do motorista (mês 1 grátis, mês 2 R$ 200, a partir do mês 3 R$ 300), sem comissão por corrida. A cobrança entra na Etapa 10 do checklist.

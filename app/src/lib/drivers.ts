@@ -17,10 +17,25 @@ export type Driver = {
   accepted_payments: PaymentMethod[];
 };
 
-export type DriverSignup = Pick<
-  Driver,
-  'city_id' | 'vehicle_type' | 'vehicle_model' | 'vehicle_color' | 'vehicle_plate' | 'vehicle_year' | 'pix_key'
->;
+// Tudo o que o cadastro envia de uma vez. CPF, nascimento e CNH ficam em
+// tabelas privadas no banco: o passageiro nunca lê esses dados.
+export type DriverRegistration = {
+  cityId: number;
+  vehicleType: VehicleType;
+  model: string;
+  color: string;
+  plate: string;
+  year: number;
+  pixKey: string | null;
+  cpf: string;
+  birthDate: string; // AAAA-MM-DD
+  cnhCategory: 'B' | 'A' | 'ACC';
+  cnhEar: boolean;
+  declaredHelmets: boolean;
+  declaredLegGuard: boolean;
+  declaredLineCutter: boolean;
+  termsVersion: string;
+};
 
 export const MIN_VEHICLE_YEAR = 2010;
 
@@ -30,8 +45,24 @@ export async function fetchMyDriver(userId: string): Promise<Driver | null> {
   return data as Driver | null;
 }
 
-export async function registerDriver(userId: string, signup: DriverSignup): Promise<void> {
-  const { error } = await supabase.from('drivers').insert({ id: userId, ...signup });
+export async function registerDriver(input: DriverRegistration): Promise<void> {
+  const { error } = await supabase.rpc('register_driver', {
+    p_city_id: input.cityId,
+    p_vehicle_type: input.vehicleType,
+    p_vehicle_model: input.model,
+    p_vehicle_color: input.color,
+    p_vehicle_plate: input.plate,
+    p_vehicle_year: input.year,
+    p_pix_key: input.pixKey,
+    p_cpf: input.cpf,
+    p_birth_date: input.birthDate,
+    p_cnh_category: input.cnhCategory,
+    p_cnh_ear: input.cnhEar,
+    p_declared_helmets: input.declaredHelmets,
+    p_declared_leg_guard: input.declaredLegGuard,
+    p_declared_line_cutter: input.declaredLineCutter,
+    p_terms_version: input.termsVersion,
+  });
   if (error) throw error;
 }
 
