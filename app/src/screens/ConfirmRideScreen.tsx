@@ -57,6 +57,15 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityId, origin, destination]);
 
+  // Enquanto a tela está aberta, os preços se renovam sozinhos antes de vencer.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadQuotes().catch(() => {});
+    }, 60 * 1000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cityId, origin, destination]);
+
   // Só aparecem as formas que algum motorista online desse veículo aceita.
   useEffect(() => {
     fetchPaymentOptions(cityId, vehicle)
@@ -74,16 +83,11 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
       const current = quotes?.find((q) => q.vehicle_type === vehicle);
       if (!current) throw new Error('Confira o preço de novo antes de chamar');
 
-      // Passou dos 2 minutos: mostra o preço novo e deixa o passageiro decidir.
+      // Cotação vencida (raro, a tela se atualiza sozinha): só renova os preços
+      // na tela, sem aviso, e o passageiro chama de novo vendo o valor atual.
       if (new Date(current.expires_at).getTime() <= Date.now()) {
-        const fresh = await loadQuotes();
-        const next = fresh.find((q) => q.vehicle_type === vehicle);
+        await loadQuotes();
         setLoading(false);
-        setError(
-          next && priceFor(next, payment) !== priceFor(current, payment)
-            ? `O preço mudou para ${formatMoney(priceFor(next, payment))}. Se estiver bom, chame de novo.`
-            : 'Atualizamos o preço. Pode chamar.',
-        );
         return;
       }
 
@@ -102,14 +106,6 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
       setError((e as { message?: string }).message || 'Não conseguimos pedir a corrida.');
     }
   }
-
-  const selected = quotes?.find((q) => q.vehicle_type === vehicle);
-  const factorNote =
-    selected && selected.factor > 1
-      ? `Muita gente chamando agora: o preço está ${Math.round((selected.factor - 1) * 100)}% acima do normal.`
-      : selected && selected.factor < 1
-        ? `Poucos pedidos agora: o preço está ${Math.round((1 - selected.factor) * 100)}% abaixo do normal.`
-        : null;
 
   return (
     <Screen title="Confira e chame" error={error}>
@@ -134,8 +130,6 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
           onPress={() => setVehicle(quote.vehicle_type)}
         />
       ))}
-
-      {factorNote ? <Text style={styles.factorNote}>{factorNote}</Text> : null}
 
       {quotes?.length ? (
         <>
@@ -165,10 +159,6 @@ const styles = StyleSheet.create({
   routeLine: {
     fontSize: fontSize.body,
     color: colors.text,
-  },
-  factorNote: {
-    fontSize: fontSize.body,
-    color: colors.textMuted,
   },
   section: {
     fontSize: fontSize.body,

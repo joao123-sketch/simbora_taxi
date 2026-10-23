@@ -25,8 +25,6 @@ export type Quote = {
   // A cotação vale 2 minutos e é o único preço que o banco aceita no pedido.
   quote_id: string;
   expires_at: string;
-  // Já vem com o fator de demanda aplicado (1 = preço normal).
-  factor: number;
   price: number;
   // Cartão custa 5% a mais; o banco já devolve o valor calculado.
   card_price: number;
