@@ -34,6 +34,12 @@
           "locationWhenInUsePermission": "O Simbora Car usa sua localização para encontrar o carro mais perto de você."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O Simbora Car usa a câmera só para ler o QR do seu motorista."
+        }
+      ],
       "expo-status-bar"
     ],
     "description": "Corridas de carro e moto na sua cidade, de um jeito simples."

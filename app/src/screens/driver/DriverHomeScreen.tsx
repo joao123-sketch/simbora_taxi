@@ -34,6 +34,7 @@ type Props = {
   // Confere se o passageiro aceitou uma proposta e a corrida passou a ser deste motorista.
   onCheckActive: () => void;
   onOpenHistory: () => void;
+  onOpenQr: () => void;
   onExit: () => void;
 };
 
@@ -51,6 +52,7 @@ export function DriverHomeScreen({
   onAccepted,
   onCheckActive,
   onOpenHistory,
+  onOpenQr,
   onExit,
 }: Props) {
   const [requests, setRequests] = useState<Ride[]>([]);
@@ -182,6 +184,7 @@ export function DriverHomeScreen({
       ))}
 
       <BigButton label="Minhas corridas" onPress={onOpenHistory} variant="link" />
+      <BigButton label="Meu QR para clientes" onPress={onOpenQr} variant="link" />
       <BigButton label="Voltar ao início" onPress={onExit} variant="link" />
     </Screen>
   );

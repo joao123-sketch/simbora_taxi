@@ -10,6 +10,7 @@ import { colors } from '../../theme';
 import { HistoryScreen } from '../HistoryScreen';
 import { DriverHomeScreen } from './DriverHomeScreen';
 import { DriverPendingScreen } from './DriverPendingScreen';
+import { MyQrScreen } from './MyQrScreen';
 import { PaymentSettingsScreen } from './PaymentSettingsScreen';
 import { DriverRideScreen } from './DriverRideScreen';
 import { DriverSignupScreen } from './DriverSignupScreen';
@@ -27,6 +28,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [editingPayments, setEditingPayments] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   const online = driver?.status === 'approved' && driver.is_online;
   const { position, denied } = useDriverLocation(online);
@@ -90,6 +92,10 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     return <DriverRideScreen ride={ride} position={position} onFinished={load} />;
   }
 
+  if (showQr) {
+    return <MyQrScreen onBack={() => setShowQr(false)} />;
+  }
+
   if (showHistory) {
     return <HistoryScreen role="driver" userId={userId} onBack={() => setShowHistory(false)} />;
   }
@@ -118,6 +124,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
       onAccepted={load}
       onCheckActive={checkActiveRide}
       onOpenHistory={() => setShowHistory(true)}
+      onOpenQr={() => setShowQr(true)}
       onExit={onExit}
     />
   );

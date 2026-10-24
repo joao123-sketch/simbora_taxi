@@ -12,6 +12,7 @@ import { CityDropoffScreen } from './CityDropoffScreen';
 import { ConfirmRideScreen } from './ConfirmRideScreen';
 import { DestinationScreen } from './DestinationScreen';
 import { DriverFlow } from './driver/DriverFlow';
+import { FavoriteDriversScreen } from './FavoriteDriversScreen';
 import { HistoryScreen } from './HistoryScreen';
 import { DeleteAccountScreen } from './DeleteAccountScreen';
 import { LegalScreen } from './LegalScreen';
@@ -28,6 +29,7 @@ type Step =
   | { kind: 'confirm'; origin: Place; destination: Place }
   | { kind: 'ride'; ride: Ride }
   | { kind: 'history' }
+  | { kind: 'favorites' }
   | { kind: 'legal' }
   | { kind: 'deleteAccount' }
   | { kind: 'driver' };
@@ -102,6 +104,7 @@ export function PassengerFlow({ userId, name }: Props) {
           onRequestRide={startRequest}
           onDriverMode={() => setStep({ kind: 'driver' })}
           onOpenHistory={() => setStep({ kind: 'history' })}
+          onOpenFavorites={() => setStep({ kind: 'favorites' })}
           onOpenLegal={() => setStep({ kind: 'legal' })}
           onDeleteAccount={() => setStep({ kind: 'deleteAccount' })}
         />
@@ -180,6 +183,9 @@ export function PassengerFlow({ userId, name }: Props) {
 
     case 'history':
       return <HistoryScreen role="passenger" userId={userId} onBack={goHome} />;
+
+    case 'favorites':
+      return <FavoriteDriversScreen onBack={goHome} />;
 
     case 'deleteAccount':
       return <DeleteAccountScreen onBack={goHome} />;
