@@ -125,6 +125,7 @@ export function PassengerFlow({ userId, name }: Props) {
           title="Pra onde você vai?"
           hint="Escreva o endereço ou o lugar, ou arraste o mapa até o alfinete ficar no destino."
           withSearch
+          awayFrom={step.origin}
           buttonLabel="É aqui"
           center={step.origin}
           city={city}

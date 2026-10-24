@@ -20,6 +20,8 @@ type Props = {
   city: City;
   // Só o destino tem busca; a origem já vem marcada no lugar da pessoa.
   withSearch?: boolean;
+  // Ponto que não pode ser escolhido de novo (o destino não pode ser a origem).
+  awayFrom?: Coord;
   fallbackAddress: string;
   onConfirm: (place: Place) => void;
   onBack: () => void;
@@ -28,6 +30,8 @@ type Props = {
 // Se o alfinete andou mais que isso depois de escolher um resultado, o nome
 // escolhido não vale mais para o ponto marcado.
 const PICK_TOLERANCE_KM = 0.03;
+// Destino mais perto que isso da origem é o mesmo lugar.
+const MIN_TRIP_KM = 0.05;
 
 // Escolher um ponto: o alfinete já vem no lugar certo (GPS) ou vai até o
 // resultado da busca, e a pessoa ajusta arrastando o mapa antes de confirmar.
@@ -38,6 +42,7 @@ export function MapPickScreen({
   center,
   city,
   withSearch = false,
+  awayFrom,
   fallbackAddress,
   onConfirm,
   onBack,
@@ -50,12 +55,22 @@ export function MapPickScreen({
   // Resultado da busca escolhido, enquanto o alfinete continua perto dele.
   const [picked, setPicked] = useState<(Coord & { title: string }) | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
 
   useEffect(() => {
     setView(center);
   }, [center.lat, center.lng]);
 
+  function movePoint(next: Coord) {
+    setPoint(next);
+    setProblem(null);
+  }
+
   async function confirm() {
+    if (awayFrom && distanceKm(point, awayFrom) < MIN_TRIP_KM) {
+      setProblem('O destino está igual ao ponto de partida. Procure o destino ou arraste o mapa.');
+      return;
+    }
     setConfirming(true);
     try {
       const keepsPick = picked && distanceKm(point, picked) <= PICK_TOLERANCE_KM;
@@ -73,7 +88,7 @@ export function MapPickScreen({
     // botões do Android e sobe junto com o teclado.
     <KeyboardAvoidingView style={styles.container} behavior="padding">
       <View style={styles.map}>
-        <PinMap center={view} onCenterChange={setPoint} />
+        <PinMap center={view} onCenterChange={movePoint} />
       </View>
 
       {withSearch ? (
@@ -83,7 +98,7 @@ export function MapPickScreen({
             onPick={(place) => {
               const target = { lat: place.lat, lng: place.lng };
               setView(target);
-              setPoint(target);
+              movePoint(target);
               setPicked({ ...target, title: place.title });
             }}
           />
@@ -95,6 +110,7 @@ export function MapPickScreen({
           {title}
         </Text>
         <Text style={styles.hint}>{hint}</Text>
+        {problem ? <Text style={styles.problem}>{problem}</Text> : null}
         <BigButton label={buttonLabel} onPress={confirm} loading={confirming} />
         <BigButton label="Voltar" onPress={onBack} variant="link" />
       </SafeAreaView>
@@ -132,5 +148,10 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: fontSize.body - 2,
     color: colors.textMuted,
+  },
+  problem: {
+    fontSize: fontSize.body,
+    fontWeight: '700',
+    color: colors.primaryDark,
   },
 });
