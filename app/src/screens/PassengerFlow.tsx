@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { BigButton } from '../components/BigButton';
 import type { Coord } from '../components/PinMap.types';
 import { Screen } from '../components/Screen';
+import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
 import { fetchActiveRide, fetchCities, type City, type Place, type Ride } from '../lib/rides';
 import { colors } from '../theme';
 import { CityDropoffScreen } from './CityDropoffScreen';
@@ -36,6 +37,7 @@ export function PassengerFlow({ userId, name }: Props) {
   const [cities, setCities] = useState<City[] | null>(null);
   const [step, setStep] = useState<Step | null>(null);
   const [here, setHere] = useState<Coord | null>(null);
+  const [suggestions, setSuggestions] = useState<SuggestedPlace[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -55,6 +57,10 @@ export function PassengerFlow({ userId, name }: Props) {
 
   async function startRequest() {
     setStep({ kind: 'origin' });
+    // Os lugares de sempre chegam enquanto a pessoa marca onde está.
+    fetchSuggestedPlaces(userId)
+      .then(setSuggestions)
+      .catch(() => setSuggestions([]));
     try {
       const { granted } = await Location.requestForegroundPermissionsAsync();
       if (!granted) return;
@@ -112,6 +118,14 @@ export function PassengerFlow({ userId, name }: Props) {
     case 'destination':
       return (
         <DestinationScreen
+          suggestions={suggestions}
+          onPickSuggestion={(place) =>
+            setStep({
+              kind: 'confirm',
+              origin: step.origin,
+              destination: { lat: place.lat, lng: place.lng, address: place.title },
+            })
+          }
           otherCities={cities.filter((c) => c.id !== city.id)}
           onPickOnMap={() => setStep({ kind: 'destinationMap', origin: step.origin })}
           onPickCity={(dest) => setStep({ kind: 'cityDropoff', origin: step.origin, city: dest })}
