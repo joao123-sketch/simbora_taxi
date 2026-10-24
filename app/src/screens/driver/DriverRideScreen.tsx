@@ -132,7 +132,7 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
           {ride.status === 'completed' && !rated ? (
             <RatingPrompt rideId={ride.id} question="Como foi o passageiro?" onDone={() => setRated(true)} />
           ) : null}
-          <BigButton label="Voltar aos chamados" onPress={onFinished} />
+          <BigButton label="Voltar ao início" onPress={onFinished} />
         </>
       ) : (
         <>

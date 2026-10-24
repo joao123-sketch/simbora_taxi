@@ -99,9 +99,10 @@ export function PassengerFlow({ userId, name }: Props) {
       return (
         <MapPickScreen
           title="Onde você está?"
-          hint="Arraste o mapa até o alfinete ficar no lugar certo."
+          hint="O alfinete está onde você está. Se precisar, arraste o mapa."
           buttonLabel="Estou aqui"
           center={here ?? city}
+          city={city}
           fallbackAddress="Local marcado no mapa"
           onConfirm={(origin) => setStep({ kind: 'destination', origin })}
           onBack={goHome}
@@ -122,9 +123,11 @@ export function PassengerFlow({ userId, name }: Props) {
       return (
         <MapPickScreen
           title="Pra onde você vai?"
-          hint="Arraste o mapa até o alfinete ficar no destino."
+          hint="Escreva o endereço ou o lugar, ou arraste o mapa até o alfinete ficar no destino."
+          withSearch
           buttonLabel="É aqui"
           center={step.origin}
+          city={city}
           fallbackAddress="Destino marcado no mapa"
           onConfirm={(destination) => setStep({ kind: 'confirm', origin: step.origin, destination })}
           onBack={() => setStep({ kind: 'destination', origin: step.origin })}

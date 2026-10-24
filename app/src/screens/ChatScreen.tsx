@@ -85,7 +85,7 @@ export function ChatScreen({ rideId, myId, role, messages, canSend, onClose }: P
         <Text style={styles.empty}>A conversa acabou junto com a corrida.</Text>
       )}
 
-      <BigButton label="Voltar para a corrida" onPress={onClose} variant="link" />
+      <BigButton label="Voltar" onPress={onClose} variant="link" />
     </Screen>
   );
 }

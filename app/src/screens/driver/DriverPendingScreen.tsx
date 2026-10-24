@@ -48,7 +48,7 @@ export function DriverPendingScreen({ status, onRefresh, onBack }: Props) {
       error={notYet ? 'Ainda não foi aprovado. Aguarde o contato da equipe do Simbora Car.' : null}
     >
       <BigButton label="Já fui aprovado" onPress={check} loading={checking} />
-      <BigButton label="Voltar para passageiro" onPress={onBack} variant="link" />
+      <BigButton label="Voltar ao início" onPress={onBack} variant="link" />
     </Screen>
   );
 }

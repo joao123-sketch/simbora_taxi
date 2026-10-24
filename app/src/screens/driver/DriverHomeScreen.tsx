@@ -182,7 +182,7 @@ export function DriverHomeScreen({
       ))}
 
       <BigButton label="Minhas corridas" onPress={onOpenHistory} variant="link" />
-      <BigButton label="Voltar para passageiro" onPress={onExit} variant="link" />
+      <BigButton label="Voltar ao início" onPress={onExit} variant="link" />
     </Screen>
   );
 }
