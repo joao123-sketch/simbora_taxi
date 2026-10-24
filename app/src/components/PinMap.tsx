@@ -56,7 +56,7 @@ export function PinMap({ center, onCenterChange }: PinMapProps) {
 
   return (
     <View style={styles.container}>
-      <WebView
+      <WebView<object>
         ref={webRef}
         style={StyleSheet.absoluteFill}
         originWhitelist={['*']}

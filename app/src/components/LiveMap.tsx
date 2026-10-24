@@ -57,7 +57,7 @@ export function LiveMap({ target, driver, vehicle }: LiveMapProps) {
 
   return (
     <View style={styles.box}>
-      <WebView
+      <WebView<object>
         ref={webRef}
         style={StyleSheet.absoluteFill}
         originWhitelist={['*']}
