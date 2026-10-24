@@ -189,6 +189,9 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
           <Text style={styles.price}>
             Propõe + {formatMoney(proposal.extra_amount)} (total {formatMoney(ride.estimated_price + proposal.extra_amount)})
           </Text>
+          {proposal.advance_percent === 0 ? (
+            <Text style={styles.line}>Sem adiantamento: você paga ao motorista no fim da viagem.</Text>
+          ) : null}
           {proposal.advance_percent ? (
             <Text style={styles.line}>
               Pede {proposal.advance_percent}% adiantado:{' '}

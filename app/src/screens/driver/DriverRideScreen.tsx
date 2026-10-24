@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { DriverAdvanceCard } from '../../components/AdvancePayment';
 import { BigButton } from '../../components/BigButton';
@@ -10,7 +10,7 @@ import { SosButton } from '../../components/SosButton';
 import { useChat } from '../../hooks/useChat';
 import { usePassengerPosition } from '../../hooks/usePassengerPosition';
 import { Screen } from '../../components/Screen';
-import { directionsUrl, distanceKm, formatKm } from '../../lib/geo';
+import { distanceKm, formatKm } from '../../lib/geo';
 import {
   advanceRide,
   cancelRide,
@@ -108,7 +108,11 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
     : { lat: ride.origin_lat, lng: ride.origin_lng };
   const finished = ride.status === 'completed' || ride.status === 'cancelled';
   // Viagem para outra cidade: só inicia depois do adiantamento recebido.
-  const needsAdvance = isIntercity(ride) && ride.status === 'arrived' && !ride.advance_received_at;
+  const advanceChosen = ride.advance_percent !== null && ride.advance_percent !== undefined;
+  const needsAdvance =
+    isIntercity(ride) &&
+    ride.status === 'arrived' &&
+    (!advanceChosen || ((ride.advance_percent ?? 0) > 0 && !ride.advance_received_at));
 
   // O que a linha de cima do mapa diz: para onde ir e a que distância está.
   let mapText: string | null = null;
@@ -172,18 +176,17 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
         <>
           {isIntercity(ride) && waitingForPassenger ? <DriverAdvanceCard ride={ride} onChange={setRide} /> : null}
           {needsAdvance ? (
-            <Text style={styles.line}>Marque o recebimento do adiantamento para iniciar a viagem.</Text>
+            <Text style={styles.line}>
+              {advanceChosen
+                ? 'Marque o recebimento do adiantamento para iniciar a viagem.'
+                : 'Escolha o adiantamento para iniciar a viagem.'}
+            </Text>
           ) : (
             <BigButton label={nextAction[ride.status] ?? ''} onPress={advance} loading={loading} />
           )}
           <BigButton
             label={unread > 0 ? `Mensagens (${unread} nova${unread > 1 ? 's' : ''})` : 'Mensagens'}
             onPress={() => setChatOpen(true)}
-            variant="link"
-          />
-          <BigButton
-            label={goingToDestination ? 'Rota até o destino' : 'Rota até o passageiro'}
-            onPress={() => Linking.openURL(directionsUrl(target))}
             variant="link"
           />
           {ride.status !== 'in_progress' ? (

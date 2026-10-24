@@ -136,7 +136,7 @@ export async function acceptRide(rideId: number, advancePercent: number | null =
   // O adiantamento só é enviado nas viagens para outra cidade.
   const { error } = await supabase.rpc('accept_ride', {
     p_ride_id: rideId,
-    ...(advancePercent ? { p_advance_percent: advancePercent } : {}),
+    ...(advancePercent !== null ? { p_advance_percent: advancePercent } : {}),
   });
   if (error) throw error;
 }
@@ -239,7 +239,7 @@ export async function proposeExtra(rideId: number, extra: number, advancePercent
   const { error } = await supabase.rpc('propose_extra', {
     p_ride_id: rideId,
     p_extra: extra,
-    ...(advancePercent ? { p_advance_percent: advancePercent } : {}),
+    ...(advancePercent !== null ? { p_advance_percent: advancePercent } : {}),
   });
   if (error) throw error;
 }
@@ -336,7 +336,12 @@ export function formatDateTime(iso: string): string {
 
 // --- Pagamento adiantado (viagem para outra cidade) ---
 
-export const ADVANCE_OPTIONS = [50, 70, 100] as const;
+export const ADVANCE_OPTIONS = [0, 50, 100] as const;
+
+// "Sem adiantamento" para 0%, senão "50%", "100%".
+export function advanceLabel(percent: number): string {
+  return percent === 0 ? 'Sem adiantamento' : `${percent}%`;
+}
 
 export function isIntercity(ride: Ride): boolean {
   return ride.destination_city_id !== null && ride.destination_city_id !== ride.city_id;
@@ -344,6 +349,7 @@ export function isIntercity(ride: Ride): boolean {
 
 // Quanto o passageiro paga adiantado, direto ao motorista.
 export function advanceAmount(ride: Ride): number | null {
+  // Sem adiantamento (0%) ou ainda não escolhido: não há valor a receber antes.
   if (!ride.advance_percent) return null;
   return Math.round(ride.estimated_price * ride.advance_percent) / 100;
 }

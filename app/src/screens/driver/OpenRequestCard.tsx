@@ -7,6 +7,7 @@ import { ChoiceCard } from '../../components/ChoiceCard';
 import { formatKm } from '../../lib/geo';
 import {
   ADVANCE_OPTIONS,
+  advanceLabel,
   formatMoney,
   isIntercity,
   parseMoney,
@@ -57,8 +58,8 @@ export function OpenRequestCard({
       {ADVANCE_OPTIONS.map((percent) => (
         <ChoiceCard
           key={percent}
-          label={`${percent}%`}
-          detail={formatMoney(Math.round(baseForAdvance * percent) / 100)}
+          label={advanceLabel(percent)}
+          detail={percent === 0 ? 'recebe no fim' : formatMoney(Math.round(baseForAdvance * percent) / 100)}
           selected={advance === percent}
           onPress={() => setAdvance(percent)}
         />
@@ -129,8 +130,12 @@ export function OpenRequestCard({
         <>
           <Text style={styles.waiting}>
             Proposta de + {formatMoney(proposal.extra_amount)}
-            {proposal.advance_percent ? `, adiantamento de ${proposal.advance_percent}%` : ''} enviada. Aguardando o
-            passageiro.
+            {proposal.advance_percent === 0
+              ? ', sem adiantamento,'
+              : proposal.advance_percent
+                ? `, adiantamento de ${proposal.advance_percent}%`
+                : ''}{' '}
+            enviada. Aguardando o passageiro.
           </Text>
           <BigButton label="Retirar proposta" onPress={withdraw} loading={sending} variant="link" />
           <BigButton label="Recusar pedido" onPress={decline} variant="link" />

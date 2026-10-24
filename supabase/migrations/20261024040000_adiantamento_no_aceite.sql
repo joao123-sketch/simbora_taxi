@@ -1,10 +1,14 @@
--- O motorista escolhe o adiantamento (50%, 70% ou 100%) já na hora de aceitar
--- ou de propor, e não só depois de chegar. O passageiro vê o adiantamento
+-- O motorista escolhe o adiantamento (0%, 50% ou 100%) já na hora de aceitar
+-- ou de propor, e não só depois de chegar. 0% = sem adiantamento (recebe no fim). O passageiro vê o adiantamento
 -- junto com a proposta e decide com tudo na tela. Depois do aceite o motorista
 -- ainda pode mudar a porcentagem até marcar "recebi" (set_advance_percent).
 
 alter table public.ride_proposals
-  add column advance_percent smallint check (advance_percent in (50, 70, 100));
+  add column advance_percent smallint check (advance_percent in (0, 50, 100));
+
+-- As opções passam a ser 0%, 50% e 100% (saiu o 70%).
+alter table public.rides drop constraint rides_advance_percent_check;
+alter table public.rides add constraint rides_advance_percent_check check (advance_percent in (0, 50, 100));
 
 -- ---------------------------------------------------------------------------
 -- Aceitar pelo valor, já com o adiantamento
@@ -20,8 +24,8 @@ as $$
 declare
   v_ride public.rides;
 begin
-  if p_advance_percent is not null and p_advance_percent not in (50, 70, 100) then
-    raise exception 'Escolha 50%%, 70%% ou 100%%';
+  if p_advance_percent is not null and p_advance_percent not in (0, 50, 100) then
+    raise exception 'Escolha 0%%, 50%% ou 100%%';
   end if;
 
   if not private.can_see_offer(p_ride_id) then
@@ -69,8 +73,8 @@ declare
   v_ride public.rides;
   v_extra numeric := round(p_extra, 2);
 begin
-  if p_advance_percent is not null and p_advance_percent not in (50, 70, 100) then
-    raise exception 'Escolha 50%%, 70%% ou 100%%';
+  if p_advance_percent is not null and p_advance_percent not in (0, 50, 100) then
+    raise exception 'Escolha 0%%, 50%% ou 100%%';
   end if;
 
   select * into v_ride
@@ -205,5 +209,102 @@ begin
   update public.ride_offers
   set status = case when driver_id = v_prop.driver_id then 'accepted'::public.offer_status else 'missed'::public.offer_status end
   where ride_id = v_prop.ride_id and status = 'pending';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Com 0% não há nada a receber; com 50% ou 100% o início espera o "recebi"
+-- ---------------------------------------------------------------------------
+
+create or replace function public.set_advance_percent(p_ride_id bigint, p_percent int)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  if p_percent is null or p_percent not in (0, 50, 100) then
+    raise exception 'Escolha 0%%, 50%% ou 100%%';
+  end if;
+
+  update public.rides r
+  set advance_percent = p_percent
+  where r.id = p_ride_id
+    and r.driver_id = auth.uid()
+    and r.status in ('accepted', 'arrived')
+    and private.is_intercity(r)
+    and r.advance_received_at is null;
+
+  if not found then
+    raise exception 'Não dá para escolher o adiantamento agora';
+  end if;
+end;
+$$;
+
+create or replace function public.confirm_advance_received(p_ride_id bigint)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  update public.rides r
+  set advance_received_at = now()
+  where r.id = p_ride_id
+    and r.driver_id = auth.uid()
+    and r.status in ('accepted', 'arrived')
+    and private.is_intercity(r)
+    and r.advance_percent > 0
+    and r.advance_received_at is null;
+
+  if not found then
+    raise exception 'Escolha quanto pediu adiantado antes de confirmar o recebimento';
+  end if;
+end;
+$$;
+
+create or replace function public.advance_ride(p_ride_id bigint)
+returns public.ride_status
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  v_ride public.rides;
+  v_status public.ride_status;
+begin
+  select * into v_ride
+  from public.rides r
+  where r.id = p_ride_id
+    and r.driver_id = auth.uid()
+    and r.status in ('accepted', 'arrived', 'in_progress')
+  for update;
+
+  if not found then
+    raise exception 'Corrida não pode avançar';
+  end if;
+
+  -- Viagem para outra cidade: precisa ter o adiantamento escolhido e, se for
+  -- maior que 0%, recebido antes de iniciar.
+  if v_ride.status = 'arrived' and private.is_intercity(v_ride) then
+    if v_ride.advance_percent is null then
+      raise exception 'Escolha o adiantamento antes de iniciar a viagem';
+    end if;
+    if v_ride.advance_percent > 0 and v_ride.advance_received_at is null then
+      raise exception 'Confirme que recebeu o pagamento adiantado antes de iniciar a viagem';
+    end if;
+  end if;
+
+  update public.rides
+  set
+    status = case status
+      when 'accepted' then 'arrived'::public.ride_status
+      when 'arrived' then 'in_progress'::public.ride_status
+      when 'in_progress' then 'completed'::public.ride_status
+    end,
+    started_at = case when status = 'arrived' then now() else started_at end,
+    completed_at = case when status = 'in_progress' then now() else completed_at end,
+    final_price = case when status = 'in_progress' then estimated_price else final_price end
+  where id = p_ride_id
+  returning status into v_status;
+
+  return v_status;
 end;
 $$;

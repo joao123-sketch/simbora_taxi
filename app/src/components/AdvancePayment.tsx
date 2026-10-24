@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import {
   ADVANCE_OPTIONS,
   advanceAmount,
+  advanceLabel,
   confirmAdvanceReceived,
   fetchRide,
   formatMoney,
@@ -41,6 +42,26 @@ export function DriverAdvanceCard({ ride, onChange }: DriverProps) {
     }
   }
 
+  if (ride.advance_percent === 0) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.title}>Sem adiantamento</Text>
+        <Text style={styles.line}>Você recebe no fim da viagem. Pode iniciar quando o passageiro embarcar.</Text>
+        {ADVANCE_OPTIONS.filter((p) => p > 0).map((percent) => (
+          <ChoiceCard
+            key={percent}
+            label={advanceLabel(percent)}
+            detail={formatMoney(Math.round(ride.estimated_price * percent) / 100)}
+            selected={false}
+            onPress={() => run(() => setAdvancePercent(ride.id, percent))}
+          />
+        ))}
+        <Text style={styles.line}>Quer pedir adiantado? Escolha acima.</Text>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </View>
+    );
+  }
+
   if (received) {
     return (
       <View style={styles.card}>
@@ -57,19 +78,19 @@ export function DriverAdvanceCard({ ride, onChange }: DriverProps) {
       <Text style={styles.title}>Pagamento adiantado</Text>
       <Text style={styles.line}>
         Viagem para outra cidade: escolha quanto o passageiro paga antes. Ele paga direto a você, e a viagem só
-        começa depois que você marcar que recebeu.
+        começa depois que você marcar que recebeu. Com "Sem adiantamento" você recebe no fim.
       </Text>
       {ADVANCE_OPTIONS.map((percent) => (
         <ChoiceCard
           key={percent}
-          label={`${percent}%`}
-          detail={formatMoney(Math.round(ride.estimated_price * percent) / 100)}
+          label={advanceLabel(percent)}
+          detail={percent === 0 ? 'recebe no fim' : formatMoney(Math.round(ride.estimated_price * percent) / 100)}
           selected={ride.advance_percent === percent}
           onPress={() => run(() => setAdvancePercent(ride.id, percent))}
         />
       ))}
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {ride.advance_percent ? (
+      {ride.advance_percent && ride.advance_percent > 0 ? (
         <BigButton
           label={`Recebi ${formatMoney(advanceAmount(ride) ?? 0)}`}
           onPress={() => run(() => confirmAdvanceReceived(ride.id))}
@@ -82,6 +103,15 @@ export function DriverAdvanceCard({ ride, onChange }: DriverProps) {
 
 // O que o passageiro vê.
 export function PassengerAdvanceNote({ ride }: { ride: Ride }) {
+  if (ride.advance_percent === 0) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.title}>Sem pagamento adiantado</Text>
+        <Text style={styles.line}>Você paga ao motorista no fim da viagem.</Text>
+      </View>
+    );
+  }
+
   if (ride.advance_received_at) {
     return (
       <View style={styles.card}>
