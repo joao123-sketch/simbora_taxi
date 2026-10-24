@@ -5,7 +5,10 @@ import { formatMoney } from '../lib/rides';
 import {
   PERIODS,
   fetchFinishedRides,
+  fetchOnlineSeconds,
+  formatDuration,
   formatKmTotal,
+  periodStart,
   summarize,
   type FinishedRide,
   type Period,
@@ -22,12 +25,20 @@ type Props = {
 export function Dashboard({ role, userId }: Props) {
   const [rides, setRides] = useState<FinishedRide[] | null>(null);
   const [period, setPeriod] = useState<Period>('week');
+  // Só o motorista tem tempo online; nulo enquanto carrega ou se o banco não tem o dado.
+  const [onlineSeconds, setOnlineSeconds] = useState<number | null>(null);
 
   useEffect(() => {
     fetchFinishedRides(role, userId)
       .then(setRides)
       .catch(() => setRides([]));
   }, [role, userId]);
+
+  useEffect(() => {
+    if (role !== 'driver') return;
+    setOnlineSeconds(null);
+    fetchOnlineSeconds(periodStart(period)).then(setOnlineSeconds);
+  }, [role, period]);
 
   const summary = useMemo(() => (rides ? summarize(rides, period) : null), [rides, period]);
 
@@ -60,6 +71,9 @@ export function Dashboard({ role, userId }: Props) {
             <Stat label="Corridas" value={String(summary.rides)} />
             <Stat label="Quilômetros" value={formatKmTotal(summary.km)} />
             <Stat label="Média por corrida" value={formatMoney(summary.average)} />
+            {role === 'driver' && onlineSeconds !== null ? (
+              <Stat label="Tempo online" value={formatDuration(onlineSeconds)} />
+            ) : null}
           </View>
 
           {role === 'passenger' && summary.topPlaces.length > 0 ? (

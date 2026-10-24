@@ -91,6 +91,22 @@ export function summarize(rides: FinishedRide[], period: Period, now: Date = new
   };
 }
 
+// Quanto tempo o motorista ficou online desde `since`; nulo se o banco ainda
+// não tem essa função (o dashboard simplesmente não mostra o card).
+export async function fetchOnlineSeconds(since: Date): Promise<number | null> {
+  const { data, error } = await supabase.rpc('driver_online_seconds', { p_since: since.toISOString() });
+  if (error) return null;
+  return Number(data ?? 0);
+}
+
+// 12300 s -> "3 h 25 min"; menos de uma hora -> "42 min".
+export function formatDuration(seconds: number): string {
+  const totalMinutes = Math.round(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours} h ${String(minutes).padStart(2, '0')} min` : `${minutes} min`;
+}
+
 export function formatKmTotal(km: number): string {
   return `${km.toFixed(1).replace('.', ',')} km`;
 }

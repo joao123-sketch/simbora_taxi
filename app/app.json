@@ -10,7 +10,8 @@
     "primaryColor": "#D62828",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "br.com.simboracar.app"
+      "bundleIdentifier": "br.com.simboracar.app",
+      "buildNumber": "1"
     },
     "android": {
       "package": "br.com.simboracar.app",
@@ -20,7 +21,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,6 +35,7 @@
         }
       ],
       "expo-status-bar"
-    ]
+    ],
+    "description": "Corridas de carro e moto na sua cidade, de um jeito simples."
   }
 }

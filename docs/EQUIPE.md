@@ -61,3 +61,24 @@ Tabela **rides**. Filtre por `status`:
 - `accepted`, `arrived`, `in_progress`: em andamento
 - `completed`: concluídas
 - `cancelled`: canceladas
+
+## Preços e tarifas
+
+Tudo em **Table Editor**:
+
+- **fares**: tarifa de cada veículo (bandeirada `base`, `per_km`, `per_min`, `minimum`). Para mudar o preço, **crie uma linha nova** com `effective_from` na data em que vale; a mais recente que já começou é a que vale, e a antiga fica de histórico.
+- **intercity_fares**: preço fechado de cada cidade de destino, por veículo.
+- Espera da ida e volta: usa o `per_min` da tarifa (hoje R$ 0,30 por minuto no carro).
+- **pricing_settings**: o preço dinâmico (aumento só quando falta carro). `locked = true` trava o fator em `locked_factor`; para ver como está agindo, olhe `city_pricing_state` (degrau atual por cidade e veículo) e `ride_pricing` (fator de cada corrida). Nenhuma dessas tabelas aparece no app.
+
+## SOS
+
+O botão de SOS abre o WhatsApp do plantão com a mensagem pronta (corrida, motorista, placa e localização), e a pessoa só precisa tocar em enviar. O número do plantão fica no arquivo `app/.env.local` (`EXPO_PUBLIC_SOS_WHATSAPP`); ao trocar, reinicie o `npx expo start`. A equipe aciona a ambulância ou a polícia conforme o caso.
+
+## Viagem entre cidades
+
+O motorista escolhe o adiantamento (sem, 50% ou 100%) ao aceitar ou propor. O passageiro paga direto a ele, e o motorista toca em "Recebi" para poder iniciar a viagem. A equipe não participa do pagamento.
+
+## Quem pede para excluir a conta
+
+A própria pessoa exclui pelo app (**Excluir minha conta**). O banco apaga nome, telefone e login e guarda só um código irreversível do CPF do motorista. Se o pedido chegar por outro canal, peça para ela mesma excluir pelo app.
