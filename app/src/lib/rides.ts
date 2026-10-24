@@ -45,6 +45,13 @@ export type Ride = {
   payment_method: PaymentMethod;
   passenger_id: string;
   driver_id: string | null;
+  city_id: number;
+  // Preenchido quando o destino é outra cidade.
+  destination_city_id: number | null;
+  // Pagamento adiantado (só viagem entre cidades): quanto o motorista pediu e
+  // quando marcou que recebeu. Ausentes até o banco ter essa migration.
+  advance_percent?: number | null;
+  advance_received_at?: string | null;
   origin_address: string;
   origin_lat: number;
   origin_lng: number;
@@ -301,4 +308,29 @@ export function formatDateTime(iso: string): string {
   const d = new Date(iso);
   const two = (n: number) => String(n).padStart(2, '0');
   return `${two(d.getDate())}/${two(d.getMonth() + 1)} ${two(d.getHours())}:${two(d.getMinutes())}`;
+}
+
+
+// --- Pagamento adiantado (viagem para outra cidade) ---
+
+export const ADVANCE_OPTIONS = [50, 70, 100] as const;
+
+export function isIntercity(ride: Ride): boolean {
+  return ride.destination_city_id !== null && ride.destination_city_id !== ride.city_id;
+}
+
+// Quanto o passageiro paga adiantado, direto ao motorista.
+export function advanceAmount(ride: Ride): number | null {
+  if (!ride.advance_percent) return null;
+  return Math.round(ride.estimated_price * ride.advance_percent) / 100;
+}
+
+export async function setAdvancePercent(rideId: number, percent: number): Promise<void> {
+  const { error } = await supabase.rpc('set_advance_percent', { p_ride_id: rideId, p_percent: percent });
+  if (error) throw error;
+}
+
+export async function confirmAdvanceReceived(rideId: number): Promise<void> {
+  const { error } = await supabase.rpc('confirm_advance_received', { p_ride_id: rideId });
+  if (error) throw error;
 }

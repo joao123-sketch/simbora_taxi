@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
+import { DriverAdvanceCard } from '../../components/AdvancePayment';
 import { BigButton } from '../../components/BigButton';
 import { LiveMap } from '../../components/LiveMap';
 import type { Coord } from '../../components/PinMap.types';
@@ -15,6 +16,7 @@ import {
   cancelRide,
   fetchRide,
   formatMoney,
+  isIntercity,
   paymentLabel,
   subscribeToRides,
   type Ride,
@@ -104,6 +106,8 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
     ? { lat: ride.destination_lat, lng: ride.destination_lng }
     : { lat: ride.origin_lat, lng: ride.origin_lng };
   const finished = ride.status === 'completed' || ride.status === 'cancelled';
+  // Viagem para outra cidade: só inicia depois do adiantamento recebido.
+  const needsAdvance = isIntercity(ride) && ride.status === 'arrived' && !ride.advance_received_at;
 
   // O que a linha de cima do mapa diz: para onde ir e a que distância está.
   let mapText: string | null = null;
@@ -164,7 +168,12 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
         </>
       ) : (
         <>
-          <BigButton label={nextAction[ride.status] ?? ''} onPress={advance} loading={loading} />
+          {isIntercity(ride) && waitingForPassenger ? <DriverAdvanceCard ride={ride} onChange={setRide} /> : null}
+          {needsAdvance ? (
+            <Text style={styles.line}>Marque o recebimento do adiantamento para iniciar a viagem.</Text>
+          ) : (
+            <BigButton label={nextAction[ride.status] ?? ''} onPress={advance} loading={loading} />
+          )}
           <BigButton
             label={unread > 0 ? `Mensagens (${unread} nova${unread > 1 ? 's' : ''})` : 'Mensagens'}
             onPress={() => setChatOpen(true)}

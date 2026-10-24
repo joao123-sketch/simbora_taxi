@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { PassengerAdvanceNote } from '../components/AdvancePayment';
 import { BigButton } from '../components/BigButton';
 import { RatingPrompt } from '../components/RatingPrompt';
 import { Screen } from '../components/Screen';
@@ -13,6 +14,7 @@ import {
   fetchRide,
   fetchRideProposals,
   formatMoney,
+  isIntercity,
   paymentLabel,
   respondProposal,
   subscribeToProposals,
@@ -155,6 +157,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
       {waitingForDriver ? (
         <Text style={styles.hint}>O motorista vê onde você está enquanto vem te buscar.</Text>
       ) : null}
+
+      {waitingForDriver && isIntercity(ride) ? <PassengerAdvanceNote ride={ride} /> : null}
 
       {hasDriver ? (
         <View style={styles.driverCard}>
