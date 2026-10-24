@@ -8,13 +8,16 @@ type Props = {
   title: string;
   subtitle?: string;
   error?: string | null;
+  // Fica sempre visível embaixo, sem rolar com a tela (ex.: o botão Voltar de
+  // uma lista longa).
+  footer?: ReactNode;
   children: ReactNode;
 };
 
 // Moldura comum das telas: título grande, explicação curta e erro em destaque.
 // Fica dentro da área segura (fora da barra de status e dos botões do
 // Android) e sobe junto com o teclado.
-export function Screen({ title, subtitle, error, children }: Props) {
+export function Screen({ title, subtitle, error, footer, children }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={styles.container} behavior="padding">
@@ -33,6 +36,7 @@ export function Screen({ title, subtitle, error, children }: Props) {
             {children}
           </View>
         </ScrollView>
+        {footer ? <View style={styles.footer}>{footer}</View> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -54,6 +58,16 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E4E4E4',
+    backgroundColor: colors.background,
   },
   brand: {
     fontSize: fontSize.body,

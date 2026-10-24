@@ -42,7 +42,11 @@ export function HistoryScreen({ role, userId, onBack }: Props) {
   const other = (ride: Ride) => (role === 'passenger' ? ride.driver_name : ride.passenger_name);
 
   return (
-    <Screen title="Minhas corridas" error={error}>
+    <Screen
+      title="Minhas corridas"
+      error={error}
+      footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+    >
       {rides === null && !error ? <Text style={styles.empty}>Carregando...</Text> : null}
       {rides?.length === 0 ? <Text style={styles.empty}>Você ainda não fez nenhuma corrida.</Text> : null}
 
@@ -77,8 +81,6 @@ export function HistoryScreen({ role, userId, onBack }: Props) {
           </View>
         );
       })}
-
-      <BigButton label="Voltar" onPress={onBack} variant="link" />
     </Screen>
   );
 }
