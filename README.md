@@ -90,7 +90,7 @@ npm run dev                  # http://localhost:5174
 npm run build
 ```
 
-Cloudflare Pages: **Root directory** `painel`, **Build command** `npm run build`, **Build output directory** `dist`, e as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_KEY`.
+Cloudflare (Workers com arquivos estáticos): em **Settings > Build**, **Root directory** `painel`, **Build command** `npm run build`, **Deploy command** `npx wrangler deploy` (a configuração está em `painel/wrangler.jsonc`, cujo `name` precisa ser igual ao nome do Worker). Em **Build variables and secrets** coloque `VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY` e `NODE_VERSION` = `22`. As variáveis `VITE_*` são lidas na hora de compilar: depois de mudar uma, faça **Retry build**.
 
 Para liberar alguém: crie o usuário em Authentication > Users e rode no SQL Editor (troque o e-mail):
 

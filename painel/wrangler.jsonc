@@ -1,0 +1,11 @@
+{
+  // O painel é uma página estática: o Cloudflare entrega o que o `npm run build`
+  // gera na pasta dist. O "name" precisa ser igual ao nome do Worker no Cloudflare
+  // (Settings > General > Name).
+  "name": "simbora-taxi",
+  "compatibility_date": "2026-10-24",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
