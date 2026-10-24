@@ -107,14 +107,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
     }
   }
 
-  // Corrida cancelada fecha sozinha; a concluída espera a avaliação (ou o "Pular").
-  useEffect(() => {
-    if (status === 'cancelled') {
-      const timer = setTimeout(onFinished, 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [status, onFinished]);
-
+  // A cancelada espera o passageiro tocar em "Voltar ao início"; a concluída
+  // espera a avaliação (ou o "Pular").
   function finishRating() {
     setRated(true);
     setTimeout(onFinished, 1200);
@@ -209,6 +203,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
       {CANCELABLE.includes(status) ? (
         <BigButton label="Cancelar corrida" onPress={cancel} loading={cancelling} variant="link" />
       ) : null}
+
+      {status === 'cancelled' ? <BigButton label="Voltar ao início" onPress={onFinished} /> : null}
 
       {status === 'completed' ? (
         rated ? (
