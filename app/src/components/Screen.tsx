@@ -60,6 +60,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   footer: {
+    gap: 4,
     paddingHorizontal: 24,
     paddingVertical: 8,
     width: '100%',

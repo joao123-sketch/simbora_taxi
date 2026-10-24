@@ -18,6 +18,9 @@ export type Place = Coord & {
   // Viagem para outra cidade: onde o passageiro quer ser deixado, se não for o
   // centro. O motorista vê o lugar e decide se aceita ou propõe um acréscimo.
   dropoffPlace?: string;
+  // Viagem para outra cidade com ida e volta: o motorista espera e traz de volta.
+  roundTrip?: boolean;
+  waitMinutes?: number;
 };
 
 export type Quote = {
@@ -50,6 +53,8 @@ export type Ride = {
   destination_city_id: number | null;
   // Pagamento adiantado (só viagem entre cidades): quanto o motorista pediu e
   // quando marcou que recebeu. Ausentes até o banco ter essa migration.
+  round_trip?: boolean;
+  wait_minutes?: number;
   advance_percent?: number | null;
   advance_received_at?: string | null;
   origin_address: string;
@@ -150,6 +155,12 @@ export function subscribeToRides(channelName: string, onChange: () => void, filt
 }
 
 
+// Só manda os campos de ida e volta quando a corrida é de ida e volta; assim
+// as corridas comuns não dependem deles.
+function roundTripArgs(destination: Place): { p_round_trip?: boolean; p_wait_minutes?: number } {
+  return destination.roundTrip ? { p_round_trip: true, p_wait_minutes: destination.waitMinutes ?? 0 } : {};
+}
+
 export async function quoteRide(cityId: number, origin: Place, destination: Place): Promise<Quote[]> {
   const { data, error } = await supabase.rpc('quote_ride', {
     p_city_id: cityId,
@@ -158,6 +169,7 @@ export async function quoteRide(cityId: number, origin: Place, destination: Plac
     p_destination_lng: destination.lng,
     p_destination_lat: destination.lat,
     p_destination_city_id: destination.cityId ?? null,
+    ...roundTripArgs(destination),
   });
   if (error) throw error;
   return data as Quote[];
@@ -185,6 +197,7 @@ export async function requestRide(params: {
     p_quote_id: quoteId,
     p_destination_city_id: destination.cityId ?? null,
     p_destination_place: destination.dropoffPlace ?? null,
+    ...roundTripArgs(destination),
   });
   if (error) throw error;
   return data as number;
@@ -333,4 +346,21 @@ export async function setAdvancePercent(rideId: number, percent: number): Promis
 export async function confirmAdvanceReceived(rideId: number): Promise<void> {
   const { error } = await supabase.rpc('confirm_advance_received', { p_ride_id: rideId });
   if (error) throw error;
+}
+
+
+// --- Ida e volta ---
+
+export const WAIT_OPTIONS = [30, 60, 120, 180, 240] as const;
+
+export function formatWait(minutes: number): string {
+  if (minutes < 60) return `${minutes} minutos`;
+  const hours = minutes / 60;
+  return hours === 1 ? '1 hora' : `${String(hours).replace('.', ',')} horas`;
+}
+
+// "Ida e volta, espera de 2 horas", ou null se a corrida é só de ida.
+export function roundTripLabel(ride: { round_trip?: boolean; wait_minutes?: number }): string | null {
+  if (!ride.round_trip) return null;
+  return ride.wait_minutes ? `Ida e volta, espera de ${formatWait(ride.wait_minutes)}` : 'Ida e volta';
 }

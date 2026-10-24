@@ -17,6 +17,7 @@ import {
   fetchRide,
   formatMoney,
   isIntercity,
+  roundTripLabel,
   paymentLabel,
   subscribeToRides,
   type Ride,
@@ -142,6 +143,7 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
         {ride.destination_place ? (
           <Text style={styles.place}>Deixar em: {ride.destination_place}</Text>
         ) : null}
+        {roundTripLabel(ride) ? <Text style={styles.place}>{roundTripLabel(ride)}</Text> : null}
         <Text style={styles.price}>
           {ride.status === 'completed' ? 'Receba ' : ''}
           {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}

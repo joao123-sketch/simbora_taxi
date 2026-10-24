@@ -21,6 +21,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 20,
     fontSize: 28,
+    letterSpacing: 0,
     color: colors.text,
     backgroundColor: colors.background,
   },

@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BigButton } from '../../components/BigButton';
 import { BigInput } from '../../components/BigInput';
 import { formatKm } from '../../lib/geo';
-import { formatMoney, parseMoney, paymentLabel, type MyProposal, type Ride } from '../../lib/rides';
+import { formatMoney, parseMoney, paymentLabel, roundTripLabel, type MyProposal, type Ride } from '../../lib/rides';
 import { colors, fontSize } from '../../theme';
 
 type Props = {
@@ -73,6 +73,16 @@ export function OpenRequestCard({
       <Text style={styles.line}>Buscar: {ride.origin_address}</Text>
       <Text style={styles.line}>Levar: {ride.destination_address}</Text>
 
+      {roundTripLabel(ride) ? (
+        <View style={styles.place}>
+          <Text style={styles.placeLabel}>Viagem</Text>
+          <Text style={styles.placeText}>{roundTripLabel(ride)}</Text>
+          <Text style={styles.warning}>
+            O valor já inclui a volta e a espera. Aceite, ou proponha um acréscimo.
+          </Text>
+        </View>
+      ) : null}
+
       {ride.destination_place ? (
         <View style={styles.place}>
           <Text style={styles.placeLabel}>Deixar em</Text>
@@ -93,9 +103,10 @@ export function OpenRequestCard({
         </>
       ) : proposing ? (
         <>
+          <Text style={styles.line}>Quanto a mais você quer pedir? (em reais)</Text>
           <BigInput
             accessibilityLabel="Acréscimo em reais"
-            placeholder="Acréscimo (ex.: 20)"
+            placeholder="20,00"
             keyboardType="decimal-pad"
             value={extraText}
             onChangeText={setExtraText}
@@ -109,7 +120,7 @@ export function OpenRequestCard({
       ) : (
         <>
           <BigButton label="Aceitar" onPress={onAccept} loading={accepting} />
-          {ride.destination_place ? (
+          {ride.destination_place || ride.round_trip ? (
             <BigButton label="Propor acréscimo" onPress={() => setProposing(true)} variant="link" />
           ) : null}
           <BigButton label="Recusar pedido" onPress={decline} loading={sending} variant="link" />

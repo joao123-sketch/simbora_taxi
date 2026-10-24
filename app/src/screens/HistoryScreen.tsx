@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BigButton } from '../components/BigButton';
 import { Screen } from '../components/Screen';
 import { StarRating } from '../components/StarRating';
-import { fetchHistory, formatDateTime, formatMoney, paymentLabel, rateRide, vehicleLabel, type Ride } from '../lib/rides';
+import { fetchHistory, formatDateTime, formatMoney, paymentLabel, rateRide, roundTripLabel, vehicleLabel, type Ride } from '../lib/rides';
 import { colors, fontSize } from '../theme';
 
 type Props = {
@@ -64,6 +64,7 @@ export function HistoryScreen({ role, userId, onBack }: Props) {
               Para: {ride.destination_address}
               {ride.destination_place ? ` — ${ride.destination_place}` : ''}
             </Text>
+            {roundTripLabel(ride) ? <Text style={styles.line}>{roundTripLabel(ride)}</Text> : null}
             {other(ride) ? <Text style={styles.line}>{role === 'passenger' ? 'Motorista' : 'Passageiro'}: {other(ride)}</Text> : null}
             <Text style={styles.price}>
               {formatMoney(ride.final_price ?? ride.estimated_price)} · {paymentLabel[ride.payment_method]}

@@ -17,6 +17,7 @@ import {
   isIntercity,
   paymentLabel,
   respondProposal,
+  roundTripLabel,
   subscribeToProposals,
   subscribeToRides,
   type Ride,
@@ -62,7 +63,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   useEffect(() => {
     if (!inRide) setChatOpen(false);
   }, [inRide]);
-  const waitingProposals = status === 'requested' && !!ride.destination_place;
+  const waitingProposals = status === 'requested' && (!!ride.destination_place || !!ride.round_trip);
 
   // A cada mudança (motorista aceitou, chegou...) busca de novo os detalhes,
   // que trazem nome, carro e placa do motorista.
@@ -172,8 +173,10 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
 
       {waitingProposals ? (
         <Text style={styles.hint}>
-          Você pediu para ser deixado em {ride.destination_place}. O motorista pode aceitar pelo valor ou propor um
-          acréscimo.
+          {ride.destination_place
+            ? `Você pediu para ser deixado em ${ride.destination_place}. `
+            : 'Você pediu ida e volta. '}
+          O motorista pode aceitar pelo valor ou propor um acréscimo.
         </Text>
       ) : null}
 
@@ -201,6 +204,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
           Para: {ride.destination_address}
           {ride.destination_place ? ` — ${ride.destination_place}` : ''}
         </Text>
+        {roundTripLabel(ride) ? <Text style={styles.line}>{roundTripLabel(ride)}</Text> : null}
         <Text style={styles.price}>
           {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}
         </Text>

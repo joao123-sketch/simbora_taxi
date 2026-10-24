@@ -11,6 +11,7 @@ import {
   priceFor,
   quoteRide,
   requestRide,
+  roundTripLabel,
   vehicleLabel,
   type PaymentMethod,
   type Place,
@@ -115,6 +116,9 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
           Para: {destination.address}
           {destination.dropoffPlace ? ` — ${destination.dropoffPlace}` : ''}
         </Text>
+        {destination.roundTrip ? (
+          <Text style={styles.routeLine}>{roundTripLabel({ round_trip: true, wait_minutes: destination.waitMinutes })}</Text>
+        ) : null}
       </View>
 
       {quotes === null && !error ? (
