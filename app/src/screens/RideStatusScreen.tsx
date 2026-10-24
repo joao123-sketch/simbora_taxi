@@ -189,6 +189,13 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
           <Text style={styles.price}>
             Propõe + {formatMoney(proposal.extra_amount)} (total {formatMoney(ride.estimated_price + proposal.extra_amount)})
           </Text>
+          {proposal.advance_percent ? (
+            <Text style={styles.line}>
+              Pede {proposal.advance_percent}% adiantado:{' '}
+              {formatMoney(Math.round((ride.estimated_price + proposal.extra_amount) * proposal.advance_percent) / 100)}.
+              Você paga direto ao motorista antes de a viagem começar.
+            </Text>
+          ) : null}
           <BigButton
             label="Aceitar proposta"
             onPress={() => answer(proposal, true)}

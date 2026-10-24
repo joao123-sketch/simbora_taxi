@@ -132,8 +132,12 @@ export async function fetchOpenRequests(): Promise<Ride[]> {
   return data as Ride[];
 }
 
-export async function acceptRide(rideId: number): Promise<void> {
-  const { error } = await supabase.rpc('accept_ride', { p_ride_id: rideId });
+export async function acceptRide(rideId: number, advancePercent: number | null = null): Promise<void> {
+  // O adiantamento só é enviado nas viagens para outra cidade.
+  const { error } = await supabase.rpc('accept_ride', {
+    p_ride_id: rideId,
+    ...(advancePercent ? { p_advance_percent: advancePercent } : {}),
+  });
   if (error) throw error;
 }
 
@@ -216,6 +220,7 @@ export type ProposalStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn';
 export type MyProposal = {
   ride_id: number;
   extra_amount: number;
+  advance_percent: number | null;
   status: ProposalStatus;
 };
 
@@ -223,14 +228,19 @@ export type MyProposal = {
 export type RideProposal = {
   proposal_id: number;
   extra_amount: number;
+  advance_percent: number | null;
   driver_name: string;
   vehicle_model: string;
   vehicle_color: string;
   vehicle_plate: string;
 };
 
-export async function proposeExtra(rideId: number, extra: number): Promise<void> {
-  const { error } = await supabase.rpc('propose_extra', { p_ride_id: rideId, p_extra: extra });
+export async function proposeExtra(rideId: number, extra: number, advancePercent: number | null = null): Promise<void> {
+  const { error } = await supabase.rpc('propose_extra', {
+    p_ride_id: rideId,
+    p_extra: extra,
+    ...(advancePercent ? { p_advance_percent: advancePercent } : {}),
+  });
   if (error) throw error;
 }
 
@@ -242,7 +252,7 @@ export async function withdrawProposal(rideId: number): Promise<void> {
 export async function fetchMyProposals(): Promise<MyProposal[]> {
   const { data, error } = await supabase
     .from('ride_proposals')
-    .select('ride_id, extra_amount, status')
+    .select('ride_id, extra_amount, advance_percent, status')
     .in('status', ['pending', 'declined']);
   if (error) throw error;
   return data as MyProposal[];

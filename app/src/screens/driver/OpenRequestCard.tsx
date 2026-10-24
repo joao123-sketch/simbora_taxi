@@ -3,8 +3,18 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
 import { BigInput } from '../../components/BigInput';
+import { ChoiceCard } from '../../components/ChoiceCard';
 import { formatKm } from '../../lib/geo';
-import { formatMoney, parseMoney, paymentLabel, roundTripLabel, type MyProposal, type Ride } from '../../lib/rides';
+import {
+  ADVANCE_OPTIONS,
+  formatMoney,
+  isIntercity,
+  parseMoney,
+  paymentLabel,
+  roundTripLabel,
+  type MyProposal,
+  type Ride,
+} from '../../lib/rides';
 import { colors, fontSize } from '../../theme';
 
 type Props = {
@@ -12,8 +22,9 @@ type Props = {
   awayKm: number | null;
   proposal?: MyProposal;
   accepting: boolean;
-  onAccept: () => void;
-  onPropose: (extra: number) => Promise<void>;
+  // Em viagem para outra cidade o motorista já escolhe o adiantamento (50, 70 ou 100%).
+  onAccept: (advance: number | null) => void;
+  onPropose: (extra: number, advance: number | null) => Promise<void>;
   onWithdraw: () => Promise<void>;
   onDecline: () => Promise<void>;
 };
@@ -31,14 +42,35 @@ export function OpenRequestCard({
   const [proposing, setProposing] = useState(false);
   const [extraText, setExtraText] = useState('');
   const [sending, setSending] = useState(false);
+  const [advance, setAdvance] = useState<number | null>(null);
   const extra = parseMoney(extraText);
   const waiting = proposal?.status === 'pending';
+  // Viagem para outra cidade: o adiantamento é escolhido junto com o aceite.
+  const intercity = isIntercity(ride);
+  const needsAdvance = intercity && advance === null;
+  // O adiantamento incide sobre o valor final (com o acréscimo, se houver).
+  const baseForAdvance = proposing ? ride.estimated_price + (extra ?? 0) : ride.estimated_price;
+
+  const advanceChoices = intercity ? (
+    <View style={styles.advance}>
+      <Text style={styles.line}>Quanto você quer receber adiantado?</Text>
+      {ADVANCE_OPTIONS.map((percent) => (
+        <ChoiceCard
+          key={percent}
+          label={`${percent}%`}
+          detail={formatMoney(Math.round(baseForAdvance * percent) / 100)}
+          selected={advance === percent}
+          onPress={() => setAdvance(percent)}
+        />
+      ))}
+    </View>
+  ) : null;
 
   async function send() {
     if (extra === null) return;
     setSending(true);
     try {
-      await onPropose(extra);
+      await onPropose(extra, advance);
       setProposing(false);
       setExtraText('');
     } finally {
@@ -96,7 +128,9 @@ export function OpenRequestCard({
       {waiting ? (
         <>
           <Text style={styles.waiting}>
-            Proposta de + {formatMoney(proposal.extra_amount)} enviada. Aguardando o passageiro.
+            Proposta de + {formatMoney(proposal.extra_amount)}
+            {proposal.advance_percent ? `, adiantamento de ${proposal.advance_percent}%` : ''} enviada. Aguardando o
+            passageiro.
           </Text>
           <BigButton label="Retirar proposta" onPress={withdraw} loading={sending} variant="link" />
           <BigButton label="Recusar pedido" onPress={decline} variant="link" />
@@ -114,12 +148,24 @@ export function OpenRequestCard({
           {extra !== null ? (
             <Text style={styles.line}>Total para o passageiro: {formatMoney(ride.estimated_price + extra)}</Text>
           ) : null}
-          <BigButton label="Enviar proposta" onPress={send} disabled={extra === null} loading={sending} />
+          {advanceChoices}
+          <BigButton
+            label="Enviar proposta"
+            onPress={send}
+            disabled={extra === null || needsAdvance}
+            loading={sending}
+          />
           <BigButton label="Voltar" onPress={() => setProposing(false)} variant="link" />
         </>
       ) : (
         <>
-          <BigButton label="Aceitar" onPress={onAccept} loading={accepting} />
+          {advanceChoices}
+          <BigButton
+            label="Aceitar"
+            onPress={() => onAccept(advance)}
+            disabled={needsAdvance}
+            loading={accepting}
+          />
           {ride.destination_place || ride.round_trip ? (
             <BigButton label="Propor acréscimo" onPress={() => setProposing(true)} variant="link" />
           ) : null}
@@ -146,6 +192,9 @@ const styles = StyleSheet.create({
   line: {
     fontSize: fontSize.body,
     color: colors.text,
+  },
+  advance: {
+    gap: 6,
   },
   place: {
     gap: 2,

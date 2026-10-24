@@ -102,11 +102,11 @@ export function DriverHomeScreen({
     }
   }
 
-  async function accept(rideId: number) {
+  async function accept(rideId: number, advance: number | null) {
     setAccepting(rideId);
     setError(null);
     try {
-      await acceptRide(rideId);
+      await acceptRide(rideId, advance);
       onAccepted();
     } catch {
       setError('Outro motorista pegou essa corrida.');
@@ -116,10 +116,10 @@ export function DriverHomeScreen({
     }
   }
 
-  async function propose(rideId: number, extra: number) {
+  async function propose(rideId: number, extra: number, advance: number | null) {
     setError(null);
     try {
-      await proposeExtra(rideId, extra);
+      await proposeExtra(rideId, extra, advance);
       refresh();
     } catch (e) {
       setError((e as { message?: string }).message || 'Não conseguimos enviar a proposta.');
@@ -174,8 +174,8 @@ export function DriverHomeScreen({
           awayKm={position ? distanceKm(position, { lat: ride.origin_lat, lng: ride.origin_lng }) : null}
           proposal={proposals[ride.id]}
           accepting={accepting === ride.id}
-          onAccept={() => accept(ride.id)}
-          onPropose={(extra) => propose(ride.id, extra)}
+          onAccept={(advance) => accept(ride.id, advance)}
+          onPropose={(extra, advance) => propose(ride.id, extra, advance)}
           onWithdraw={() => withdraw(ride.id)}
           onDecline={() => decline(ride.id)}
         />
