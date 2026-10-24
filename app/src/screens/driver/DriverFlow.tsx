@@ -87,7 +87,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   }
 
   if (ride) {
-    return <DriverRideScreen ride={ride} onFinished={load} />;
+    return <DriverRideScreen ride={ride} position={position} onFinished={load} />;
   }
 
   if (showHistory) {

@@ -31,3 +31,22 @@ export function subscribeToDriverPosition(driverId: string, onChange: () => void
     supabase.removeChannel(channel);
   };
 }
+
+export type PassengerPosition = Coord & {
+  updated_at: string;
+};
+
+// O passageiro manda a própria posição enquanto espera o motorista. O banco
+// só guarda se a corrida estiver aceita ou com o motorista no local.
+export async function sendPassengerLocation(lat: number, lng: number): Promise<void> {
+  const { error } = await supabase.rpc('update_passenger_location', { p_lng: lng, p_lat: lat });
+  if (error) throw error;
+}
+
+// O motorista da corrida vê onde o passageiro está (nulo se ele não compartilha).
+export async function fetchPassengerPosition(rideId: number): Promise<PassengerPosition | null> {
+  const { data, error } = await supabase.rpc('get_passenger_position', { p_ride_id: rideId });
+  if (error) throw error;
+  const rows = data as PassengerPosition[] | null;
+  return rows && rows.length > 0 ? rows[0] : null;
+}

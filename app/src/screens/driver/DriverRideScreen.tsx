@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
+import { LiveMap } from '../../components/LiveMap';
+import type { Coord } from '../../components/PinMap.types';
 import { RatingPrompt } from '../../components/RatingPrompt';
 import { SosButton } from '../../components/SosButton';
 import { useChat } from '../../hooks/useChat';
+import { usePassengerPosition } from '../../hooks/usePassengerPosition';
 import { Screen } from '../../components/Screen';
-import { directionsUrl } from '../../lib/geo';
+import { directionsUrl, distanceKm, formatKm } from '../../lib/geo';
 import {
   advanceRide,
   cancelRide,
@@ -22,6 +25,8 @@ import { ChatScreen } from '../ChatScreen';
 
 type Props = {
   ride: Ride;
+  // Onde o motorista está agora (o DriverFlow já acompanha o GPS dele).
+  position: Coord | null;
   onFinished: () => void;
 };
 
@@ -39,7 +44,7 @@ const nextAction: Partial<Record<RideStatus, string>> = {
   in_progress: 'Finalizar corrida',
 };
 
-export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
+export function DriverRideScreen({ ride: initialRide, position, onFinished }: Props) {
   const [ride, setRide] = useState(initialRide);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +53,9 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
   const inRide = ['accepted', 'arrived', 'in_progress'].includes(ride.status);
   const myId = ride.driver_id ?? '';
   const { messages, unread } = useChat(ride.id, myId, inRide && !!myId, chatOpen);
+  // Até o embarque o motorista vê o passageiro se aproximando no mapa.
+  const waitingForPassenger = ride.status === 'accepted' || ride.status === 'arrived';
+  const passengerPosition = usePassengerPosition(ride.id, waitingForPassenger);
 
   // Quando a corrida acaba o chat fecha sozinho, para a avaliação aparecer.
   useEffect(() => {
@@ -97,6 +105,17 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
     : { lat: ride.origin_lat, lng: ride.origin_lng };
   const finished = ride.status === 'completed' || ride.status === 'cancelled';
 
+  // O que a linha de cima do mapa diz: para onde ir e a que distância está.
+  let mapText: string | null = null;
+  if (position && inRide) {
+    const km = distanceKm(position, target);
+    mapText = goingToDestination
+      ? `Destino a ${formatKm(km * 1.3)}`
+      : km < 0.1
+        ? 'Você chegou ao ponto de encontro'
+        : `Passageiro a ${formatKm(km * 1.3)} de você`;
+  }
+
   if (chatOpen) {
     return (
       <ChatScreen
@@ -127,6 +146,14 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
           <Text style={styles.line}>Já inclui o acréscimo combinado de {formatMoney(ride.extra_amount)}</Text>
         ) : null}
       </View>
+
+      {position && inRide ? (
+        <View style={styles.mapBox}>
+          {mapText ? <Text style={styles.mapText}>{mapText}</Text> : null}
+          <LiveMap target={target} driver={position} passenger={passengerPosition} vehicle="car" />
+          {passengerPosition ? <Text style={styles.line}>O passageiro está vindo até você.</Text> : null}
+        </View>
+      ) : null}
 
       {finished ? (
         <>
@@ -161,6 +188,14 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
 const styles = StyleSheet.create({
   details: {
     gap: 4,
+  },
+  mapBox: {
+    gap: 8,
+  },
+  mapText: {
+    fontSize: fontSize.body + 2,
+    fontWeight: '700',
+    color: colors.text,
   },
   name: {
     fontSize: fontSize.body + 6,

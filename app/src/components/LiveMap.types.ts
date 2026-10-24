@@ -6,4 +6,7 @@ export type LiveMapProps = {
   // Onde o motorista está agora; nulo enquanto não chegou nenhuma posição.
   driver: Coord | null;
   vehicle: 'car' | 'moto';
+  // Onde o passageiro está andando até o ponto de encontro (só o motorista vê,
+  // e só até o embarque).
+  passenger?: Coord | null;
 };

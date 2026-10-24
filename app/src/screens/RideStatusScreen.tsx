@@ -7,6 +7,7 @@ import { Screen } from '../components/Screen';
 import { SosButton } from '../components/SosButton';
 import { TrackingCard } from '../components/TrackingCard';
 import { useChat } from '../hooks/useChat';
+import { usePassengerLocation } from '../hooks/usePassengerLocation';
 import {
   cancelRide,
   fetchRide,
@@ -51,6 +52,9 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   // Mapa e conversa existem enquanto a corrida está em andamento.
   const inRide = !!ride.driver_id && ['accepted', 'arrived', 'in_progress'].includes(status);
   const { messages, unread } = useChat(ride.id, ride.passenger_id, inRide, chatOpen);
+  // Enquanto espera o motorista, o passageiro compartilha onde está; ao embarcar para.
+  const waitingForDriver = !!ride.driver_id && (status === 'accepted' || status === 'arrived');
+  usePassengerLocation(waitingForDriver);
 
   // Quando a corrida acaba o chat fecha sozinho, para a avaliação aparecer.
   useEffect(() => {
@@ -148,6 +152,9 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
       {status === 'requested' ? <ActivityIndicator size="large" color={colors.primary} /> : null}
 
       {inRide ? <TrackingCard ride={ride} /> : null}
+      {waitingForDriver ? (
+        <Text style={styles.hint}>O motorista vê onde você está enquanto vem te buscar.</Text>
+      ) : null}
 
       {hasDriver ? (
         <View style={styles.driverCard}>
