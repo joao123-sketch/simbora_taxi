@@ -4,10 +4,12 @@
 -- ainda pode mudar a porcentagem até marcar "recebi" (set_advance_percent).
 
 alter table public.ride_proposals
-  add column advance_percent smallint check (advance_percent in (0, 50, 100));
+  add column if not exists advance_percent smallint check (advance_percent in (0, 50, 100));
 
--- As opções passam a ser 0%, 50% e 100% (saiu o 70%).
-alter table public.rides drop constraint rides_advance_percent_check;
+-- As opções passam a ser 0%, 50% e 100% (saiu o 70%). Corridas antigas com
+-- 70% (só de teste) viram 50% antes de trocar a regra.
+alter table public.rides drop constraint if exists rides_advance_percent_check;
+update public.rides set advance_percent = 50 where advance_percent = 70;
 alter table public.rides add constraint rides_advance_percent_check check (advance_percent in (0, 50, 100));
 
 -- ---------------------------------------------------------------------------
