@@ -6,12 +6,16 @@ import {
   PERIODS,
   fetchFinishedRides,
   fetchOnlineSeconds,
+  fetchRatingSummary,
   formatDuration,
   formatKmTotal,
+  formatPercent,
+  formatRating,
   periodStart,
   summarize,
   type FinishedRide,
   type Period,
+  type RatingSummary,
 } from '../lib/stats';
 import { colors, fontSize } from '../theme';
 
@@ -27,6 +31,8 @@ export function Dashboard({ role, userId }: Props) {
   const [period, setPeriod] = useState<Period>('week');
   // Só o motorista tem tempo online; nulo enquanto carrega ou se o banco não tem o dado.
   const [onlineSeconds, setOnlineSeconds] = useState<number | null>(null);
+  // Nota média e taxa de aceite (só do motorista; nulo se o banco não tem o dado).
+  const [rating, setRating] = useState<RatingSummary | null>(null);
 
   useEffect(() => {
     fetchFinishedRides(role, userId)
@@ -37,7 +43,9 @@ export function Dashboard({ role, userId }: Props) {
   useEffect(() => {
     if (role !== 'driver') return;
     setOnlineSeconds(null);
+    setRating(null);
     fetchOnlineSeconds(periodStart(period)).then(setOnlineSeconds);
+    fetchRatingSummary(periodStart(period)).then(setRating);
   }, [role, period]);
 
   const summary = useMemo(() => (rides ? summarize(rides, period) : null), [rides, period]);
@@ -73,6 +81,15 @@ export function Dashboard({ role, userId }: Props) {
             <Stat label="Média por corrida" value={formatMoney(summary.average)} />
             {role === 'driver' && onlineSeconds !== null ? (
               <Stat label="Tempo online" value={formatDuration(onlineSeconds)} />
+            ) : null}
+            {role === 'driver' && rating && rating.ratingAvg !== null ? (
+              <Stat
+                label={`Nota média (${rating.ratingCount} ${rating.ratingCount === 1 ? 'avaliação' : 'avaliações'})`}
+                value={`${formatRating(rating.ratingAvg)} ★`}
+              />
+            ) : null}
+            {role === 'driver' && rating && rating.acceptRate !== null ? (
+              <Stat label="Taxa de aceite" value={formatPercent(rating.acceptRate)} />
             ) : null}
           </View>
 

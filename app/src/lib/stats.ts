@@ -99,6 +99,37 @@ export async function fetchOnlineSeconds(since: Date): Promise<number | null> {
   return Number(data ?? 0);
 }
 
+export type RatingSummary = {
+  // Média das estrelas (nulo sem nenhuma avaliação) e quantas foram.
+  ratingAvg: number | null;
+  ratingCount: number;
+  // Aceitou ÷ (aceitou + recusou), de 0 a 1; nulo se ainda não decidiu nenhum pedido.
+  acceptRate: number | null;
+};
+
+// Nota média e taxa de aceite do motorista desde `since`; nulo se o banco ainda
+// não tem essa função (o dashboard simplesmente não mostra os cards).
+export async function fetchRatingSummary(since: Date): Promise<RatingSummary | null> {
+  const { data, error } = await supabase.rpc('driver_rating_summary', { p_since: since.toISOString() });
+  if (error) return null;
+  const row = (data as { rating_avg: number | null; rating_count: number; accept_rate: number | null }[])[0];
+  if (!row) return null;
+  return {
+    ratingAvg: row.rating_avg === null ? null : Number(row.rating_avg),
+    ratingCount: Number(row.rating_count),
+    acceptRate: row.accept_rate === null ? null : Number(row.accept_rate),
+  };
+}
+
+// 4.5 -> "4,5"; 0.857 -> "86%".
+export function formatRating(avg: number): string {
+  return avg.toFixed(1).replace('.', ',');
+}
+
+export function formatPercent(rate: number): string {
+  return `${Math.round(rate * 100)}%`;
+}
+
 // 12300 s -> "3 h 25 min"; menos de uma hora -> "42 min".
 export function formatDuration(seconds: number): string {
   const totalMinutes = Math.round(seconds / 60);
