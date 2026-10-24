@@ -1,6 +1,17 @@
 # Guia da equipe Simbora Car
 
-Tudo é feito no painel do Supabase (supabase.com → projeto Simbora Car → **Table Editor**).
+## Painel da equipe
+
+Aprovar motoristas e mexer nos preços é no **Painel Simbora Car** (a página da equipe, com e-mail e senha). As outras tarefas deste guia ainda são feitas direto no Supabase.
+
+- **Motoristas:** a lista abre em "Aguardando aprovação". Abra o cadastro, confira CPF, CNH e o veículo com os documentos originais, marque cada item do checklist e toque em **Aprovar motorista**. Se faltar algo, o botão avisa e o banco recusa dizendo o que falta. Também dá para **Suspender**, **Reativar** e **Bloquear**.
+- **Preços:** taxa do cartão, o preço dinâmico (degraus, teto e trava), as tarifas dentro da cidade (para mudar, crie uma tarifa nova com a data em que passa a valer) e os preços entre cidades.
+
+Se alguém novo da equipe precisar de acesso: crie o usuário em **Authentication > Users** e peça para o programador liberar o e-mail dele.
+
+---
+
+Tudo o que não está no painel é feito no painel do Supabase (supabase.com → projeto Simbora Car → **Table Editor**).
 
 ## Aprovar um motorista (depois da reunião presencial)
 

@@ -7,6 +7,7 @@ App de corridas (carro e moto) de Guaraciaba do Norte (CE). Um único app com mo
 ```
 app/        App Expo (React Native + TypeScript) para Android e iOS
 supabase/   Banco: migrations (schema, RLS, funções) e seed de desenvolvimento
+painel/     Painel da equipe (Vite + React): página estática que fala com o Supabase
 ```
 
 ## Rodar o app
@@ -76,3 +77,24 @@ Não instale o `expo-dev-client` antes de fazer o build de desenvolvimento: ele 
 ## Testes com Expo Go
 
 Rode `npx expo start` dentro da pasta `app`. No iPhone, o Expo Go exige estar logado numa conta Expo (a mesma em `npx expo login` no computador). Contas de teste (código `123456`): `+5588900000001` a `04`.
+
+## Painel da equipe (`painel/`)
+
+Página estática (Vite + React + TypeScript): `npm run build` gera a pasta `dist`, que qualquer hospedagem entrega como está (Cloudflare Pages, Netlify, Vercel). Entra com e-mail e senha do Supabase; o banco só deixa quem está em `public.staff` usar as funções `staff_*` (aprovar motoristas, marcar o checklist, editar tarifas, preços entre cidades, taxa do cartão e o preço dinâmico).
+
+```bash
+cd painel
+cp .env.example .env.local   # a mesma URL e chave publishable do app
+npm install
+npm run dev                  # http://localhost:5174
+npm run build
+```
+
+Cloudflare Pages: **Root directory** `painel`, **Build command** `npm run build`, **Build output directory** `dist`, e as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_KEY`.
+
+Para liberar alguém: crie o usuário em Authentication > Users e rode no SQL Editor (troque o e-mail):
+
+```sql
+insert into public.staff (user_id)
+select id from auth.users where email = 'equipe@exemplo.com';
+```
