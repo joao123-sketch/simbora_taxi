@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
+import { Dashboard } from '../components/Dashboard';
 import { Screen } from '../components/Screen';
 import { StarRating } from '../components/StarRating';
 import { fetchHistory, formatDateTime, formatMoney, paymentLabel, rateRide, roundTripLabel, vehicleLabel, type Ride } from '../lib/rides';
@@ -47,6 +48,8 @@ export function HistoryScreen({ role, userId, onBack }: Props) {
       error={error}
       footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
     >
+      <Dashboard role={role} userId={userId} />
+
       {rides === null && !error ? <Text style={styles.empty}>Carregando...</Text> : null}
       {rides?.length === 0 ? <Text style={styles.empty}>Você ainda não fez nenhuma corrida.</Text> : null}
 

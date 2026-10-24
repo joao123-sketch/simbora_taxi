@@ -1,0 +1,96 @@
+import type { Coord } from '../components/PinMap.types';
+import { suggestPlaces, type SuggestedPlace } from './favorites';
+import { supabase } from './supabase';
+
+// Números do dashboard de "Minhas corridas": calculados no app a partir das
+// corridas concluídas dos últimos 30 dias (o banco só entrega as do próprio
+// usuário). Tempo online, nota média e taxa de aceite do motorista dependem de
+// dados novos no banco e entram depois.
+
+export type Period = 'today' | 'week' | 'month';
+
+export const PERIODS: { key: Period; label: string }[] = [
+  { key: 'today', label: 'Hoje' },
+  { key: 'week', label: '7 dias' },
+  { key: 'month', label: '30 dias' },
+];
+
+export type FinishedRide = {
+  id: number;
+  price: number;
+  km: number;
+  finishedAt: Date;
+  destinationAddress: string;
+} & { destination: Coord };
+
+export type Summary = {
+  rides: number;
+  money: number;
+  km: number;
+  average: number;
+  // Os lugares mais usados como destino (só passageiro vê isso).
+  topPlaces: SuggestedPlace[];
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function periodStart(period: Period, now: Date = new Date()): Date {
+  if (period === 'today') {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  return new Date(now.getTime() - (period === 'week' ? 7 : 30) * DAY_MS);
+}
+
+type Row = {
+  id: number;
+  final_price: number | null;
+  estimated_price: number;
+  distance_km: number | null;
+  completed_at: string | null;
+  destination_address: string;
+  destination_lat: number;
+  destination_lng: number;
+};
+
+// Corridas concluídas dos últimos 30 dias do usuário, como motorista ou passageiro.
+export async function fetchFinishedRides(role: 'passenger' | 'driver', userId: string): Promise<FinishedRide[]> {
+  const since = periodStart('month').toISOString();
+  const { data, error } = await supabase
+    .from('ride_details')
+    .select('id, final_price, estimated_price, distance_km, completed_at, destination_address, destination_lat, destination_lng')
+    .eq(role === 'passenger' ? 'passenger_id' : 'driver_id', userId)
+    .eq('status', 'completed')
+    .gte('completed_at', since)
+    .order('completed_at', { ascending: false })
+    .limit(1000);
+  if (error) throw error;
+  return (data as Row[]).map((r) => ({
+    id: r.id,
+    price: r.final_price ?? r.estimated_price,
+    km: r.distance_km ?? 0,
+    finishedAt: new Date(r.completed_at ?? Date.now()),
+    destinationAddress: r.destination_address,
+    destination: { lat: r.destination_lat, lng: r.destination_lng },
+  }));
+}
+
+export function summarize(rides: FinishedRide[], period: Period, now: Date = new Date()): Summary {
+  const start = periodStart(period, now).getTime();
+  const inPeriod = rides.filter((r) => r.finishedAt.getTime() >= start);
+  const money = inPeriod.reduce((total, r) => total + r.price, 0);
+  const km = inPeriod.reduce((total, r) => total + r.km, 0);
+  return {
+    rides: inPeriod.length,
+    money,
+    km,
+    average: inPeriod.length > 0 ? money / inPeriod.length : 0,
+    topPlaces: suggestPlaces(
+      inPeriod.map((r) => ({ address: r.destinationAddress, lat: r.destination.lat, lng: r.destination.lng })),
+      1,
+    ).slice(0, 3),
+  };
+}
+
+export function formatKmTotal(km: number): string {
+  return `${km.toFixed(1).replace('.', ',')} km`;
+}
