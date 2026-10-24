@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#F4B9B9',
+    backgroundColor: '#F9D3D3',
   },
   label: {
     fontSize: fontSize.body - 2,

@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     color: colors.onPrimary,
   },
   time: {
-    fontSize: fontSize.body - 6,
+    fontSize: fontSize.body - 2,
     color: colors.textMuted,
     alignSelf: 'flex-end',
   },

@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   hint: {
-    fontSize: fontSize.body - 4,
+    fontSize: fontSize.body - 2,
     color: colors.textMuted,
   },
 });

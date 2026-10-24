@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   },
   period: {
     flex: 1,
-    minHeight: 48,
+    minHeight: 56,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: colors.primary,
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   statLabel: {
-    fontSize: fontSize.body - 4,
+    fontSize: fontSize.body - 2,
     color: colors.textMuted,
   },
   places: {

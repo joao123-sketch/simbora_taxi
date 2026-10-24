@@ -78,7 +78,7 @@ export function HistoryScreen({ role, userId, onBack }: Props) {
               ) : (
                 <View style={styles.rate}>
                   <Text style={styles.line}>Avalie esta corrida:</Text>
-                  <StarRating onRate={(stars) => rate(ride, stars)} size={44} />
+                  <StarRating onRate={(stars) => rate(ride, stars)} size={52} />
                 </View>
               )
             ) : null}

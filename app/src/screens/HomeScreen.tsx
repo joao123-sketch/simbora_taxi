@@ -7,9 +7,10 @@ type Props = {
   onRequestRide: () => void;
   onDriverMode: () => void;
   onOpenHistory: () => void;
+  onOpenLegal: () => void;
 };
 
-export function HomeScreen({ name, onRequestRide, onDriverMode, onOpenHistory }: Props) {
+export function HomeScreen({ name, onRequestRide, onDriverMode, onOpenHistory, onOpenLegal }: Props) {
   const firstName = name.split(' ')[0];
 
   return (
@@ -17,6 +18,7 @@ export function HomeScreen({ name, onRequestRide, onDriverMode, onOpenHistory }:
       <BigButton label="Pedir corrida" onPress={onRequestRide} />
       <BigButton label="Minhas corridas" onPress={onOpenHistory} variant="link" />
       <BigButton label="Sou motorista" onPress={onDriverMode} variant="link" />
+      <BigButton label="Termos e privacidade" onPress={onOpenLegal} variant="link" />
       <BigButton label="Sair" onPress={() => supabase.auth.signOut()} variant="link" />
     </Screen>
   );

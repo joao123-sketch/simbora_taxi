@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { Text } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { BigInput } from '../components/BigInput';
 import { Screen } from '../components/Screen';
+import { LegalScreen } from './LegalScreen';
 import { formatPhone, isValidPhone, onlyDigits, toE164 } from '../lib/phone';
 import { supabase } from '../lib/supabase';
 
@@ -14,6 +16,7 @@ export function PhoneScreen({ onCodeSent }: Props) {
   const [digits, setDigits] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLegal, setShowLegal] = useState(false);
 
   async function sendCode() {
     setLoading(true);
@@ -27,6 +30,10 @@ export function PhoneScreen({ onCodeSent }: Props) {
       return;
     }
     onCodeSent(phone);
+  }
+
+  if (showLegal) {
+    return <LegalScreen onBack={() => setShowLegal(false)} />;
   }
 
   return (
@@ -51,6 +58,10 @@ export function PhoneScreen({ onCodeSent }: Props) {
         disabled={!isValidPhone(digits)}
         loading={loading}
       />
+      <Text style={{ fontSize: 18, color: '#555555' }}>
+        Ao entrar, você aceita os termos de uso e a política de privacidade.
+      </Text>
+      <BigButton label="Ler termos e privacidade" onPress={() => setShowLegal(true)} variant="link" />
     </Screen>
   );
 }

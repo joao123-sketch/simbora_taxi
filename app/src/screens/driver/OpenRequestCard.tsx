@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FDECEC',
   },
   placeLabel: {
-    fontSize: fontSize.body - 4,
+    fontSize: fontSize.body - 2,
     fontWeight: '700',
     color: colors.textMuted,
   },
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   warning: {
-    fontSize: fontSize.body - 4,
+    fontSize: fontSize.body - 2,
     color: colors.primaryDark,
   },
   waiting: {

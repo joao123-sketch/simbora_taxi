@@ -13,6 +13,7 @@ import { ConfirmRideScreen } from './ConfirmRideScreen';
 import { DestinationScreen } from './DestinationScreen';
 import { DriverFlow } from './driver/DriverFlow';
 import { HistoryScreen } from './HistoryScreen';
+import { LegalScreen } from './LegalScreen';
 import { HomeScreen } from './HomeScreen';
 import { MapPickScreen } from './MapPickScreen';
 import { RideStatusScreen } from './RideStatusScreen';
@@ -26,6 +27,7 @@ type Step =
   | { kind: 'confirm'; origin: Place; destination: Place }
   | { kind: 'ride'; ride: Ride }
   | { kind: 'history' }
+  | { kind: 'legal' }
   | { kind: 'driver' };
 
 type Props = {
@@ -98,6 +100,7 @@ export function PassengerFlow({ userId, name }: Props) {
           onRequestRide={startRequest}
           onDriverMode={() => setStep({ kind: 'driver' })}
           onOpenHistory={() => setStep({ kind: 'history' })}
+          onOpenLegal={() => setStep({ kind: 'legal' })}
         />
       );
 
@@ -174,6 +177,9 @@ export function PassengerFlow({ userId, name }: Props) {
 
     case 'history':
       return <HistoryScreen role="passenger" userId={userId} onBack={goHome} />;
+
+    case 'legal':
+      return <LegalScreen onBack={goHome} />;
 
     case 'driver':
       return <DriverFlow userId={userId} cityId={city.id} onExit={load} />;
