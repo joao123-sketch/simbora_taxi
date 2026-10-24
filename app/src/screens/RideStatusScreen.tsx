@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { BigButton } from '../components/BigButton';
 import { RatingPrompt } from '../components/RatingPrompt';
 import { Screen } from '../components/Screen';
+import { SosButton } from '../components/SosButton';
 import { TrackingCard } from '../components/TrackingCard';
 import { useChat } from '../hooks/useChat';
 import {
@@ -203,6 +204,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
       {CANCELABLE.includes(status) ? (
         <BigButton label="Cancelar corrida" onPress={cancel} loading={cancelling} variant="link" />
       ) : null}
+
+      {inRide ? <SosButton ride={ride} role="passenger" /> : null}
 
       {status === 'cancelled' ? <BigButton label="Voltar ao início" onPress={onFinished} /> : null}
 

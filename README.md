@@ -44,3 +44,5 @@ Abra no celular com o app Expo Go, ou rode `npm run android` com um emulador.
 - Chat: `ride_messages`, só entre o passageiro e o motorista da corrida e só enquanto ela está em andamento (`send_message`). No lugar do telefone.
 - Posição: o passageiro vê o carro andando no mapa e o tempo estimado (`driver_positions`); só vale para o motorista da corrida em andamento. Notificações push e localização em segundo plano ainda não existem: dependem do build de desenvolvimento (Etapa 3).
 - Telefone não aparece para passageiro nem motorista: o perfil só libera `id`, `full_name` e `created_at`.
+
+- SOS: botão discreto na corrida (passageiro e motorista), segurar 5 segundos e confirmar; abre o WhatsApp do plantão com a mensagem pronta (corrida, motorista, placa e localização). O número vem de `EXPO_PUBLIC_SOS_WHATSAPP` em `app/.env.local` (fora do Git); quando o painel existir, passa para o banco.

@@ -3,6 +3,7 @@ import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
 import { RatingPrompt } from '../../components/RatingPrompt';
+import { SosButton } from '../../components/SosButton';
 import { useChat } from '../../hooks/useChat';
 import { Screen } from '../../components/Screen';
 import { directionsUrl } from '../../lib/geo';
@@ -150,6 +151,7 @@ export function DriverRideScreen({ ride: initialRide, onFinished }: Props) {
           {ride.status !== 'in_progress' ? (
             <BigButton label="Cancelar corrida" onPress={cancel} variant="link" />
           ) : null}
+          <SosButton ride={ride} role="driver" />
         </>
       )}
     </Screen>
