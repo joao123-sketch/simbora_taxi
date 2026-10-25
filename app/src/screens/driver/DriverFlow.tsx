@@ -13,8 +13,10 @@ import { HistoryScreen } from '../HistoryScreen';
 import { DriverHomeScreen } from './DriverHomeScreen';
 import { DriverPendingScreen } from './DriverPendingScreen';
 import { MyQrScreen } from './MyQrScreen';
+import { ScheduledTripsScreen } from './ScheduledTripsScreen';
 import { PaymentSettingsScreen } from './PaymentSettingsScreen';
 import { DriverRideScreen } from './DriverRideScreen';
+import { DriverSettingsScreen } from './DriverSettingsScreen';
 import { DriverSignupScreen } from './DriverSignupScreen';
 import { FeeScreen } from './FeeScreen';
 
@@ -32,6 +34,8 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   const [editingPayments, setEditingPayments] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showScheduled, setShowScheduled] = useState(false);
   const [fee, setFee] = useState<FeeStatus | null>(null);
   const [showFee, setShowFee] = useState(false);
   // Vencida há poucos dias, o motorista pode dispensar o aviso até abrir de novo.
@@ -82,6 +86,14 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
       })
       .catch(() => {});
   }, [userId]);
+
+  // Uma viagem agendada vira corrida perto da hora marcada, mesmo com o motorista
+  // offline: confere de tempos em tempos.
+  useEffect(() => {
+    if (driver?.status !== 'approved') return;
+    const timer = setInterval(checkActiveRide, 30000);
+    return () => clearInterval(timer);
+  }, [driver?.status, checkActiveRide]);
 
   async function toggleOnline() {
     if (!driver) return;
@@ -134,6 +146,10 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     );
   }
 
+  if (showScheduled) {
+    return <ScheduledTripsScreen userId={userId} onBack={() => setShowScheduled(false)} />;
+  }
+
   if (showQr) {
     return <MyQrScreen onBack={() => setShowQr(false)} />;
   }
@@ -155,18 +171,28 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     );
   }
 
+  if (showSettings) {
+    return (
+      <DriverSettingsScreen
+        onOpenPayments={() => setEditingPayments(true)}
+        onOpenHistory={() => setShowHistory(true)}
+        onOpenFee={() => setShowFee(true)}
+        onBack={() => setShowSettings(false)}
+      />
+    );
+  }
+
   return (
     <DriverHomeScreen
       online={online}
-      acceptedPayments={driver.accepted_payments}
-      onOpenPayments={() => setEditingPayments(true)}
       position={position}
       locationDenied={denied}
       onToggleOnline={toggleOnline}
       onAccepted={load}
       onCheckActive={checkActiveRide}
-      onOpenHistory={() => setShowHistory(true)}
       onOpenQr={() => setShowQr(true)}
+      onOpenScheduled={() => setShowScheduled(true)}
+      onOpenSettings={() => setShowSettings(true)}
       onOpenFee={() => setShowFee(true)}
       feeNotice={fee && feeNeedsAttention(fee) ? nagText(fee) : null}
       onExit={onExit}

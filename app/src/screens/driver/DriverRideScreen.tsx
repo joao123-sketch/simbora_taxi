@@ -130,8 +130,8 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
     try {
       await cancelRide(ride.id);
       setRide({ ...ride, status: 'cancelled' });
-    } catch {
-      setError('Não conseguimos cancelar.');
+    } catch (e) {
+      setError((e as { message?: string }).message || 'Não conseguimos cancelar.');
     } finally {
       setLoading(false);
     }

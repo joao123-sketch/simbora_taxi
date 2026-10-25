@@ -25,6 +25,7 @@ import {
   type RideProposal,
   type RideStatus,
 } from '../lib/rides';
+import { formatScheduled, isScheduledWait } from '../lib/scheduling';
 import { createRideShare, recipientMessage, tripShareMessage } from '../lib/share';
 import { colors, fontSize } from '../theme';
 import { ChatScreen } from './ChatScreen';
@@ -67,11 +68,18 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   const [sharing, setSharing] = useState(false);
   const delivery = isDelivery(ride);
   const { status } = ride;
+  // Viagem agendada ainda longe da hora: o pedido e o motorista existem, mas ninguém está a caminho.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((n) => n + 1), 30000);
+    return () => clearInterval(timer);
+  }, []);
+  const scheduledWait = isScheduledWait(ride);
   // Mapa e conversa existem enquanto a corrida está em andamento.
-  const inRide = !!ride.driver_id && ['accepted', 'arrived', 'in_progress'].includes(status);
+  const inRide = !!ride.driver_id && ['accepted', 'arrived', 'in_progress'].includes(status) && !scheduledWait;
   const { messages, unread } = useChat(ride.id, ride.passenger_id, inRide, chatOpen);
   // Enquanto espera o motorista, o passageiro compartilha onde está; ao embarcar para.
-  const waitingForDriver = !!ride.driver_id && (status === 'accepted' || status === 'arrived');
+  const waitingForDriver = !!ride.driver_id && (status === 'accepted' || status === 'arrived') && !scheduledWait;
   usePassengerLocation(waitingForDriver);
 
   // O código de 4 dígitos da entrega: quem pediu manda a quem recebe.
@@ -104,7 +112,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   useEffect(() => {
     if (!inRide) setChatOpen(false);
   }, [inRide]);
-  const waitingProposals = status === 'requested' && (!!ride.destination_place || !!ride.round_trip);
+  const waitingProposals =
+    status === 'requested' && (!!ride.destination_place || !!ride.round_trip || !!ride.scheduled_for);
 
   // A cada mudança (motorista aceitou, chegou...) busca de novo os detalhes,
   // que trazem nome, carro e placa do motorista.
@@ -169,8 +178,9 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
     try {
       await cancelRide(ride.id);
       setRide({ ...ride, status: 'cancelled' });
-    } catch {
-      setError('Não conseguimos cancelar. Tente de novo.');
+    } catch (e) {
+      // A mensagem do banco (já em português) diz o motivo; sem ela, um aviso genérico.
+      setError((e as { message?: string }).message || 'Não conseguimos cancelar. Tente de novo.');
     } finally {
       setCancelling(false);
     }
@@ -192,7 +202,19 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   }
 
   return (
-    <Screen title={(delivery ? deliveryStatusText : statusText)[status]} error={error}>
+    <Screen
+      title={
+        scheduledWait && status === 'requested'
+          ? 'Viagem agendada: procurando motorista'
+          : scheduledWait && status === 'accepted'
+            ? 'Viagem agendada'
+            : (delivery ? deliveryStatusText : statusText)[status]
+      }
+      error={error}
+    >
+      {ride.scheduled_for && scheduledWait ? (
+        <Text style={styles.price}>Marcada para {formatScheduled(ride.scheduled_for)}</Text>
+      ) : null}
       {status === 'requested' ? <ActivityIndicator size="large" color={colors.primary} /> : null}
 
       {inRide ? <TrackingCard ride={ride} /> : null}
@@ -223,7 +245,9 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
         <Text style={styles.hint}>
           {ride.destination_place
             ? `Você pediu para ser deixado em ${ride.destination_place}. `
-            : 'Você pediu ida e volta. '}
+            : ride.round_trip
+              ? 'Você pediu ida e volta. '
+              : 'Você agendou a viagem. '}
           O motorista pode aceitar pelo valor ou propor um acréscimo.
         </Text>
       ) : null}

@@ -9,10 +9,12 @@ import { formatPhone, isValidPhone, onlyDigits, toE164 } from '../lib/phone';
 import { supabase } from '../lib/supabase';
 
 type Props = {
+  // Aviso mostrado em cima (ex.: a conta foi aberta em outro celular).
+  notice?: string | null;
   onCodeSent: (phone: string) => void;
 };
 
-export function PhoneScreen({ onCodeSent }: Props) {
+export function PhoneScreen({ notice, onCodeSent }: Props) {
   const [digits, setDigits] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function PhoneScreen({ onCodeSent }: Props) {
     <Screen
       title="Qual é o seu celular?"
       subtitle="Vamos mandar um código por SMS para entrar."
-      error={error}
+      error={error ?? notice ?? null}
     >
       <BigInput
         accessibilityLabel="Número do celular com DDD"

@@ -120,3 +120,13 @@ Aba **Relatórios** do painel (só leitura, nada aparece para o motorista):
 - **Alerta do mês 3 em diante** (`staff_month3_alerts`): motorista na mensalidade padrão com menos de 10 corridas no mês pede conversa; mês em andamento mostra o ritmo.
 - **Fuga** (`staff_fuga_report`): corridas dos últimos 30 dias contra os 30 anteriores, horas online, mensalidade e custo por corrida; marca "muito online com poucas corridas" (20 h ou mais e 3 corridas ou menos) e queda de mais da metade; lista duplas passageiro e motorista que andavam juntas e pararam. Os limites ficam nas funções `private.fuga_*` e `private.month3_min_rides`.
 - **Reavaliação semestral** (`staff_review_list`, `staff_register_review`): quem vence em 30 dias ou já venceu; registrar a reavaliação marca hoje e a próxima vem 6 meses depois.
+
+## Viagens agendadas (entre cidades)
+
+- **Passageiro:** na tela "Onde deixar em…" escolhe **Agora** ou **Agendar dia e horário** (`app/src/components/SchedulePicker.tsx`), de 1 hora a 7 dias à frente, no fuso de Fortaleza (`app/src/lib/scheduling.ts`). `request_ride` ganhou `p_scheduled_for` e o preço fixo é gravado no pedido. No início aparece o cartão "Viagem agendada" e a lista de agendadas.
+- **Motorista:** botão **Viagens agendadas** (funciona offline): lista das viagens livres da cidade e do veículo dele (`open_scheduled_rides`), aceite com o adiantamento (`accept_scheduled_ride`) ou proposta de acréscimo, e **Desistir da viagem** (`release_scheduled_ride`, a viagem volta para a lista no valor original). Duas viagens do mesmo motorista a menos de 2 horas uma da outra são recusadas.
+- **Não trava ninguém:** viagem agendada para daqui a mais de 1 hora não conta como corrida em andamento (`private.ride_is_live`) para o motorista nem para o passageiro, não entra no despacho em ondas nem no preço dinâmico, e a posição de ninguém é compartilhada antes disso. Dentro de 1 hora da hora marcada vira corrida normal. Pedido que ninguém aceitou até 15 minutos depois da hora vence (`expire_scheduled_rides`).
+
+## Uma conta, um celular
+
+Quem entra num celular novo "toma" a conta (`claim_session`, `app/src/lib/sessionGuard.ts`): o celular antigo confere a cada 20 segundos (e ao voltar do segundo plano) se ainda é o válido e, se não for, sai sozinho com o aviso. O banco também recusa as gravações do celular antigo (triggers `*_guard_session` em corridas, mensagens, propostas, posições e "online"). Conta com `profiles.multi_session = true` fica fora da regra (contas de teste); a equipe do painel também. Se rodar o SQL no SQL Editor em vez de `db push`, marque a migration como aplicada: `npx supabase migration repair --status applied 20261025050000`.

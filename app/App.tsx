@@ -1,9 +1,10 @@
 import type { Session } from '@supabase/supabase-js';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { checkSession, ensureSession, forgetClaimedSession, KICKED_MESSAGE, sessionIdOf } from './src/lib/sessionGuard';
 import { supabase } from './src/lib/supabase';
 import { CodeScreen } from './src/screens/CodeScreen';
 import { NameScreen } from './src/screens/NameScreen';
@@ -16,6 +17,8 @@ export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [name, setName] = useState<string | null | undefined>(undefined);
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  // Aviso na tela de entrada (ex.: a conta foi aberta em outro celular).
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -26,6 +29,35 @@ export default function App() {
   }, []);
 
   const userId = session?.user.id;
+  const loginId = session ? sessionIdOf(session.access_token) : null;
+
+  // Uma conta, um celular: um login novo toma a conta; este celular confere de tempos em
+  // tempos se ainda é o válido e, se não for, sai sozinho com um aviso.
+  useEffect(() => {
+    if (!session) return;
+    let done = false;
+    const kick = async () => {
+      if (done) return;
+      done = true;
+      await forgetClaimedSession();
+      setNotice(KICKED_MESSAGE);
+      await supabase.auth.signOut();
+    };
+    const verify = (ok: boolean) => {
+      if (!ok) kick();
+    };
+    ensureSession(session).then(verify);
+    const timer = setInterval(() => checkSession().then(verify), 20000);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') checkSession().then(verify);
+    });
+    return () => {
+      done = true;
+      clearInterval(timer);
+      subscription.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, loginId]);
 
   useEffect(() => {
     if (!userId) {
@@ -52,7 +84,13 @@ export default function App() {
     content = pendingPhone ? (
       <CodeScreen phone={pendingPhone} onBack={() => setPendingPhone(null)} />
     ) : (
-      <PhoneScreen onCodeSent={setPendingPhone} />
+      <PhoneScreen
+        notice={notice}
+        onCodeSent={(phone) => {
+          setNotice(null);
+          setPendingPhone(phone);
+        }}
+      />
     );
   } else if (!name) {
     content = <NameScreen userId={userId} onSaved={setName} />;

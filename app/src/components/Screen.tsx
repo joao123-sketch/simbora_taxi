@@ -11,19 +11,24 @@ type Props = {
   // Fica sempre visível embaixo, sem rolar com a tela (ex.: o botão Voltar de
   // uma lista longa).
   footer?: ReactNode;
+  // Fica no canto de cima à direita, na linha do nome do app (ex.: "Sou motorista").
+  corner?: ReactNode;
   children: ReactNode;
 };
 
 // Moldura comum das telas: título grande, explicação curta e erro em destaque.
 // Fica dentro da área segura (fora da barra de status e dos botões do
 // Android) e sobe junto com o teclado.
-export function Screen({ title, subtitle, error, footer, children }: Props) {
+export function Screen({ title, subtitle, error, footer, corner, children }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={styles.container} behavior="padding">
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
-            <Text style={styles.brand}>Simbora Car</Text>
+            <View style={styles.header}>
+              <Text style={styles.brand}>Simbora Car</Text>
+              {corner}
+            </View>
             <Text accessibilityRole="header" style={styles.title}>
               {title}
             </Text>
@@ -69,6 +74,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E4E4E4',
     backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   brand: {
     fontSize: fontSize.body,

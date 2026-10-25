@@ -7,7 +7,9 @@ import { BigButton } from '../components/BigButton';
 import type { Coord } from '../components/PinMap.types';
 import { Screen } from '../components/Screen';
 import { driverCodeFromUrl } from '../lib/deeplink';
+import { expireScheduled, fetchMyScheduled } from '../lib/scheduling';
 import { loadPackageOptions } from '../lib/delivery';
+import { fetchMyDriver } from '../lib/drivers';
 import { feeNeedsAttention, fetchFeeStatus } from '../lib/fees';
 import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
 import {
@@ -31,6 +33,8 @@ import { LegalScreen } from './LegalScreen';
 import { HomeScreen } from './HomeScreen';
 import { MapPickScreen } from './MapPickScreen';
 import { RideStatusScreen } from './RideStatusScreen';
+import { ScheduledListScreen } from './ScheduledListScreen';
+import { SettingsScreen } from './SettingsScreen';
 
 type Step =
   | { kind: 'home' }
@@ -43,8 +47,11 @@ type Step =
   | { kind: 'deliveryDetails'; origin: Place; destination: Place }
   | { kind: 'confirm'; origin: Place; destination: Place }
   | { kind: 'ride'; ride: Ride }
+  | { kind: 'settings' }
+  | { kind: 'scheduledList' }
   | { kind: 'history' }
-  | { kind: 'favorites'; code?: string }
+  // from: de onde a pessoa veio, para o Voltar levar de volta (início ou configurações).
+  | { kind: 'favorites'; code?: string; from?: 'home' }
   | { kind: 'legal' }
   | { kind: 'deleteAccount' }
   | { kind: 'driver' };
@@ -60,6 +67,10 @@ export function PassengerFlow({ userId, name }: Props) {
   const [here, setHere] = useState<Coord | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestedPlace[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Já existe cadastro de motorista para esta conta (qualquer situação)?
+  const [isDriver, setIsDriver] = useState(false);
+  // Viagens agendadas da pessoa (para o cartão do início e a lista).
+  const [scheduled, setScheduled] = useState<Ride[]>([]);
   // A cobrança da mensalidade abre sozinha uma vez a cada vez que o app abre.
   const feeNagged = useRef(false);
   // O link do convite de um motorista (aberto com o app fechado ou aberto).
@@ -70,7 +81,7 @@ export function PassengerFlow({ userId, name }: Props) {
       const code = driverCodeFromUrl(url);
       if (!code || handledLink.current === url) return;
       handledLink.current = url;
-      setStep((current) => (current && current.kind === 'ride' ? current : { kind: 'favorites', code }));
+      setStep((current) => (current && current.kind === 'ride' ? current : { kind: 'favorites', code, from: 'home' }));
     }
     Linking.getInitialURL()
       .then(openLink)
@@ -84,6 +95,15 @@ export function PassengerFlow({ userId, name }: Props) {
     try {
       const [cityList, activeRide] = await Promise.all([fetchCities(), fetchActiveRide('passenger', userId)]);
       setCities(cityList);
+      // O botão do canto diz "Sou motorista" ou "Quero ser motorista"; se a consulta falhar, fica como estava.
+      fetchMyDriver(userId)
+        .then((driver) => setIsDriver(!!driver))
+        .catch(() => {});
+      expireScheduled()
+        .catch(() => {})
+        .then(() => fetchMyScheduled('passenger', userId))
+        .then(setScheduled)
+        .catch(() => {});
       if (activeRide) {
         setStep({ kind: 'ride', ride: activeRide });
       } else if (!feeNagged.current && feeNeedsAttention(await fetchFeeStatus().catch(() => null))) {
@@ -150,19 +170,21 @@ export function PassengerFlow({ userId, name }: Props) {
   }
 
   const goHome = () => setStep({ kind: 'home' });
+  const goSettings = () => setStep({ kind: 'settings' });
 
   switch (step.kind) {
     case 'home':
       return (
         <HomeScreen
           name={name}
+          isDriver={isDriver}
+          scheduled={scheduled}
+          onOpenScheduled={() => setStep({ kind: 'scheduledList' })}
           onRequestRide={startRequest}
           onRequestDelivery={startDelivery}
+          onOpenFavorites={() => setStep({ kind: 'favorites', from: 'home' })}
           onDriverMode={() => setStep({ kind: 'driver' })}
-          onOpenHistory={() => setStep({ kind: 'history' })}
-          onOpenFavorites={() => setStep({ kind: 'favorites' })}
-          onOpenLegal={() => setStep({ kind: 'legal' })}
-          onDeleteAccount={() => setStep({ kind: 'deleteAccount' })}
+          onOpenSettings={() => setStep({ kind: 'settings' })}
         />
       );
 
@@ -275,7 +297,11 @@ export function PassengerFlow({ userId, name }: Props) {
           cityId={city.id}
           origin={step.origin}
           destination={step.destination}
-          onRequested={load}
+          onRequested={async () => {
+            await load();
+            // Viagem agendada não abre a tela de corrida: vai para a lista de agendadas.
+            if (step.destination.scheduledFor) setStep({ kind: 'scheduledList' });
+          }}
           onBack={() =>
             step.destination.delivery
               ? setStep({ kind: 'deliveryDetails', origin: step.origin, destination: step.destination })
@@ -284,20 +310,40 @@ export function PassengerFlow({ userId, name }: Props) {
         />
       );
 
+    case 'scheduledList':
+      return (
+        <ScheduledListScreen
+          rides={scheduled}
+          onOpen={(ride) => setStep({ kind: 'ride', ride })}
+          onBack={goHome}
+        />
+      );
+
     case 'ride':
-      return <RideStatusScreen ride={step.ride} onFinished={goHome} />;
+      return <RideStatusScreen ride={step.ride} onFinished={load} />;
+
+    case 'settings':
+      return (
+        <SettingsScreen
+          onOpenHistory={() => setStep({ kind: 'history' })}
+          onOpenFavorites={() => setStep({ kind: 'favorites' })}
+          onOpenLegal={() => setStep({ kind: 'legal' })}
+          onDeleteAccount={() => setStep({ kind: 'deleteAccount' })}
+          onBack={goHome}
+        />
+      );
 
     case 'history':
-      return <HistoryScreen role="passenger" userId={userId} onBack={goHome} />;
+      return <HistoryScreen role="passenger" userId={userId} onBack={goSettings} />;
 
     case 'favorites':
-      return <FavoriteDriversScreen autoAddCode={step.code} onBack={goHome} />;
+      return <FavoriteDriversScreen autoAddCode={step.code} onBack={step.from === 'home' ? goHome : goSettings} />;
 
     case 'deleteAccount':
-      return <DeleteAccountScreen onBack={goHome} />;
+      return <DeleteAccountScreen onBack={goSettings} />;
 
     case 'legal':
-      return <LegalScreen onBack={goHome} />;
+      return <LegalScreen onBack={goSettings} />;
 
     case 'driver':
       return <DriverFlow userId={userId} cityId={city.id} onExit={load} />;

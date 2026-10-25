@@ -5,6 +5,7 @@ import { BigButton } from '../components/BigButton';
 import { ChoiceCard } from '../components/ChoiceCard';
 import { Screen } from '../components/Screen';
 import { packageLabel } from '../lib/delivery';
+import { formatScheduled } from '../lib/scheduling';
 import {
   fetchPaymentOptions,
   formatMoney,
@@ -111,7 +112,7 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
   }
 
   return (
-    <Screen title={delivery ? 'Confira a entrega' : 'Confira e chame'} error={error}>
+    <Screen title={delivery ? 'Confira a entrega' : destination.scheduledFor ? 'Confira o agendamento' : 'Confira e chame'} error={error}>
       <View style={styles.route}>
         <Text style={styles.routeLine}>{delivery ? 'Pegar em' : 'De'}: {origin.address}</Text>
         <Text style={styles.routeLine}>
@@ -123,6 +124,9 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
             <Text style={styles.routeLine}>Pacote: {packageLabel(delivery.size)}</Text>
             <Text style={styles.routeLine}>Quem recebe: {delivery.recipientName}</Text>
           </>
+        ) : null}
+        {destination.scheduledFor ? (
+          <Text style={styles.routeLine}>Quando: {formatScheduled(destination.scheduledFor)}</Text>
         ) : null}
         {destination.roundTrip ? (
           <Text style={styles.routeLine}>{roundTripLabel({ round_trip: true, wait_minutes: destination.waitMinutes })}</Text>
@@ -156,7 +160,13 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
             />
           ))}
           <BigButton
-            label={delivery ? `Pedir entrega de ${vehicleLabel[vehicle].toLowerCase()}` : `Chamar ${vehicleLabel[vehicle].toLowerCase()}`}
+            label={
+              delivery
+                ? `Pedir entrega de ${vehicleLabel[vehicle].toLowerCase()}`
+                : destination.scheduledFor
+                  ? `Agendar ${vehicleLabel[vehicle].toLowerCase()}`
+                  : `Chamar ${vehicleLabel[vehicle].toLowerCase()}`
+            }
             onPress={confirm}
             loading={loading}
           />

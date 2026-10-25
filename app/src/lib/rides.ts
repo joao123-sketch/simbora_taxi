@@ -1,4 +1,5 @@
 import type { Coord } from '../components/PinMap.types';
+import { liveFilter } from './scheduling';
 import { supabase } from './supabase';
 
 export type VehicleType = 'car' | 'moto';
@@ -21,6 +22,8 @@ export type Place = Coord & {
   // Viagem para outra cidade com ida e volta: o motorista espera e traz de volta.
   roundTrip?: boolean;
   waitMinutes?: number;
+  // Viagem agendada (só entre cidades): o instante marcado, em ISO.
+  scheduledFor?: string;
   // Entrega: o destino leva o pacote, o tamanho e quem recebe. Quando existe,
   // o preço e o pedido usam as funções de entrega do banco.
   delivery?: DeliveryInfo;
@@ -55,6 +58,8 @@ export function priceFor(quote: Quote, method: PaymentMethod): number {
 export type Ride = {
   id: number;
   status: RideStatus;
+  // Viagem agendada: quando foi marcada (ISO). Ausente nas corridas comuns.
+  scheduled_for?: string | null;
   // Ausentes até o banco ter a migration da entrega.
   kind?: 'ride' | 'delivery';
   package_size?: PackageSize | null;
@@ -122,6 +127,8 @@ export async function fetchActiveRide(role: 'passenger' | 'driver', userId: stri
     .select('*')
     .eq(role === 'passenger' ? 'passenger_id' : 'driver_id', userId)
     .in('status', ACTIVE_STATUSES)
+    // Viagem agendada só vira "corrida em andamento" perto da hora marcada.
+    .or(liveFilter())
     .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -248,6 +255,7 @@ export async function requestRide(params: {
     p_quote_id: quoteId,
     p_destination_city_id: destination.cityId ?? null,
     p_destination_place: destination.dropoffPlace ?? null,
+    ...(destination.scheduledFor ? { p_scheduled_for: destination.scheduledFor } : {}),
     ...roundTripArgs(destination),
   });
   if (error) throw error;

@@ -15,9 +15,7 @@ import {
   subscribeToProposals,
   subscribeToRides,
   withdrawProposal,
-  receiveLabel,
   type MyProposal,
-  type PaymentMethod,
   type Ride,
 } from '../../lib/rides';
 import { colors, fontSize } from '../../theme';
@@ -25,16 +23,15 @@ import { OpenRequestCard } from './OpenRequestCard';
 
 type Props = {
   online: boolean;
-  acceptedPayments: PaymentMethod[];
-  onOpenPayments: () => void;
   position: Coord | null;
   locationDenied: boolean;
   onToggleOnline: () => Promise<void>;
   onAccepted: () => void;
   // Confere se o passageiro aceitou uma proposta e a corrida passou a ser deste motorista.
   onCheckActive: () => void;
-  onOpenHistory: () => void;
   onOpenQr: () => void;
+  onOpenScheduled: () => void;
+  onOpenSettings: () => void;
   onOpenFee: () => void;
   // Aviso vermelho da mensalidade vencida, sempre no alto da tela.
   feeNotice: string | null;
@@ -47,15 +44,14 @@ const POLL_MS = 5000;
 
 export function DriverHomeScreen({
   online,
-  acceptedPayments,
-  onOpenPayments,
   position,
   locationDenied,
   onToggleOnline,
   onAccepted,
   onCheckActive,
-  onOpenHistory,
   onOpenQr,
+  onOpenScheduled,
+  onOpenSettings,
   onOpenFee,
   feeNotice,
   onExit,
@@ -175,9 +171,6 @@ export function DriverHomeScreen({
 
       <BigButton label={online ? 'Ficar offline' : 'Ficar online'} onPress={toggle} loading={toggling} />
 
-      <Text style={styles.receives}>Você recebe por: {acceptedPayments.map((m) => receiveLabel[m]).join(', ')}</Text>
-      <BigButton label="Como eu recebo" onPress={onOpenPayments} variant="link" />
-
       {online && visible.length === 0 ? <Text style={styles.empty}>Nenhum chamado agora.</Text> : null}
 
       {visible.map((ride) => (
@@ -194,10 +187,10 @@ export function DriverHomeScreen({
         />
       ))}
 
-      <BigButton label="Minhas corridas" onPress={onOpenHistory} variant="link" />
-      <BigButton label="Meu QR para clientes" onPress={onOpenQr} variant="link" />
-      <BigButton label="Minha mensalidade" onPress={onOpenFee} variant="link" />
-      <BigButton label="Voltar ao início" onPress={onExit} variant="link" />
+      <BigButton label="Meu QR para clientes" onPress={onOpenQr} variant="secondary" />
+      <BigButton label="Viagens agendadas" onPress={onOpenScheduled} variant="secondary" />
+      <BigButton label="Configurações" onPress={onOpenSettings} variant="secondary" />
+      <BigButton label="Voltar ao início" onPress={onExit} variant="secondary" />
     </Screen>
   );
 }
@@ -220,11 +213,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body - 2,
     fontWeight: '700',
     color: colors.primaryDark,
-  },
-  receives: {
-    fontSize: fontSize.body - 2,
-    color: colors.textMuted,
-    textAlign: 'center',
   },
   empty: {
     fontSize: fontSize.body,

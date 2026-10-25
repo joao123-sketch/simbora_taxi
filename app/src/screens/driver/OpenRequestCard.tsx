@@ -5,6 +5,7 @@ import { BigButton } from '../../components/BigButton';
 import { BigInput } from '../../components/BigInput';
 import { ChoiceCard } from '../../components/ChoiceCard';
 import { isDelivery, packageLabel } from '../../lib/delivery';
+import { formatScheduled } from '../../lib/scheduling';
 import { formatKm } from '../../lib/geo';
 import {
   ADVANCE_OPTIONS,
@@ -117,7 +118,15 @@ export function OpenRequestCard({
           <Text style={styles.placeText}>{packageLabel(ride.package_size)}</Text>
           <Text style={styles.line}>Quem recebe: {ride.recipient_name}</Text>
           {ride.recipient_note ? <Text style={styles.line}>Recado: {ride.recipient_note}</Text> : null}
-          <Text style={styles.warning}>Você só leva o pacote, sem comprar nada. Para finalizar, peça o código a quem recebe.</Text>
+          <Text style={styles.warning}>Para finalizar, peça o código a quem recebe.</Text>
+        </View>
+      ) : null}
+
+      {ride.scheduled_for ? (
+        <View style={styles.place}>
+          <Text style={styles.placeLabel}>Viagem agendada</Text>
+          <Text style={styles.placeText}>{formatScheduled(ride.scheduled_for)}</Text>
+          <Text style={styles.warning}>Aceite pelo valor, ou proponha um acréscimo. Fica marcada na sua agenda.</Text>
         </View>
       ) : null}
 
@@ -153,7 +162,7 @@ export function OpenRequestCard({
             enviada. Aguardando o passageiro.
           </Text>
           <BigButton label="Retirar proposta" onPress={withdraw} loading={sending} variant="link" />
-          <BigButton label="Recusar pedido" onPress={decline} variant="link" />
+          {!ride.scheduled_for ? <BigButton label="Recusar pedido" onPress={decline} variant="link" /> : null}
         </>
       ) : proposing ? (
         <>
@@ -186,10 +195,12 @@ export function OpenRequestCard({
             disabled={needsAdvance}
             loading={accepting}
           />
-          {ride.destination_place || ride.round_trip ? (
+          {ride.destination_place || ride.round_trip || ride.scheduled_for ? (
             <BigButton label="Propor acréscimo" onPress={() => setProposing(true)} variant="link" />
           ) : null}
-          <BigButton label="Recusar pedido" onPress={decline} loading={sending} variant="link" />
+          {!ride.scheduled_for ? (
+            <BigButton label="Recusar pedido" onPress={decline} loading={sending} variant="link" />
+          ) : null}
         </>
       )}
     </View>

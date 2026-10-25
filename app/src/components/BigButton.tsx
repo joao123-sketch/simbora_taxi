@@ -7,11 +7,13 @@ type Props = {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
-  variant?: 'primary' | 'link';
+  // secondary: botão menor, só com borda (ex.: Configurações).
+  variant?: 'primary' | 'link' | 'secondary';
 };
 
 export function BigButton({ label, onPress, disabled, loading, variant = 'primary' }: Props) {
   const isLink = variant === 'link';
+  const isSecondary = variant === 'secondary';
   const inactive = disabled || loading;
 
   return (
@@ -22,15 +24,16 @@ export function BigButton({ label, onPress, disabled, loading, variant = 'primar
       disabled={inactive}
       onPress={onPress}
       style={({ pressed }) => [
-        isLink ? styles.link : styles.button,
-        !isLink && pressed && styles.pressed,
+        isLink ? styles.link : isSecondary ? styles.secondary : styles.button,
+        !isLink && !isSecondary && pressed && styles.pressed,
+        isSecondary && pressed && styles.secondaryPressed,
         !isLink && inactive && styles.disabled,
       ]}
     >
       {loading ? (
         <ActivityIndicator color={colors.onPrimary} size="large" />
       ) : (
-        <Text style={isLink ? styles.linkText : styles.text}>{label}</Text>
+        <Text style={isLink ? styles.linkText : isSecondary ? styles.secondaryText : styles.text}>{label}</Text>
       )}
     </Pressable>
   );
@@ -48,6 +51,25 @@ const styles = StyleSheet.create({
   },
   pressed: {
     backgroundColor: colors.primaryDark,
+  },
+  secondary: {
+    alignSelf: 'stretch',
+    minHeight: 56,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  secondaryPressed: {
+    backgroundColor: '#FDECEC',
+  },
+  secondaryText: {
+    fontSize: fontSize.body + 2,
+    fontWeight: '700',
+    color: colors.primary,
   },
   disabled: {
     opacity: 0.4,

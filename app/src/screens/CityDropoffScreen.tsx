@@ -5,6 +5,7 @@ import { BigButton } from '../components/BigButton';
 import { BigInput } from '../components/BigInput';
 import { ChoiceCard } from '../components/ChoiceCard';
 import { Screen } from '../components/Screen';
+import { SchedulePicker } from '../components/SchedulePicker';
 import { WAIT_OPTIONS, formatWait, type City, type Place } from '../lib/rides';
 import { colors, fontSize } from '../theme';
 
@@ -22,8 +23,11 @@ export function CityDropoffScreen({ city, onConfirm, onBack }: Props) {
   const [where, setWhere] = useState('');
   const [roundTrip, setRoundTrip] = useState(false);
   const [waitMinutes, setWaitMinutes] = useState<number>(60);
+  // null = agora; senão o instante marcado. `scheduleOk` diz se o horário vale.
+  const [scheduledFor, setScheduledFor] = useState<string | null>(null);
+  const [scheduleOk, setScheduleOk] = useState(true);
   const place = where.trim();
-  const valid = !elsewhere || place.length >= 3;
+  const valid = (!elsewhere || place.length >= 3) && scheduleOk;
 
   function confirm() {
     onConfirm({
@@ -34,6 +38,7 @@ export function CityDropoffScreen({ city, onConfirm, onBack }: Props) {
       dropoffPlace: elsewhere ? place : undefined,
       roundTrip,
       waitMinutes: roundTrip ? waitMinutes : 0,
+      scheduledFor: scheduledFor ?? undefined,
     });
   }
 
@@ -87,6 +92,12 @@ export function CityDropoffScreen({ city, onConfirm, onBack }: Props) {
         </>
       ) : null}
 
+      <SchedulePicker
+        onChange={(iso, ok) => {
+          setScheduledFor(iso);
+          setScheduleOk(ok);
+        }}
+      />
     </Screen>
   );
 }
