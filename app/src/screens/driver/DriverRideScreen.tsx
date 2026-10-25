@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { DriverAdvanceCard } from '../../components/AdvancePayment';
 import { BigButton } from '../../components/BigButton';
+import { BigInput } from '../../components/BigInput';
 import { LiveMap } from '../../components/LiveMap';
 import type { Coord } from '../../components/PinMap.types';
 import { RatingPrompt } from '../../components/RatingPrompt';
@@ -10,6 +11,7 @@ import { SosButton } from '../../components/SosButton';
 import { useChat } from '../../hooks/useChat';
 import { usePassengerPosition } from '../../hooks/usePassengerPosition';
 import { Screen } from '../../components/Screen';
+import { completeDelivery, isDelivery, packageLabel } from '../../lib/delivery';
 import { distanceKm, formatKm } from '../../lib/geo';
 import {
   advanceRide,
@@ -41,6 +43,19 @@ const titles: Partial<Record<RideStatus, string>> = {
   cancelled: 'Corrida cancelada',
 };
 
+const deliveryTitles: Partial<Record<RideStatus, string>> = {
+  accepted: 'Vá pegar o pacote',
+  arrived: 'Pegue o pacote',
+  in_progress: 'Leve o pacote',
+  completed: 'Entrega concluída!',
+  cancelled: 'Entrega cancelada',
+};
+
+const deliveryNextAction: Partial<Record<RideStatus, string>> = {
+  accepted: 'Cheguei na coleta',
+  arrived: 'Peguei o pacote',
+};
+
 const nextAction: Partial<Record<RideStatus, string>> = {
   accepted: 'Cheguei',
   arrived: 'Iniciar corrida',
@@ -53,6 +68,8 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
   const [error, setError] = useState<string | null>(null);
   const [rated, setRated] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const delivery = isDelivery(ride);
   const inRide = ['accepted', 'arrived', 'in_progress'].includes(ride.status);
   const myId = ride.driver_id ?? '';
   const { messages, unread } = useChat(ride.id, myId, inRide && !!myId, chatOpen);
@@ -84,6 +101,24 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
       setRide({ ...ride, status });
     } catch {
       setError('Não conseguimos atualizar a corrida. Tente de novo.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Entrega: só termina com o código de 4 dígitos de quem recebe.
+  async function finishDelivery() {
+    setLoading(true);
+    setError(null);
+    try {
+      const ok = await completeDelivery(ride.id, code);
+      if (!ok) {
+        setError('Código errado. Peça de novo a quem recebeu.');
+        return;
+      }
+      setRide(await fetchRide(ride.id));
+    } catch (e) {
+      setError((e as { message?: string }).message || 'Não conseguimos finalizar. Tente de novo.');
     } finally {
       setLoading(false);
     }
@@ -139,11 +174,18 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
   }
 
   return (
-    <Screen title={titles[ride.status] ?? ''} error={error}>
+    <Screen title={(delivery ? deliveryTitles : titles)[ride.status] ?? ''} error={error}>
       <View style={styles.details}>
         <Text style={styles.name}>{ride.passenger_name ?? 'Passageiro'}</Text>
-        <Text style={styles.line}>Buscar: {ride.origin_address}</Text>
-        <Text style={styles.line}>Levar: {ride.destination_address}</Text>
+        <Text style={styles.line}>{delivery ? 'Pegar' : 'Buscar'}: {ride.origin_address}</Text>
+        <Text style={styles.line}>{delivery ? 'Entregar' : 'Levar'}: {ride.destination_address}</Text>
+        {delivery ? (
+          <>
+            <Text style={styles.place}>Pacote {packageLabel(ride.package_size)}</Text>
+            <Text style={styles.line}>Quem recebe: {ride.recipient_name}</Text>
+            {ride.recipient_note ? <Text style={styles.line}>Recado: {ride.recipient_note}</Text> : null}
+          </>
+        ) : null}
         {ride.destination_place ? (
           <Text style={styles.place}>Deixar em: {ride.destination_place}</Text>
         ) : null}
@@ -181,8 +223,25 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
                 ? 'Marque o recebimento do adiantamento para iniciar a viagem.'
                 : 'Escolha o adiantamento para iniciar a viagem.'}
             </Text>
+          ) : delivery && ride.status === 'in_progress' ? (
+            <>
+              <Text style={styles.line}>Peça a quem recebeu o código de 4 dígitos:</Text>
+              <BigInput
+                accessibilityLabel="Código de 4 dígitos"
+                placeholder="0000"
+                keyboardType="number-pad"
+                maxLength={4}
+                value={code}
+                onChangeText={setCode}
+              />
+              <BigButton label="Finalizar entrega" onPress={finishDelivery} disabled={code.length !== 4} loading={loading} />
+            </>
           ) : (
-            <BigButton label={nextAction[ride.status] ?? ''} onPress={advance} loading={loading} />
+            <BigButton
+              label={(delivery ? deliveryNextAction : nextAction)[ride.status] ?? ''}
+              onPress={advance}
+              loading={loading}
+            />
           )}
           <BigButton
             label={unread > 0 ? `Mensagens (${unread} nova${unread > 1 ? 's' : ''})` : 'Mensagens'}

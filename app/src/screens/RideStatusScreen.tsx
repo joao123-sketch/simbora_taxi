@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Share, StyleSheet, Text, View } from 'react-native';
 
 import { PassengerAdvanceNote } from '../components/AdvancePayment';
 import { BigButton } from '../components/BigButton';
@@ -9,6 +9,7 @@ import { SosButton } from '../components/SosButton';
 import { TrackingCard } from '../components/TrackingCard';
 import { useChat } from '../hooks/useChat';
 import { usePassengerLocation } from '../hooks/usePassengerLocation';
+import { fetchDeliveryCode, isDelivery, packageLabel } from '../lib/delivery';
 import {
   cancelRide,
   fetchRide,
@@ -24,6 +25,7 @@ import {
   type RideProposal,
   type RideStatus,
 } from '../lib/rides';
+import { createRideShare, recipientMessage, tripShareMessage } from '../lib/share';
 import { colors, fontSize } from '../theme';
 import { ChatScreen } from './ChatScreen';
 
@@ -41,7 +43,17 @@ const statusText: Record<RideStatus, string> = {
   cancelled: 'Corrida cancelada',
 };
 
+const deliveryStatusText: Record<RideStatus, string> = {
+  requested: 'Procurando entregador...',
+  accepted: 'O entregador está indo buscar o pacote',
+  arrived: 'O entregador chegou para pegar o pacote',
+  in_progress: 'O pacote está a caminho',
+  completed: 'Entrega concluída',
+  cancelled: 'Entrega cancelada',
+};
+
 const CANCELABLE: RideStatus[] = ['requested', 'accepted', 'arrived'];
+const ACTIVE_FOR_SHARE: RideStatus[] = ['requested', 'accepted', 'arrived', 'in_progress'];
 
 export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   const [ride, setRide] = useState(initialRide);
@@ -51,6 +63,9 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   const [answering, setAnswering] = useState<number | null>(null);
   const [rated, setRated] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [deliveryCode, setDeliveryCode] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const delivery = isDelivery(ride);
   const { status } = ride;
   // Mapa e conversa existem enquanto a corrida está em andamento.
   const inRide = !!ride.driver_id && ['accepted', 'arrived', 'in_progress'].includes(status);
@@ -58,6 +73,32 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   // Enquanto espera o motorista, o passageiro compartilha onde está; ao embarcar para.
   const waitingForDriver = !!ride.driver_id && (status === 'accepted' || status === 'arrived');
   usePassengerLocation(waitingForDriver);
+
+  // O código de 4 dígitos da entrega: quem pediu manda a quem recebe.
+  useEffect(() => {
+    if (!delivery) return;
+    fetchDeliveryCode(ride.id)
+      .then(setDeliveryCode)
+      .catch(() => {});
+  }, [delivery, ride.id]);
+
+  // Gera o link do trajeto e abre o compartilhamento (WhatsApp, copiar...).
+  async function shareTrip() {
+    setSharing(true);
+    setError(null);
+    try {
+      const url = await createRideShare(ride.id);
+      const message =
+        delivery && deliveryCode
+          ? recipientMessage(ride.recipient_name ?? '', deliveryCode, url)
+          : tripShareMessage(ride, url);
+      await Share.share({ message });
+    } catch {
+      setError('Não conseguimos gerar o link. Confira a internet.');
+    } finally {
+      setSharing(false);
+    }
+  }
 
   // Quando a corrida acaba o chat fecha sozinho, para a avaliação aparecer.
   useEffect(() => {
@@ -151,12 +192,19 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   }
 
   return (
-    <Screen title={statusText[status]} error={error}>
+    <Screen title={(delivery ? deliveryStatusText : statusText)[status]} error={error}>
       {status === 'requested' ? <ActivityIndicator size="large" color={colors.primary} /> : null}
 
       {inRide ? <TrackingCard ride={ride} /> : null}
-      {waitingForDriver ? (
+      {waitingForDriver && !delivery ? (
         <Text style={styles.hint}>O motorista vê onde você está enquanto vem te buscar.</Text>
+      ) : null}
+
+      {delivery && deliveryCode && ride.status !== 'cancelled' && ride.status !== 'completed' ? (
+        <View style={styles.driverCard}>
+          <Text style={styles.line}>Código da entrega (quem recebe diz ao entregador):</Text>
+          <Text style={styles.code}>{deliveryCode}</Text>
+        </View>
       ) : null}
 
       {waitingForDriver && isIntercity(ride) ? <PassengerAdvanceNote ride={ride} /> : null}
@@ -209,11 +257,17 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
       ))}
 
       <View style={styles.details}>
-        <Text style={styles.line}>De: {ride.origin_address}</Text>
+        <Text style={styles.line}>{delivery ? 'Pegar em' : 'De'}: {ride.origin_address}</Text>
         <Text style={styles.line}>
-          Para: {ride.destination_address}
+          {delivery ? 'Entregar em' : 'Para'}: {ride.destination_address}
           {ride.destination_place ? ` — ${ride.destination_place}` : ''}
         </Text>
+        {delivery ? (
+          <>
+            <Text style={styles.line}>Pacote: {packageLabel(ride.package_size)}</Text>
+            <Text style={styles.line}>Quem recebe: {ride.recipient_name}</Text>
+          </>
+        ) : null}
         {roundTripLabel(ride) ? <Text style={styles.line}>{roundTripLabel(ride)}</Text> : null}
         <Text style={styles.price}>
           {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}
@@ -226,8 +280,17 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
         <BigButton label={unread > 0 ? `Mensagens (${unread} nova${unread > 1 ? 's' : ''})` : 'Mensagens'} onPress={() => setChatOpen(true)} />
       ) : null}
 
+      {ACTIVE_FOR_SHARE.includes(status) ? (
+        <BigButton
+          label={delivery ? 'Mandar mensagem para quem recebe' : 'Compartilhar meu trajeto'}
+          onPress={shareTrip}
+          loading={sharing}
+          variant="link"
+        />
+      ) : null}
+
       {CANCELABLE.includes(status) ? (
-        <BigButton label="Cancelar corrida" onPress={cancel} loading={cancelling} variant="link" />
+        <BigButton label={delivery ? 'Cancelar entrega' : 'Cancelar corrida'} onPress={cancel} loading={cancelling} variant="link" />
       ) : null}
 
       {inRide ? <SosButton ride={ride} role="passenger" /> : null}
@@ -238,7 +301,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
         rated ? (
           <Text style={styles.line}>Obrigado!</Text>
         ) : (
-          <RatingPrompt rideId={ride.id} question="Como foi o motorista?" onDone={finishRating} />
+          <RatingPrompt rideId={ride.id} question={delivery ? 'Como foi o entregador?' : 'Como foi o motorista?'} onDone={finishRating} />
         )
       ) : null}
     </Screen>
@@ -281,6 +344,13 @@ const styles = StyleSheet.create({
   line: {
     fontSize: fontSize.body,
     color: colors.text,
+  },
+  code: {
+    fontSize: 44,
+    fontWeight: '800',
+    letterSpacing: 8,
+    color: colors.text,
+    textAlign: 'center',
   },
   price: {
     fontSize: fontSize.body + 4,

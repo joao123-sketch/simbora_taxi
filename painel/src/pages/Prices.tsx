@@ -33,8 +33,23 @@ type Settings = {
   step_every_minutes: number;
   share_per_step: number;
   card_surcharge: number;
+  delivery_discount: number;
 };
-type Overview = { cities: City[]; fares: Fare[]; intercity: Intercity[]; settings: Settings };
+type DeliverySize = {
+  size: 'P' | 'M' | 'G';
+  name: string;
+  weight: string;
+  example: string;
+  allow_moto: boolean;
+  allow_car: boolean;
+};
+type Overview = {
+  cities: City[];
+  fares: Fare[];
+  intercity: Intercity[];
+  delivery_sizes: DeliverySize[];
+  settings: Settings;
+};
 
 export function PricesPage() {
   const [data, setData] = useState<Overview | null>(null);
@@ -67,6 +82,7 @@ export function PricesPage() {
       {data ? (
         <>
           <SettingsCard settings={data.settings} onSaved={load} />
+          <DeliverySizesCard sizes={data.delivery_sizes ?? []} onSaved={load} />
           <FaresCard data={data} onSaved={load} />
           <IntercityCard data={data} onSaved={load} />
         </>
@@ -82,6 +98,7 @@ export function PricesPage() {
 function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () => Promise<void> }) {
   const percent = (v: number) => toField(Math.round(v * 1000) / 10);
   const [card, setCard] = useState(percent(settings.card_surcharge));
+  const [deliveryDiscount, setDeliveryDiscount] = useState(percent(settings.delivery_discount));
   const [locked, setLocked] = useState(settings.locked);
   const [lockedFactor, setLockedFactor] = useState(toField(settings.locked_factor));
   const [stepSize, setStepSize] = useState(percent(settings.step_size));
@@ -101,6 +118,7 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
   async function save() {
     const numbers = {
       card_surcharge: parseDecimal(card),
+      delivery_discount: parseDecimal(deliveryDiscount),
       locked_factor: parseDecimal(lockedFactor),
       step_size: parseDecimal(stepSize),
       max_step: parseDecimal(maxStep),
@@ -121,6 +139,7 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
         locked,
         locked_factor: numbers.locked_factor,
         card_surcharge: numbers.card_surcharge! / 100,
+        delivery_discount: numbers.delivery_discount! / 100,
         step_size: numbers.step_size! / 100,
         max_step: numbers.max_step,
         window_minutes: numbers.window_minutes,
@@ -142,7 +161,7 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
   return (
     <section className="card">
       <div>
-        <h2>Taxa do cartão e preço dinâmico</h2>
+        <h2>Taxa do cartão, entrega e preço dinâmico</h2>
         <p className="hint">
           O preço sobe em degraus só quando faltam carros: se pelo menos o mínimo de pedidos esperou mais que o
           tempo de "pedido lento", o fator sobe um degrau. Nunca há desconto.
@@ -150,6 +169,7 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
       </div>
       <div className="grid">
         <Field label="Taxa do cartão (%)" value={card} onChange={setCard} />
+        <Field label="Desconto da entrega (%)" value={deliveryDiscount} onChange={setDeliveryDiscount} />
         <Field label="Tamanho de cada degrau (%)" value={stepSize} onChange={setStepSize} />
         <Field label="Número máximo de degraus" value={maxStep} onChange={setMaxStep} />
         <Field label="Pedido é lento depois de (segundos)" value={slowSec} onChange={setSlowSec} />
@@ -175,6 +195,94 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
         </button>
       </div>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tamanhos de pacote da entrega
+// ---------------------------------------------------------------------------
+
+function DeliverySizesCard({ sizes, onSaved }: { sizes: DeliverySize[]; onSaved: () => Promise<void> }) {
+  return (
+    <section className="card">
+      <div>
+        <h2>Tamanhos de pacote (entrega)</h2>
+        <p className="hint">
+          O nome, a faixa de peso e o exemplo aparecem para quem pede a entrega e para o motorista. Marque quais
+          veículos levam cada tamanho. O desconto da entrega fica na configuração de preços acima.
+        </p>
+      </div>
+      {sizes.length === 0 ? <p className="hint">Os tamanhos aparecem depois que o banco for atualizado.</p> : null}
+      {sizes.map((size) => (
+        <SizeRow key={size.size} size={size} onSaved={onSaved} />
+      ))}
+    </section>
+  );
+}
+
+function SizeRow({ size, onSaved }: { size: DeliverySize; onSaved: () => Promise<void> }) {
+  const [name, setName] = useState(size.name);
+  const [weight, setWeight] = useState(size.weight);
+  const [example, setExample] = useState(size.example);
+  const [moto, setMoto] = useState(size.allow_moto);
+  const [car, setCar] = useState(size.allow_car);
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    setMsg(null);
+    const { error } = await supabase.rpc('staff_set_delivery_size', {
+      p_size: size.size,
+      p_name: name,
+      p_weight: weight,
+      p_example: example,
+      p_allow_moto: moto,
+      p_allow_car: car,
+    });
+    setBusy(false);
+    if (error) {
+      setMsg({ kind: 'error', text: friendlyError(error) });
+      return;
+    }
+    setMsg({ kind: 'ok', text: 'Tamanho salvo.' });
+    await onSaved();
+  }
+
+  return (
+    <details open>
+      <summary>
+        Tamanho {size.size}: {size.name}
+      </summary>
+      <div className="grid">
+        <label className="field">
+          Nome
+          <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <label className="field">
+          Faixa de peso
+          <input value={weight} maxLength={40} onChange={(e) => setWeight(e.target.value)} />
+        </label>
+        <label className="field">
+          Exemplo
+          <input value={example} maxLength={160} onChange={(e) => setExample(e.target.value)} />
+        </label>
+      </div>
+      <label className="check">
+        <input type="checkbox" checked={moto} onChange={(e) => setMoto(e.target.checked)} />
+        Moto leva
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={car} onChange={(e) => setCar(e.target.checked)} />
+        Carro leva
+      </label>
+      {msg ? <div className={`msg ${msg.kind}`}>{msg.text}</div> : null}
+      <div>
+        <button className="btn" disabled={busy || (!moto && !car)} onClick={save}>
+          Salvar tamanho {size.size}
+        </button>
+      </div>
+    </details>
   );
 }
 

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 type Props = {
   name: string;
   onRequestRide: () => void;
+  onRequestDelivery: () => void;
   onDriverMode: () => void;
   onOpenHistory: () => void;
   onOpenFavorites: () => void;
@@ -15,6 +16,7 @@ type Props = {
 export function HomeScreen({
   name,
   onRequestRide,
+  onRequestDelivery,
   onDriverMode,
   onOpenHistory,
   onOpenFavorites,
@@ -26,6 +28,7 @@ export function HomeScreen({
   return (
     <Screen title={`Oi, ${firstName}!`} subtitle="Pra onde a gente vai?">
       <BigButton label="Pedir corrida" onPress={onRequestRide} />
+      <BigButton label="Pedir entrega" onPress={onRequestDelivery} />
       <BigButton label="Minhas corridas" onPress={onOpenHistory} variant="link" />
       <BigButton label="Meus motoristas" onPress={onOpenFavorites} variant="link" />
       <BigButton label="Sou motorista" onPress={onDriverMode} variant="link" />

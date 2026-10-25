@@ -99,3 +99,9 @@ Para liberar alguém: crie o usuário em Authentication > Users e rode no SQL Ed
 insert into public.staff (user_id)
 select id from auth.users where email = 'equipe@exemplo.com';
 ```
+
+## Trajeto compartilhado, convite do motorista e entrega
+
+- **Trajeto compartilhado:** `create_ride_share` gera um código por corrida; a página `/t/CODIGO` (em `painel/src/public/SharedRide.tsx`, sem login) mostra o primeiro nome do motorista, o veículo, a placa, o status e a posição ao vivo, e vence quando a corrida termina. O SOS leva esse link na mensagem do WhatsApp. O endereço do site vem de `EXPO_PUBLIC_SHARE_BASE_URL` (padrão: o site do painel).
+- **Convite do motorista:** o QR e o link do motorista abrem `/m/CODIGO` (`DriverInvite.tsx`), que explica como baixar o app e usar o código. O link de download vem de `VITE_DOWNLOAD_URL` (painel) quando o app estiver nas lojas.
+- **Entrega:** "Pedir entrega" na tela inicial. Tamanhos P/M/G, com nome, faixa de peso, exemplo e veículos editáveis no painel (Preços > Tamanhos de pacote; textos de reserva em `app/src/lib/delivery.ts`), preço da tabela do veículo com o desconto de entrega (painel > Preços), quem pede paga direto ao motorista, e o motorista finaliza com o código de 4 dígitos de quem recebe (`complete_delivery`, sem limite de tentativas). Quem pede copia a mensagem pronta para o destinatário (link de acompanhamento, código e convite para o app).

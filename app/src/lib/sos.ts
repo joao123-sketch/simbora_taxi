@@ -2,6 +2,7 @@ import * as Location from 'expo-location';
 import { Linking } from 'react-native';
 
 import type { Ride } from './rides';
+import { createRideShare } from './share';
 
 export type SosRole = 'passenger' | 'driver';
 
@@ -31,7 +32,12 @@ async function currentPosition(ride: Ride): Promise<{ lat: number; lng: number; 
   return { lat: ride.origin_lat, lng: ride.origin_lng, approximate: true };
 }
 
-function sosMessage(ride: Ride, role: SosRole, where: { lat: number; lng: number; approximate: boolean }): string {
+function sosMessage(
+  ride: Ride,
+  role: SosRole,
+  where: { lat: number; lng: number; approximate: boolean },
+  liveLink: string | null,
+): string {
   const who = role === 'passenger' ? ride.passenger_name : ride.driver_name;
   const vehicle = [ride.vehicle_model, ride.vehicle_color].filter(Boolean).join(' ');
   const lines = [
@@ -45,6 +51,7 @@ function sosMessage(ride: Ride, role: SosRole, where: { lat: number; lng: number
     `De: ${ride.origin_address}`,
     `Para: ${ride.destination_address}`,
     `${where.approximate ? 'Local de partida (GPS indisponível)' : 'Local agora'}: https://www.google.com/maps?q=${where.lat},${where.lng}`,
+    ...(liveLink ? [`Trajeto ao vivo: ${liveLink}`] : []),
   ];
   return lines.join('\n');
 }
@@ -55,6 +62,8 @@ export async function openSosWhatsApp(ride: Ride, role: SosRole): Promise<void> 
   const number = sosNumber();
   if (!number) throw new Error('Número de ajuda não configurado');
   const where = await currentPosition(ride);
-  const text = encodeURIComponent(sosMessage(ride, role, where));
+  // Sem internet para gerar o link, o SOS sai assim mesmo, só sem o trajeto ao vivo.
+  const liveLink = await createRideShare(ride.id).catch(() => null);
+  const text = encodeURIComponent(sosMessage(ride, role, where, liveLink));
   await Linking.openURL(`https://wa.me/${number}?text=${text}`);
 }

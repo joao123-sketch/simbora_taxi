@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { BigButton } from '../../components/BigButton';
 import { Screen } from '../../components/Screen';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
+import { loadPackageOptions } from '../../lib/delivery';
 import { fetchMyDriver, setOnline, type Driver } from '../../lib/drivers';
 import { fetchActiveRide, type Ride } from '../../lib/rides';
 import { colors } from '../../theme';
@@ -46,6 +47,8 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
 
   useEffect(() => {
     load();
+    // Os nomes dos tamanhos de pacote (entrega) vêm do banco.
+    loadPackageOptions().catch(() => {});
   }, [load]);
 
   // O passageiro pode aceitar uma proposta deste motorista a qualquer momento;

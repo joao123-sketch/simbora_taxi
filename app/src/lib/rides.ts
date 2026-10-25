@@ -21,6 +21,17 @@ export type Place = Coord & {
   // Viagem para outra cidade com ida e volta: o motorista espera e traz de volta.
   roundTrip?: boolean;
   waitMinutes?: number;
+  // Entrega: o destino leva o pacote, o tamanho e quem recebe. Quando existe,
+  // o preço e o pedido usam as funções de entrega do banco.
+  delivery?: DeliveryInfo;
+};
+
+export type PackageSize = 'P' | 'M' | 'G';
+
+export type DeliveryInfo = {
+  size: PackageSize;
+  recipientName: string;
+  recipientNote: string;
 };
 
 export type Quote = {
@@ -44,6 +55,11 @@ export function priceFor(quote: Quote, method: PaymentMethod): number {
 export type Ride = {
   id: number;
   status: RideStatus;
+  // Ausentes até o banco ter a migration da entrega.
+  kind?: 'ride' | 'delivery';
+  package_size?: PackageSize | null;
+  recipient_name?: string | null;
+  recipient_note?: string | null;
   vehicle_type: VehicleType;
   payment_method: PaymentMethod;
   passenger_id: string;
@@ -166,6 +182,18 @@ function roundTripArgs(destination: Place): { p_round_trip?: boolean; p_wait_min
 }
 
 export async function quoteRide(cityId: number, origin: Place, destination: Place): Promise<Quote[]> {
+  if (destination.delivery) {
+    const { data, error } = await supabase.rpc('quote_delivery', {
+      p_city_id: cityId,
+      p_origin_lng: origin.lng,
+      p_origin_lat: origin.lat,
+      p_destination_lng: destination.lng,
+      p_destination_lat: destination.lat,
+      p_package_size: destination.delivery.size,
+    });
+    if (error) throw error;
+    return data as Quote[];
+  }
   const { data, error } = await supabase.rpc('quote_ride', {
     p_city_id: cityId,
     p_origin_lng: origin.lng,
@@ -188,6 +216,25 @@ export async function requestRide(params: {
   quoteId: string;
 }): Promise<number> {
   const { cityId, vehicleType, paymentMethod, origin, destination, quoteId } = params;
+  if (destination.delivery) {
+    const { data, error } = await supabase.rpc('request_delivery', {
+      p_city_id: cityId,
+      p_vehicle_type: vehicleType,
+      p_payment_method: paymentMethod,
+      p_origin_lng: origin.lng,
+      p_origin_lat: origin.lat,
+      p_origin_address: origin.address,
+      p_destination_lng: destination.lng,
+      p_destination_lat: destination.lat,
+      p_destination_address: destination.address,
+      p_quote_id: quoteId,
+      p_package_size: destination.delivery.size,
+      p_recipient_name: destination.delivery.recipientName,
+      p_recipient_note: destination.delivery.recipientNote || null,
+    });
+    if (error) throw error;
+    return data as number;
+  }
   const { data, error } = await supabase.rpc('request_ride', {
     p_city_id: cityId,
     p_vehicle_type: vehicleType,

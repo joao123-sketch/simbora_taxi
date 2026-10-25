@@ -296,3 +296,50 @@ details summary {
   font-weight: 600;
   color: var(--primary-dark);
 }
+
+/* Páginas públicas (trajeto compartilhado e convite do motorista) */
+.public-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.public-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.share-map {
+  height: 380px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.center {
+  text-align: center;
+}
+
+.invite-code {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-align: center;
+  margin: 8px 0;
+}
+
+.steps {
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+
+a.btn {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}

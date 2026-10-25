@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { BigButton } from '../components/BigButton';
 import { ChoiceCard } from '../components/ChoiceCard';
 import { Screen } from '../components/Screen';
+import { packageLabel } from '../lib/delivery';
 import {
   fetchPaymentOptions,
   formatMoney,
@@ -38,6 +39,7 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
   const [options, setOptions] = useState<PaymentMethod[]>(DEFAULT_OPTIONS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const delivery = destination.delivery;
 
   // Busca os preços de agora. Cada cotação vale 2 minutos; depois disso o
   // preço pode ter mudado e o passageiro precisa ver o novo valor.
@@ -109,13 +111,19 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
   }
 
   return (
-    <Screen title="Confira e chame" error={error}>
+    <Screen title={delivery ? 'Confira a entrega' : 'Confira e chame'} error={error}>
       <View style={styles.route}>
-        <Text style={styles.routeLine}>De: {origin.address}</Text>
+        <Text style={styles.routeLine}>{delivery ? 'Pegar em' : 'De'}: {origin.address}</Text>
         <Text style={styles.routeLine}>
-          Para: {destination.address}
+          {delivery ? 'Entregar em' : 'Para'}: {destination.address}
           {destination.dropoffPlace ? ` — ${destination.dropoffPlace}` : ''}
         </Text>
+        {delivery ? (
+          <>
+            <Text style={styles.routeLine}>Pacote: {packageLabel(delivery.size)}</Text>
+            <Text style={styles.routeLine}>Quem recebe: {delivery.recipientName}</Text>
+          </>
+        ) : null}
         {destination.roundTrip ? (
           <Text style={styles.routeLine}>{roundTripLabel({ round_trip: true, wait_minutes: destination.waitMinutes })}</Text>
         ) : null}
@@ -147,7 +155,11 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
               onPress={() => setPayment(method)}
             />
           ))}
-          <BigButton label={`Chamar ${vehicleLabel[vehicle].toLowerCase()}`} onPress={confirm} loading={loading} />
+          <BigButton
+            label={delivery ? `Pedir entrega de ${vehicleLabel[vehicle].toLowerCase()}` : `Chamar ${vehicleLabel[vehicle].toLowerCase()}`}
+            onPress={confirm}
+            loading={loading}
+          />
         </>
       ) : null}
 

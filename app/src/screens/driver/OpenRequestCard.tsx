@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BigButton } from '../../components/BigButton';
 import { BigInput } from '../../components/BigInput';
 import { ChoiceCard } from '../../components/ChoiceCard';
+import { isDelivery, packageLabel } from '../../lib/delivery';
 import { formatKm } from '../../lib/geo';
 import {
   ADVANCE_OPTIONS,
@@ -102,9 +103,23 @@ export function OpenRequestCard({
       <Text style={styles.price}>
         {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}
       </Text>
-      {awayKm !== null ? <Text style={styles.line}>Passageiro a {formatKm(awayKm)} de você</Text> : null}
-      <Text style={styles.line}>Buscar: {ride.origin_address}</Text>
-      <Text style={styles.line}>Levar: {ride.destination_address}</Text>
+      {awayKm !== null ? (
+        <Text style={styles.line}>
+          {isDelivery(ride) ? 'Coleta' : 'Passageiro'} a {formatKm(awayKm)} de você
+        </Text>
+      ) : null}
+      <Text style={styles.line}>{isDelivery(ride) ? 'Pegar' : 'Buscar'}: {ride.origin_address}</Text>
+      <Text style={styles.line}>{isDelivery(ride) ? 'Entregar' : 'Levar'}: {ride.destination_address}</Text>
+
+      {isDelivery(ride) ? (
+        <View style={styles.place}>
+          <Text style={styles.placeLabel}>Entrega</Text>
+          <Text style={styles.placeText}>{packageLabel(ride.package_size)}</Text>
+          <Text style={styles.line}>Quem recebe: {ride.recipient_name}</Text>
+          {ride.recipient_note ? <Text style={styles.line}>Recado: {ride.recipient_note}</Text> : null}
+          <Text style={styles.warning}>Você só leva o pacote, sem comprar nada. Para finalizar, peça o código a quem recebe.</Text>
+        </View>
+      ) : null}
 
       {roundTripLabel(ride) ? (
         <View style={styles.place}>

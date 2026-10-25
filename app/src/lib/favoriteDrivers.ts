@@ -1,4 +1,5 @@
 import type { VehicleType } from './rides';
+import { driverInviteUrl } from './share';
 import { supabase } from './supabase';
 
 // "Meu motorista": cada motorista tem um código curto (link e QR). Quem lê o
@@ -23,10 +24,8 @@ export type FrequentDriver = DriverCard & {
   is_favorite: boolean;
 };
 
-const LINK_PREFIX = 'simboracar://motorista/';
-
 export function driverLink(code: string): string {
-  return `${LINK_PREFIX}${code}`;
+  return driverInviteUrl(code);
 }
 
 export function driverShareMessage(code: string): string {

@@ -5,11 +5,20 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { BigButton } from '../components/BigButton';
 import type { Coord } from '../components/PinMap.types';
 import { Screen } from '../components/Screen';
+import { loadPackageOptions } from '../lib/delivery';
 import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
-import { fetchActiveRide, fetchCities, type City, type Place, type Ride } from '../lib/rides';
+import {
+  fetchActiveRide,
+  fetchCities,
+  type City,
+  type DeliveryInfo,
+  type Place,
+  type Ride,
+} from '../lib/rides';
 import { colors } from '../theme';
 import { CityDropoffScreen } from './CityDropoffScreen';
 import { ConfirmRideScreen } from './ConfirmRideScreen';
+import { DeliveryDetailsScreen } from './DeliveryDetailsScreen';
 import { DestinationScreen } from './DestinationScreen';
 import { DriverFlow } from './driver/DriverFlow';
 import { FavoriteDriversScreen } from './FavoriteDriversScreen';
@@ -26,6 +35,9 @@ type Step =
   | { kind: 'destination'; origin: Place }
   | { kind: 'destinationMap'; origin: Place }
   | { kind: 'cityDropoff'; origin: Place; city: City }
+  | { kind: 'deliveryOrigin' }
+  | { kind: 'deliveryDestination'; origin: Place }
+  | { kind: 'deliveryDetails'; origin: Place; destination: Place }
   | { kind: 'confirm'; origin: Place; destination: Place }
   | { kind: 'ride'; ride: Ride }
   | { kind: 'history' }
@@ -59,7 +71,21 @@ export function PassengerFlow({ userId, name }: Props) {
 
   useEffect(() => {
     load();
+    // Os nomes dos tamanhos de pacote (entrega) vêm do banco.
+    loadPackageOptions().catch(() => {});
   }, [load]);
+
+  async function startDelivery() {
+    setStep({ kind: 'deliveryOrigin' });
+    try {
+      const { granted } = await Location.requestForegroundPermissionsAsync();
+      if (!granted) return;
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setHere({ lat: position.coords.latitude, lng: position.coords.longitude });
+    } catch {
+      // Sem GPS a pessoa ainda pode marcar no mapa a partir do centro da cidade.
+    }
+  }
 
   async function startRequest() {
     setStep({ kind: 'origin' });
@@ -102,6 +128,7 @@ export function PassengerFlow({ userId, name }: Props) {
         <HomeScreen
           name={name}
           onRequestRide={startRequest}
+          onRequestDelivery={startDelivery}
           onDriverMode={() => setStep({ kind: 'driver' })}
           onOpenHistory={() => setStep({ kind: 'history' })}
           onOpenFavorites={() => setStep({ kind: 'favorites' })}
@@ -121,6 +148,52 @@ export function PassengerFlow({ userId, name }: Props) {
           fallbackAddress="Local marcado no mapa"
           onConfirm={(origin) => setStep({ kind: 'destination', origin })}
           onBack={goHome}
+        />
+      );
+
+    case 'deliveryOrigin':
+      return (
+        <MapPickScreen
+          title="Onde pegar o pacote?"
+          hint="O alfinete está onde você está. Arraste o mapa até o lugar da coleta."
+          withSearch
+          buttonLabel="Pegar aqui"
+          center={here ?? city}
+          city={city}
+          fallbackAddress="Local de coleta marcado no mapa"
+          onConfirm={(origin) => setStep({ kind: 'deliveryDestination', origin })}
+          onBack={goHome}
+        />
+      );
+
+    case 'deliveryDestination':
+      return (
+        <MapPickScreen
+          title="Onde entregar?"
+          hint="Escreva o endereço ou arraste o mapa até o alfinete ficar no lugar da entrega."
+          withSearch
+          awayFrom={step.origin}
+          buttonLabel="Entregar aqui"
+          center={step.origin}
+          city={city}
+          fallbackAddress="Local de entrega marcado no mapa"
+          onConfirm={(destination) => setStep({ kind: 'deliveryDetails', origin: step.origin, destination })}
+          onBack={() => setStep({ kind: 'deliveryOrigin' })}
+        />
+      );
+
+    case 'deliveryDetails':
+      return (
+        <DeliveryDetailsScreen
+          initial={step.destination.delivery}
+          onConfirm={(info: DeliveryInfo) =>
+            setStep({
+              kind: 'confirm',
+              origin: step.origin,
+              destination: { ...step.destination, delivery: info },
+            })
+          }
+          onBack={() => setStep({ kind: 'deliveryDestination', origin: step.origin })}
         />
       );
 
@@ -174,7 +247,11 @@ export function PassengerFlow({ userId, name }: Props) {
           origin={step.origin}
           destination={step.destination}
           onRequested={load}
-          onBack={() => setStep({ kind: 'destination', origin: step.origin })}
+          onBack={() =>
+            step.destination.delivery
+              ? setStep({ kind: 'deliveryDetails', origin: step.origin, destination: step.destination })
+              : setStep({ kind: 'destination', origin: step.origin })
+          }
         />
       );
 
