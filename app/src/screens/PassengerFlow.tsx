@@ -1,11 +1,12 @@
 import * as Location from 'expo-location';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import type { Coord } from '../components/PinMap.types';
 import { Screen } from '../components/Screen';
 import { loadPackageOptions } from '../lib/delivery';
+import { feeNeedsAttention, fetchFeeStatus } from '../lib/fees';
 import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
 import {
   fetchActiveRide,
@@ -57,13 +58,23 @@ export function PassengerFlow({ userId, name }: Props) {
   const [here, setHere] = useState<Coord | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestedPlace[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // A cobrança da mensalidade abre sozinha uma vez a cada vez que o app abre.
+  const feeNagged = useRef(false);
 
   const load = useCallback(async () => {
     setError(null);
     try {
       const [cityList, activeRide] = await Promise.all([fetchCities(), fetchActiveRide('passenger', userId)]);
       setCities(cityList);
-      setStep(activeRide ? { kind: 'ride', ride: activeRide } : { kind: 'home' });
+      if (activeRide) {
+        setStep({ kind: 'ride', ride: activeRide });
+      } else if (!feeNagged.current && feeNeedsAttention(await fetchFeeStatus().catch(() => null))) {
+        // Motorista com a mensalidade vencida: o app cobra logo ao abrir.
+        feeNagged.current = true;
+        setStep({ kind: 'driver' });
+      } else {
+        setStep({ kind: 'home' });
+      }
     } catch {
       setError('Sem conexão com o Simbora Car. Confira a internet.');
     }

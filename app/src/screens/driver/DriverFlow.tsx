@@ -6,6 +6,7 @@ import { Screen } from '../../components/Screen';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { loadPackageOptions } from '../../lib/delivery';
 import { fetchMyDriver, setOnline, type Driver } from '../../lib/drivers';
+import { feeNeedsAttention, fetchFeeStatus, nagText, type FeeStatus } from '../../lib/fees';
 import { fetchActiveRide, type Ride } from '../../lib/rides';
 import { colors } from '../../theme';
 import { HistoryScreen } from '../HistoryScreen';
@@ -15,6 +16,7 @@ import { MyQrScreen } from './MyQrScreen';
 import { PaymentSettingsScreen } from './PaymentSettingsScreen';
 import { DriverRideScreen } from './DriverRideScreen';
 import { DriverSignupScreen } from './DriverSignupScreen';
+import { FeeScreen } from './FeeScreen';
 
 type Props = {
   userId: string;
@@ -30,8 +32,26 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   const [editingPayments, setEditingPayments] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [fee, setFee] = useState<FeeStatus | null>(null);
+  const [showFee, setShowFee] = useState(false);
+  // Vencida há poucos dias, o motorista pode dispensar o aviso até abrir de novo.
+  const [feeSkipped, setFeeSkipped] = useState(false);
 
   const online = driver?.status === 'approved' && driver.is_online;
+  const feeLate = feeNeedsAttention(fee);
+
+  // Mensalidade vencida: o aviso volta a cada 5 minutos, mesmo que o motorista
+  // tenha dispensado, e a mensalidade é consultada de novo.
+  useEffect(() => {
+    if (!feeLate) return;
+    const timer = setInterval(() => {
+      setFeeSkipped(false);
+      fetchFeeStatus()
+        .then(setFee)
+        .catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [feeLate]);
   const { position, denied } = useDriverLocation(online);
 
   const load = useCallback(async () => {
@@ -39,6 +59,8 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     try {
       const me = await fetchMyDriver(userId);
       setRide(me?.status === 'approved' ? await fetchActiveRide('driver', userId) : null);
+      // A mensalidade não trava o carregamento: sem ela o motorista segue normal.
+      setFee(me?.status === 'approved' ? await fetchFeeStatus().catch(() => null) : null);
       setDriver(me);
     } catch {
       setError('Sem conexão com o Simbora Car. Confira a internet.');
@@ -95,6 +117,23 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     return <DriverRideScreen ride={ride} position={position} onFinished={load} />;
   }
 
+  if (fee && (showFee || (feeNeedsAttention(fee) && !feeSkipped))) {
+    const leave = () => {
+      setShowFee(false);
+      setFeeSkipped(true);
+    };
+    return (
+      <FeeScreen
+        userId={userId}
+        status={fee}
+        onChanged={load}
+        onSkip={fee.state === 'overdue' ? undefined : leave}
+        // Em atraso, voltar leva para o início: o motorista não recebe pedidos mesmo.
+        onBack={fee.state === 'overdue' && !showFee ? onExit : leave}
+      />
+    );
+  }
+
   if (showQr) {
     return <MyQrScreen onBack={() => setShowQr(false)} />;
   }
@@ -128,6 +167,8 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
       onCheckActive={checkActiveRide}
       onOpenHistory={() => setShowHistory(true)}
       onOpenQr={() => setShowQr(true)}
+      onOpenFee={() => setShowFee(true)}
+      feeNotice={fee && feeNeedsAttention(fee) ? nagText(fee) : null}
       onExit={onExit}
     />
   );

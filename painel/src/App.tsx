@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 
 import { configured, supabase } from './lib/supabase';
 import { DriversPage } from './pages/Drivers';
+import { FeesPage } from './pages/Fees';
 import { LoginPage } from './pages/Login';
 import { PricesPage } from './pages/Prices';
 
-type Tab = 'drivers' | 'prices';
+type Tab = 'drivers' | 'fees' | 'prices';
 
 export function App() {
   // undefined = ainda descobrindo se há alguém logado.
@@ -79,6 +80,9 @@ export function App() {
           <button className={`tab ${tab === 'drivers' ? 'active' : ''}`} onClick={() => setTab('drivers')}>
             Motoristas
           </button>
+          <button className={`tab ${tab === 'fees' ? 'active' : ''}`} onClick={() => setTab('fees')}>
+            Mensalidades
+          </button>
           <button className={`tab ${tab === 'prices' ? 'active' : ''}`} onClick={() => setTab('prices')}>
             Preços
           </button>
@@ -88,7 +92,7 @@ export function App() {
           Sair
         </button>
       </header>
-      <main className="page">{tab === 'drivers' ? <DriversPage /> : <PricesPage />}</main>
+      <main className="page">{tab === 'drivers' ? <DriversPage /> : tab === 'fees' ? <FeesPage /> : <PricesPage />}</main>
     </>
   );
 }

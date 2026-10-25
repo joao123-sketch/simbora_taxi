@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
 import type { Coord } from '../../components/PinMap.types';
@@ -35,6 +35,9 @@ type Props = {
   onCheckActive: () => void;
   onOpenHistory: () => void;
   onOpenQr: () => void;
+  onOpenFee: () => void;
+  // Aviso vermelho da mensalidade vencida, sempre no alto da tela.
+  feeNotice: string | null;
   onExit: () => void;
 };
 
@@ -53,6 +56,8 @@ export function DriverHomeScreen({
   onCheckActive,
   onOpenHistory,
   onOpenQr,
+  onOpenFee,
+  feeNotice,
   onExit,
 }: Props) {
   const [requests, setRequests] = useState<Ride[]>([]);
@@ -158,6 +163,12 @@ export function DriverHomeScreen({
       subtitle={online ? 'Os chamados aparecem aqui.' : 'Fique online para receber chamados.'}
       error={error}
     >
+      {feeNotice ? (
+        <View style={styles.feeNotice}>
+          <Text style={styles.feeNoticeText}>{feeNotice}</Text>
+          <BigButton label="Pagar agora" onPress={onOpenFee} />
+        </View>
+      ) : null}
       {online && locationDenied ? (
         <Text style={styles.warning}>Libere a localização para os passageiros te acharem.</Text>
       ) : null}
@@ -185,12 +196,26 @@ export function DriverHomeScreen({
 
       <BigButton label="Minhas corridas" onPress={onOpenHistory} variant="link" />
       <BigButton label="Meu QR para clientes" onPress={onOpenQr} variant="link" />
+      <BigButton label="Minha mensalidade" onPress={onOpenFee} variant="link" />
       <BigButton label="Voltar ao início" onPress={onExit} variant="link" />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  feeNotice: {
+    gap: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: colors.primary,
+    backgroundColor: '#FDECEC',
+  },
+  feeNoticeText: {
+    fontSize: fontSize.body + 2,
+    fontWeight: '800',
+    color: colors.primaryDark,
+  },
   warning: {
     fontSize: fontSize.body - 2,
     fontWeight: '700',
