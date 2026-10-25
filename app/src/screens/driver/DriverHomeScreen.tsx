@@ -18,6 +18,7 @@ import {
   type MyProposal,
   type Ride,
 } from '../../lib/rides';
+import { acceptScheduled, fetchOpenScheduled, scheduledToRide, type OpenScheduled } from '../../lib/scheduling';
 import { colors, fontSize } from '../../theme';
 import { OpenRequestCard } from './OpenRequestCard';
 
@@ -57,6 +58,9 @@ export function DriverHomeScreen({
   onExit,
 }: Props) {
   const [requests, setRequests] = useState<Ride[]>([]);
+  // Viagens entre cidades marcadas para outro dia: aparecem aqui como um chamado comum.
+  const [scheduledOpen, setScheduledOpen] = useState<OpenScheduled[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Record<number, MyProposal>>({});
   const [toggling, setToggling] = useState(false);
   const [accepting, setAccepting] = useState<number | null>(null);
@@ -69,6 +73,9 @@ export function DriverHomeScreen({
       .then(() => fetchOpenRequests())
       .then(setRequests)
       .catch(() => {});
+    fetchOpenScheduled()
+      .then(setScheduledOpen)
+      .catch(() => {});
     fetchMyProposals()
       .then((list) => setProposals(Object.fromEntries(list.map((p) => [p.ride_id, p]))))
       .catch(() => {});
@@ -80,6 +87,7 @@ export function DriverHomeScreen({
   useEffect(() => {
     if (!online) {
       setRequests([]);
+      setScheduledOpen([]);
       return;
     }
     refresh();
@@ -119,6 +127,21 @@ export function DriverHomeScreen({
     }
   }
 
+  // Aceitar uma viagem agendada: ela não vira corrida agora, fica na lista de viagens agendadas.
+  async function acceptScheduledTrip(rideId: number, advance: number | null) {
+    setAccepting(rideId);
+    setError(null);
+    try {
+      await acceptScheduled(rideId, advance ?? 0);
+      setNotice('Viagem agendada aceita! Ela fica na sua lista de Viagens agendadas.');
+    } catch (e) {
+      setError((e as { message?: string }).message || 'Essa viagem não está mais livre.');
+    } finally {
+      setAccepting(null);
+      refresh();
+    }
+  }
+
   async function propose(rideId: number, extra: number, advance: number | null) {
     setError(null);
     try {
@@ -152,6 +175,7 @@ export function DriverHomeScreen({
 
   // Pedido cuja proposta o passageiro recusou some da lista deste motorista.
   const visible = requests.filter((ride) => proposals[ride.id]?.status !== 'declined');
+  const visibleScheduled = scheduledOpen.filter((s) => proposals[s.ride_id]?.status !== 'declined');
 
   return (
     <Screen
@@ -159,6 +183,11 @@ export function DriverHomeScreen({
       subtitle={online ? 'Os chamados aparecem aqui.' : 'Fique online para receber chamados.'}
       error={error}
     >
+      {notice ? (
+        <Text accessibilityRole="alert" style={styles.notice}>
+          {notice}
+        </Text>
+      ) : null}
       {feeNotice ? (
         <View style={styles.feeNotice}>
           <Text style={styles.feeNoticeText}>{feeNotice}</Text>
@@ -171,7 +200,9 @@ export function DriverHomeScreen({
 
       <BigButton label={online ? 'Ficar offline' : 'Ficar online'} onPress={toggle} loading={toggling} />
 
-      {online && visible.length === 0 ? <Text style={styles.empty}>Nenhum chamado agora.</Text> : null}
+      {online && visible.length === 0 && visibleScheduled.length === 0 ? (
+        <Text style={styles.empty}>Nenhum chamado agora.</Text>
+      ) : null}
 
       {visible.map((ride) => (
         <OpenRequestCard
@@ -187,6 +218,20 @@ export function DriverHomeScreen({
         />
       ))}
 
+      {visibleScheduled.map((s) => (
+        <OpenRequestCard
+          key={`agendada-${s.ride_id}`}
+          ride={scheduledToRide(s)}
+          awayKm={null}
+          proposal={proposals[s.ride_id]}
+          accepting={accepting === s.ride_id}
+          onAccept={(advance) => acceptScheduledTrip(s.ride_id, advance)}
+          onPropose={(extra, advance) => propose(s.ride_id, extra, advance)}
+          onWithdraw={() => withdraw(s.ride_id)}
+          onDecline={async () => {}}
+        />
+      ))}
+
       <BigButton label="Meu QR para clientes" onPress={onOpenQr} variant="secondary" />
       <BigButton label="Viagens agendadas" onPress={onOpenScheduled} variant="secondary" />
       <BigButton label="Configurações" onPress={onOpenSettings} variant="secondary" />
@@ -196,6 +241,11 @@ export function DriverHomeScreen({
 }
 
 const styles = StyleSheet.create({
+  notice: {
+    fontSize: fontSize.body,
+    fontWeight: '700',
+    color: '#1B6E2D',
+  },
   feeNotice: {
     gap: 8,
     padding: 14,

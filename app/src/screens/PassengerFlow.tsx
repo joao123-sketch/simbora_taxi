@@ -15,6 +15,7 @@ import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
 import {
   fetchActiveRide,
   fetchCities,
+  fetchRideProposals,
   type City,
   type DeliveryInfo,
   type Place,
@@ -48,7 +49,7 @@ type Step =
   | { kind: 'confirm'; origin: Place; destination: Place }
   | { kind: 'ride'; ride: Ride }
   | { kind: 'settings' }
-  | { kind: 'scheduledList' }
+  | { kind: 'scheduledList'; created?: boolean }
   | { kind: 'history' }
   // from: de onde a pessoa veio, para o Voltar levar de volta (início ou configurações).
   | { kind: 'favorites'; code?: string; from?: 'home' }
@@ -71,6 +72,8 @@ export function PassengerFlow({ userId, name }: Props) {
   const [isDriver, setIsDriver] = useState(false);
   // Viagens agendadas da pessoa (para o cartão do início e a lista).
   const [scheduled, setScheduled] = useState<Ride[]>([]);
+  // Propostas de motoristas esperando resposta, por viagem agendada.
+  const [proposalCounts, setProposalCounts] = useState<Record<number, number>>({});
   // A cobrança da mensalidade abre sozinha uma vez a cada vez que o app abre.
   const feeNagged = useRef(false);
   // O link do convite de um motorista (aberto com o app fechado ou aberto).
@@ -102,7 +105,18 @@ export function PassengerFlow({ userId, name }: Props) {
       expireScheduled()
         .catch(() => {})
         .then(() => fetchMyScheduled('passenger', userId))
-        .then(setScheduled)
+        .then(async (list) => {
+          setScheduled(list);
+          const counts: Record<number, number> = {};
+          await Promise.all(
+            list
+              .filter((r) => r.status === 'requested')
+              .map(async (r) => {
+                counts[r.id] = (await fetchRideProposals(r.id).catch(() => [])).length;
+              }),
+          );
+          setProposalCounts(counts);
+        })
         .catch(() => {});
       if (activeRide) {
         setStep({ kind: 'ride', ride: activeRide });
@@ -179,6 +193,7 @@ export function PassengerFlow({ userId, name }: Props) {
           name={name}
           isDriver={isDriver}
           scheduled={scheduled}
+          proposalTotal={Object.values(proposalCounts).reduce((sum, n) => sum + n, 0)}
           onOpenScheduled={() => setStep({ kind: 'scheduledList' })}
           onRequestRide={startRequest}
           onRequestDelivery={startDelivery}
@@ -300,7 +315,7 @@ export function PassengerFlow({ userId, name }: Props) {
           onRequested={async () => {
             await load();
             // Viagem agendada não abre a tela de corrida: vai para a lista de agendadas.
-            if (step.destination.scheduledFor) setStep({ kind: 'scheduledList' });
+            if (step.destination.scheduledFor) setStep({ kind: 'scheduledList', created: true });
           }}
           onBack={() =>
             step.destination.delivery
@@ -314,6 +329,8 @@ export function PassengerFlow({ userId, name }: Props) {
       return (
         <ScheduledListScreen
           rides={scheduled}
+          proposalCounts={proposalCounts}
+          justCreated={step.created}
           onOpen={(ride) => setStep({ kind: 'ride', ride })}
           onBack={goHome}
         />

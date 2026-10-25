@@ -130,3 +130,7 @@ Aba **Relatórios** do painel (só leitura, nada aparece para o motorista):
 ## Uma conta, um celular
 
 Quem entra num celular novo "toma" a conta (`claim_session`, `app/src/lib/sessionGuard.ts`): o celular antigo confere a cada 20 segundos (e ao voltar do segundo plano) se ainda é o válido e, se não for, sai sozinho com o aviso. O banco também recusa as gravações do celular antigo (triggers `*_guard_session` em corridas, mensagens, propostas, posições e "online"). Conta com `profiles.multi_session = true` fica fora da regra (contas de teste); a equipe do painel também. Se rodar o SQL no SQL Editor em vez de `db push`, marque a migration como aplicada: `npx supabase migration repair --status applied 20261025050000`.
+
+## Painel: Cadastrados e travar / destravar
+
+A aba **Cadastrados** lista todos os motoristas (`staff_driver_overview`) com telefone, veículo, cidade, corridas (total e 30 dias), nota, última posição e mensalidade, com busca e filtro (aprovados, online agora, aguardando, travados, bloqueados). **Travar conta** (`staff_lock_driver`) suspende o motorista com um motivo que só a equipe vê, deixa ele offline e solta as viagens agendadas que ele tinha (ainda longe da hora); **Destravar** (`staff_unlock_driver`) devolve a conta aprovada, ou "aguardando aprovação" se ele nunca foi aprovado. A aba **Motoristas** (aprovação com checklist) usa as mesmas funções.

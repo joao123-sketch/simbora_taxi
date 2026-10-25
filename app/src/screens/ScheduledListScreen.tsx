@@ -8,16 +8,26 @@ import { colors, fontSize } from '../theme';
 
 type Props = {
   rides: Ride[];
+  // Quantas propostas de motoristas cada viagem tem esperando resposta.
+  proposalCounts: Record<number, number>;
+  // Acabou de lançar uma viagem: avisa que pode fechar o app.
+  justCreated?: boolean;
   onOpen: (ride: Ride) => void;
   onBack: () => void;
 };
 
 // As viagens agendadas do passageiro. Tocar abre a viagem (propostas, cancelar).
-export function ScheduledListScreen({ rides, onOpen, onBack }: Props) {
+export function ScheduledListScreen({ rides, proposalCounts, justCreated, onOpen, onBack }: Props) {
   return (
     <Screen
       title="Viagens agendadas"
-      subtitle={rides.length === 0 ? 'Você não tem viagem agendada.' : undefined}
+      subtitle={
+        justCreated
+          ? 'Viagem lançada! Pode fechar o app: ela fica aqui até um motorista aceitar ou fazer uma proposta. Quando voltar, é só abrir.'
+          : rides.length === 0
+            ? 'Você não tem viagem agendada.'
+            : undefined
+      }
       footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
     >
       {rides.map((ride) => (
@@ -31,7 +41,11 @@ export function ScheduledListScreen({ rides, onOpen, onBack }: Props) {
           <Text style={styles.when}>{formatScheduled(ride.scheduled_for)}</Text>
           <Text style={styles.line}>Para: {ride.destination_address}</Text>
           <Text style={styles.line}>
-            {ride.status === 'requested' ? 'Procurando motorista' : `Motorista: ${ride.driver_name ?? ''}`}
+            {ride.status === 'requested'
+              ? proposalCounts[ride.id] > 0
+                ? `${proposalCounts[ride.id]} proposta${proposalCounts[ride.id] > 1 ? 's' : ''} de motorista esperando você`
+                : 'Procurando motorista'
+              : `Motorista: ${ride.driver_name ?? ''}`}
           </Text>
           <Text style={styles.price}>{formatMoney(ride.estimated_price)}</Text>
         </Pressable>

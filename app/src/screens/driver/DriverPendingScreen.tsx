@@ -17,7 +17,7 @@ const messages: Record<Props['status'], { title: string; subtitle: string }> = {
       'A equipe do Simbora Car vai te chamar para uma conversa. Leve CNH, documento do veículo e comprovante de residência.',
   },
   suspended: {
-    title: 'Cadastro suspenso',
+    title: 'Conta travada',
     subtitle: 'Fale com a equipe do Simbora Car para entender o que aconteceu.',
   },
   blocked: {

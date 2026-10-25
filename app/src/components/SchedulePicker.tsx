@@ -136,8 +136,8 @@ const styles = StyleSheet.create({
   daySelected: { borderColor: colors.primary, backgroundColor: '#FDECEC' },
   dayText: { fontSize: fontSize.body, fontWeight: '700', color: colors.text },
   dayTextSelected: { color: colors.primaryDark },
-  time: { flexDirection: 'row', gap: 16 },
-  stepper: { flex: 1, gap: 6 },
+  time: { gap: 14 },
+  stepper: { gap: 6 },
   stepLabel: { fontSize: fontSize.body - 2, color: colors.textMuted },
   stepRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   stepButton: {

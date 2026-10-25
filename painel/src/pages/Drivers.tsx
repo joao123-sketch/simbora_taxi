@@ -51,7 +51,7 @@ type CheckKey =
 const statusLabel: Record<Status, string> = {
   pending: 'Aguardando aprovação',
   approved: 'Aprovado',
-  suspended: 'Suspenso',
+  suspended: 'Travado',
   blocked: 'Bloqueado',
 };
 
@@ -73,7 +73,7 @@ const MOTO_CHECKS: { key: CheckKey; label: string }[] = [
 const FILTERS: { value: Status | 'all'; label: string }[] = [
   { value: 'pending', label: 'Aguardando aprovação' },
   { value: 'approved', label: 'Aprovados' },
-  { value: 'suspended', label: 'Suspensos' },
+  { value: 'suspended', label: 'Travados' },
   { value: 'blocked', label: 'Bloqueados' },
   { value: 'all', label: 'Todos' },
 ];
@@ -175,10 +175,14 @@ function DriverCard({ driver, onChanged }: { driver: Driver; onChanged: () => Pr
     setBusy(true);
     setError(null);
     setDone(null);
-    const { error: rpcError } = await supabase.rpc('staff_set_driver_status', {
-      p_driver: driver.driver_id,
-      p_status: status,
-    });
+    // Travar e destravar passam pelas funções próprias (guardam o motivo e soltam as viagens agendadas).
+    const lock = status === 'suspended';
+    const unlock = status === 'approved' && driver.status !== 'pending';
+    const { error: rpcError } = lock
+      ? await supabase.rpc('staff_lock_driver', { p_driver: driver.driver_id })
+      : unlock
+        ? await supabase.rpc('staff_unlock_driver', { p_driver: driver.driver_id })
+        : await supabase.rpc('staff_set_driver_status', { p_driver: driver.driver_id, p_status: status });
     setBusy(false);
     if (rpcError) {
       // A trava do banco explica o que falta quando a aprovação é recusada.
@@ -276,18 +280,18 @@ function DriverCard({ driver, onChanged }: { driver: Driver; onChanged: () => Pr
         {driver.status === 'pending' && !complete ? (
           <span className="hint">Falta marcar tudo no checklist para aprovar.</span>
         ) : null}
-        {driver.status === 'suspended' ? (
+        {driver.status === 'suspended' || driver.status === 'blocked' ? (
           <button className="btn" disabled={busy} onClick={() => setStatus('approved')}>
-            Reativar
+            Destravar
           </button>
         ) : null}
         {driver.status === 'approved' ? (
           <button
             className="btn secondary"
             disabled={busy}
-            onClick={() => setStatus('suspended', `Suspender ${name}? Ele para de receber corridas.`)}
+            onClick={() => setStatus('suspended', `Travar ${name}? Ele para de receber corridas.`)}
           >
-            Suspender
+            Travar
           </button>
         ) : null}
         {driver.status !== 'blocked' ? (

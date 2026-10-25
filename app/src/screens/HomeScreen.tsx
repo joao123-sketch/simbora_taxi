@@ -12,6 +12,8 @@ type Props = {
   isDriver: boolean;
   // Viagens agendadas da pessoa (a mais próxima primeiro).
   scheduled: Ride[];
+  // Propostas de motoristas esperando resposta nas viagens agendadas.
+  proposalTotal: number;
   onOpenScheduled: () => void;
   onRequestRide: () => void;
   onRequestDelivery: () => void;
@@ -26,6 +28,7 @@ export function HomeScreen({
   name,
   isDriver,
   scheduled,
+  proposalTotal,
   onOpenScheduled,
   onRequestRide,
   onRequestDelivery,
@@ -55,6 +58,11 @@ export function HomeScreen({
           <Text style={styles.scheduledText}>
             {scheduled.length === 1 ? 'Viagem agendada' : `${scheduled.length} viagens agendadas`}: {formatScheduled(scheduled[0].scheduled_for)}
           </Text>
+          {proposalTotal > 0 ? (
+            <Text style={styles.scheduledText}>
+              {proposalTotal === 1 ? 'Um motorista fez uma proposta' : `${proposalTotal} propostas de motoristas`} esperando você.
+            </Text>
+          ) : null}
           <BigButton label="Ver viagens agendadas" onPress={onOpenScheduled} variant="link" />
         </View>
       ) : null}
