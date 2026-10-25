@@ -60,6 +60,11 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'blocked', label: 'Bloqueados' },
 ];
 
+// A exclusão de conta deixa o nome "Conta excluída" e tira o telefone.
+function isDeleted(r: Row): boolean {
+  return r.full_name === 'Conta excluída' && !r.phone;
+}
+
 function normalize(text: string): string {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
@@ -77,6 +82,7 @@ export function RegisteredPage() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  const [showDeleted, setShowDeleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -97,6 +103,7 @@ export function RegisteredPage() {
   const shown = useMemo(() => {
     const q = normalize(search.trim());
     return (rows ?? []).filter((r) => {
+      if (!showDeleted && isDeleted(r)) return false;
       if (filter === 'online' ? !(r.is_online && r.status === 'approved') : filter !== 'all' && r.status !== filter) {
         return false;
       }
@@ -106,11 +113,13 @@ export function RegisteredPage() {
       );
       return haystack.includes(q) || (r.cpf ?? '').includes(q.replace(/\D/g, '') || '§');
     });
-  }, [rows, filter, search]);
+  }, [rows, filter, search, showDeleted]);
 
   const counts = useMemo(() => {
-    const all = rows ?? [];
+    const deleted = (rows ?? []).filter(isDeleted).length;
+    const all = (rows ?? []).filter((r) => !isDeleted(r));
     return {
+      deleted,
       total: all.length,
       approved: all.filter((r) => r.status === 'approved').length,
       online: all.filter((r) => r.is_online && r.status === 'approved').length,
@@ -124,7 +133,7 @@ export function RegisteredPage() {
         <h1>Motoristas cadastrados</h1>
         <p className="hint">
           {rows
-            ? `${counts.total} cadastrados · ${counts.approved} aprovados · ${counts.online} online agora · ${counts.locked} travados ou bloqueados`
+            ? `${counts.total} cadastrados · ${counts.approved} aprovados · ${counts.online} online agora · ${counts.locked} travados ou bloqueados${counts.deleted ? ` · ${counts.deleted} contas excluídas (ocultas)` : ''}`
             : 'Todos os motoristas, com as informações e a opção de travar ou destravar a conta.'}
         </p>
       </div>
@@ -146,6 +155,13 @@ export function RegisteredPage() {
         </label>
       </div>
 
+      {counts.deleted > 0 ? (
+        <label className="check">
+          <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
+          Mostrar também as contas excluídas pelos próprios usuários ({counts.deleted})
+        </label>
+      ) : null}
+
       {error ? <div className="msg error">{error}</div> : null}
       {rows === null && !error ? <p className="hint">Carregando...</p> : null}
       {rows && shown.length === 0 && !error ? <p className="hint">Nenhum motorista nessa busca.</p> : null}
@@ -165,6 +181,7 @@ function DriverCard({ row, onChanged }: { row: Row; onChanged: () => Promise<voi
 
   const name = row.full_name ?? 'Sem nome';
   const locked = row.status === 'suspended' || row.status === 'blocked';
+  const deleted = isDeleted(row);
 
   async function lock() {
     setBusy(true);
@@ -261,7 +278,9 @@ function DriverCard({ row, onChanged }: { row: Row; onChanged: () => Promise<voi
 
       {msg ? <div className={`msg ${msg.kind}`}>{msg.text}</div> : null}
 
-      {asking ? (
+      {deleted ? (
+        <p className="hint">Conta excluída pelo próprio usuário: os dados pessoais foram apagados e não dá para travar nem destravar.</p>
+      ) : asking ? (
         <>
           <label className="field">
             Motivo da trava (só a equipe vê)

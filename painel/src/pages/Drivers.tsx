@@ -178,11 +178,18 @@ function DriverCard({ driver, onChanged }: { driver: Driver; onChanged: () => Pr
     // Travar e destravar passam pelas funções próprias (guardam o motivo e soltam as viagens agendadas).
     const lock = status === 'suspended';
     const unlock = status === 'approved' && driver.status !== 'pending';
-    const { error: rpcError } = lock
+    let { error: rpcError } = lock
       ? await supabase.rpc('staff_lock_driver', { p_driver: driver.driver_id })
       : unlock
         ? await supabase.rpc('staff_unlock_driver', { p_driver: driver.driver_id })
         : await supabase.rpc('staff_set_driver_status', { p_driver: driver.driver_id, p_status: status });
+    // Banco sem as funções novas de travar e destravar (SQL ainda não aplicado): usa a troca de situação simples.
+    if ((lock || unlock) && rpcError?.code === 'PGRST202') {
+      ({ error: rpcError } = await supabase.rpc('staff_set_driver_status', {
+        p_driver: driver.driver_id,
+        p_status: status,
+      }));
+    }
     setBusy(false);
     if (rpcError) {
       // A trava do banco explica o que falta quando a aprovação é recusada.
