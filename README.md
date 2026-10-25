@@ -112,3 +112,11 @@ select id from auth.users where email = 'equipe@exemplo.com';
 - **Estado (`private.fee_state`):** `ok`, `pending` (mês aberto, antes do vencimento), `due` (já passou do vencimento: a cobrança insistente começa no primeiro dia de atraso, mas ele ainda recebe pedidos por 5 dias) e `overdue` (passou da tolerância). Em `overdue` o motorista não fica online nem recebe pedidos (`dispatch_ride`, `can_see_offer`, `set_driver_online`).
 - **No app:** com mensalidade vencida o app cobra ao abrir (a tela de pagamento aparece sozinha), mostra um aviso vermelho no início do modo motorista e volta a cobrar a cada 5 minutos (em atraso não dá para dispensar). O motorista paga, anexa o comprovante (bucket privado `fee-receipts`, pasta do próprio motorista) e toca em "Já paguei". Quando o mês acaba, "Continuar" abre o próximo (`continue_contract`).
 - **No painel:** a equipe vê quem deve, abre o comprovante e confirma o pagamento (`staff_mark_fee_paid`).
+
+## Relatórios da equipe
+
+Aba **Relatórios** do painel (só leitura, nada aparece para o motorista):
+
+- **Alerta do mês 3 em diante** (`staff_month3_alerts`): motorista na mensalidade padrão com menos de 10 corridas no mês pede conversa; mês em andamento mostra o ritmo.
+- **Fuga** (`staff_fuga_report`): corridas dos últimos 30 dias contra os 30 anteriores, horas online, mensalidade e custo por corrida; marca "muito online com poucas corridas" (20 h ou mais e 3 corridas ou menos) e queda de mais da metade; lista duplas passageiro e motorista que andavam juntas e pararam. Os limites ficam nas funções `private.fuga_*` e `private.month3_min_rides`.
+- **Reavaliação semestral** (`staff_review_list`, `staff_register_review`): quem vence em 30 dias ou já venceu; registrar a reavaliação marca hoje e a próxima vem 6 meses depois.

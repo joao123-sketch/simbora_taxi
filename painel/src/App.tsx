@@ -6,8 +6,9 @@ import { DriversPage } from './pages/Drivers';
 import { FeesPage } from './pages/Fees';
 import { LoginPage } from './pages/Login';
 import { PricesPage } from './pages/Prices';
+import { ReportsPage } from './pages/Reports';
 
-type Tab = 'drivers' | 'fees' | 'prices';
+type Tab = 'drivers' | 'fees' | 'reports' | 'prices';
 
 export function App() {
   // undefined = ainda descobrindo se há alguém logado.
@@ -83,6 +84,9 @@ export function App() {
           <button className={`tab ${tab === 'fees' ? 'active' : ''}`} onClick={() => setTab('fees')}>
             Mensalidades
           </button>
+          <button className={`tab ${tab === 'reports' ? 'active' : ''}`} onClick={() => setTab('reports')}>
+            Relatórios
+          </button>
           <button className={`tab ${tab === 'prices' ? 'active' : ''}`} onClick={() => setTab('prices')}>
             Preços
           </button>
@@ -92,7 +96,15 @@ export function App() {
           Sair
         </button>
       </header>
-      <main className="page">{tab === 'drivers' ? <DriversPage /> : tab === 'fees' ? <FeesPage /> : <PricesPage />}</main>
+      <main className="page">{tab === 'drivers' ? (
+          <DriversPage />
+        ) : tab === 'fees' ? (
+          <FeesPage />
+        ) : tab === 'reports' ? (
+          <ReportsPage />
+        ) : (
+          <PricesPage />
+        )}</main>
     </>
   );
 }
