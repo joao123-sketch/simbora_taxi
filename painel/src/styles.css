@@ -343,3 +343,10 @@ a.btn {
   text-align: center;
   text-decoration: none;
 }
+
+/* Em janelas pequenas o cabeçalho quebra em várias linhas: deixa de ficar preso no topo. */
+@media (max-width: 720px), (max-height: 520px) {
+  .topbar {
+    position: static;
+  }
+}

@@ -109,6 +109,7 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
   const [stepEvery, setStepEvery] = useState(String(settings.step_every_minutes));
   const [share, setShare] = useState(percent(settings.share_per_step));
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  useDismissOk(msg, setMsg);
   const [busy, setBusy] = useState(false);
 
   const stepNumber = parseDecimal(stepSize);
@@ -227,6 +228,7 @@ function SizeRow({ size, onSaved }: { size: DeliverySize; onSaved: () => Promise
   const [moto, setMoto] = useState(size.allow_moto);
   const [car, setCar] = useState(size.allow_car);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  useDismissOk(msg, setMsg);
   const [busy, setBusy] = useState(false);
 
   async function save() {
@@ -286,6 +288,19 @@ function SizeRow({ size, onSaved }: { size: DeliverySize; onSaved: () => Promise
   );
 }
 
+// O aviso de "salvo" some depois de alguns segundos, para não ficar velho na tela.
+// Os de erro ficam até a próxima ação.
+function useDismissOk(
+  msg: { kind: 'ok' | 'error'; text: string } | null,
+  setMsg: (value: null) => void,
+) {
+  useEffect(() => {
+    if (msg?.kind !== 'ok') return;
+    const timer = setTimeout(() => setMsg(null), 6000);
+    return () => clearTimeout(timer);
+  }, [msg, setMsg]);
+}
+
 function Field({
   label,
   value,
@@ -331,6 +346,7 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
   const [fields, setFields] = useState({ base: '', per_km: '', per_min: '', minimum: '' });
   const [from, setFrom] = useState(today);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  useDismissOk(msg, setMsg);
   const [busy, setBusy] = useState(false);
 
   // Ao trocar de cidade ou veículo, o formulário parte da tarifa atual.
@@ -511,6 +527,7 @@ function IntercityCard({ data, onSaved }: { data: Overview; onSaved: () => Promi
 
   const [edits, setEdits] = useState<Record<string, { car?: string; moto?: string }>>({});
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  useDismissOk(msg, setMsg);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const [newOrigin, setNewOrigin] = useState<number>(data.cities[0]?.id ?? 0);

@@ -20,6 +20,8 @@ import { colors, fontSize } from '../theme';
 import { QrScanScreen } from './QrScanScreen';
 
 type Props = {
+  // Código vindo de um link de convite: o motorista é favoritado ao abrir a tela.
+  autoAddCode?: string;
   onBack: () => void;
 };
 
@@ -29,7 +31,7 @@ function ridesLabel(n: number): string {
 
 // Meus motoristas: os favoritos (que chamam primeiro), quem já levou a pessoa
 // e a entrada de um novo por QR ou código.
-export function FavoriteDriversScreen({ onBack }: Props) {
+export function FavoriteDriversScreen({ autoAddCode, onBack }: Props) {
   const [favorites, setFavorites] = useState<FavoriteDriver[] | null>(null);
   const [frequent, setFrequent] = useState<FrequentDriver[]>([]);
   const [code, setCode] = useState('');
@@ -69,6 +71,11 @@ export function FavoriteDriversScreen({ onBack }: Props) {
       setBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (autoAddCode) add(autoAddCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAddCode]);
 
   async function favorite(driverId: string) {
     setError(null);

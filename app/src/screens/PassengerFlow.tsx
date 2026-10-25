@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -5,6 +6,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { BigButton } from '../components/BigButton';
 import type { Coord } from '../components/PinMap.types';
 import { Screen } from '../components/Screen';
+import { driverCodeFromUrl } from '../lib/deeplink';
 import { loadPackageOptions } from '../lib/delivery';
 import { feeNeedsAttention, fetchFeeStatus } from '../lib/fees';
 import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
@@ -42,7 +44,7 @@ type Step =
   | { kind: 'confirm'; origin: Place; destination: Place }
   | { kind: 'ride'; ride: Ride }
   | { kind: 'history' }
-  | { kind: 'favorites' }
+  | { kind: 'favorites'; code?: string }
   | { kind: 'legal' }
   | { kind: 'deleteAccount' }
   | { kind: 'driver' };
@@ -60,6 +62,22 @@ export function PassengerFlow({ userId, name }: Props) {
   const [error, setError] = useState<string | null>(null);
   // A cobrança da mensalidade abre sozinha uma vez a cada vez que o app abre.
   const feeNagged = useRef(false);
+  // O link do convite de um motorista (aberto com o app fechado ou aberto).
+  const handledLink = useRef<string | null>(null);
+
+  useEffect(() => {
+    function openLink(url: string | null) {
+      const code = driverCodeFromUrl(url);
+      if (!code || handledLink.current === url) return;
+      handledLink.current = url;
+      setStep((current) => (current && current.kind === 'ride' ? current : { kind: 'favorites', code }));
+    }
+    Linking.getInitialURL()
+      .then(openLink)
+      .catch(() => {});
+    const subscription = Linking.addEventListener('url', ({ url }) => openLink(url));
+    return () => subscription.remove();
+  }, []);
 
   const load = useCallback(async () => {
     setError(null);
@@ -273,7 +291,7 @@ export function PassengerFlow({ userId, name }: Props) {
       return <HistoryScreen role="passenger" userId={userId} onBack={goHome} />;
 
     case 'favorites':
-      return <FavoriteDriversScreen onBack={goHome} />;
+      return <FavoriteDriversScreen autoAddCode={step.code} onBack={goHome} />;
 
     case 'deleteAccount':
       return <DeleteAccountScreen onBack={goHome} />;
