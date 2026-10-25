@@ -4,7 +4,7 @@ import { BigButton } from '../components/BigButton';
 import type { Ride } from '../lib/rides';
 import { formatScheduled } from '../lib/scheduling';
 import { Screen } from '../components/Screen';
-import { colors, fontSize } from '../theme';
+import { colors, fontSize, cardSurface } from '../theme';
 
 type Props = {
   name: string;
@@ -66,21 +66,21 @@ export function HomeScreen({
           <BigButton label="Ver viagens agendadas" onPress={onOpenScheduled} variant="link" />
         </View>
       ) : null}
-      <BigButton label="Pedir corrida" onPress={onRequestRide} />
-      <BigButton label="Pedir entrega" onPress={onRequestDelivery} />
-      <BigButton label="Meus motoristas" onPress={onOpenFavorites} variant="secondary" />
-      <BigButton label="Configurações" onPress={onOpenSettings} variant="secondary" />
+      <BigButton label="Pedir corrida" icon="car-sport" onPress={onRequestRide} />
+      <BigButton label="Pedir entrega" icon="cube" onPress={onRequestDelivery} />
+      <BigButton label="Meus motoristas" icon="heart" onPress={onOpenFavorites} variant="secondary" />
+      <BigButton label="Configurações" icon="settings-sharp" onPress={onOpenSettings} variant="secondary" />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   scheduled: {
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: '#FDECEC',
+    ...cardSurface,
+    gap: 4,
+    borderLeftWidth: 6,
+    borderLeftColor: colors.primary,
+    backgroundColor: colors.surfaceTint,
   },
   scheduledText: {
     fontSize: fontSize.body,
@@ -89,6 +89,7 @@ const styles = StyleSheet.create({
   },
   driver: {
     minHeight: 48,
+    flexShrink: 1,
     justifyContent: 'center',
     paddingHorizontal: 14,
     borderRadius: 24,
@@ -102,6 +103,7 @@ const styles = StyleSheet.create({
   driverText: {
     fontSize: fontSize.body - 2,
     fontWeight: '700',
+    textAlign: 'center',
     color: colors.primary,
   },
 });

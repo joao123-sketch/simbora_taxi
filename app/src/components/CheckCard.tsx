@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontSize, touchTarget } from '../theme';
+import { colors, fontSize, radius, shadows, touchTarget } from '../theme';
 
 type Props = {
   label: string;
@@ -9,7 +10,8 @@ type Props = {
   onPress: () => void;
 };
 
-// Opção grande de marcar e desmarcar (várias podem ficar marcadas).
+// Opção grande de marcar e desmarcar (várias podem ficar marcadas). Marcada: borda
+// vermelha, fundo rosado e um "certo" dentro da caixa, para não depender só da cor.
 export function CheckCard({ label, hint, checked, onPress }: Props) {
   return (
     <Pressable
@@ -17,10 +19,18 @@ export function CheckCard({ label, hint, checked, onPress }: Props) {
       accessibilityState={{ checked }}
       accessibilityLabel={hint ? `${label}. ${hint}` : label}
       onPress={onPress}
-      style={[styles.card, checked && styles.checked]}
+      style={({ pressed }) => [styles.card, checked && styles.checked, pressed && styles.pressed]}
     >
       <View style={[styles.box, checked && styles.boxChecked]}>
-        {checked ? <Text style={styles.tick}>✓</Text> : null}
+        {checked ? (
+          <Ionicons
+            name="checkmark"
+            size={22}
+            color={colors.onPrimary}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        ) : null}
       </View>
       <View style={styles.texts}>
         <Text style={styles.label}>{label}</Text>
@@ -36,34 +46,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     minHeight: touchTarget,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: radius.lg,
     borderWidth: 2,
-    borderColor: '#CCCCCC',
-    backgroundColor: colors.background,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   checked: {
     borderColor: colors.primary,
-    backgroundColor: '#FDECEC',
+    backgroundColor: colors.surfaceTint,
+    ...shadows.soft,
+  },
+  pressed: {
+    opacity: 0.9,
   },
   box: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 9,
     borderWidth: 2,
-    borderColor: colors.textMuted,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   boxChecked: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
-  },
-  tick: {
-    color: colors.onPrimary,
-    fontSize: 22,
-    fontWeight: '700',
   },
   texts: {
     flex: 1,

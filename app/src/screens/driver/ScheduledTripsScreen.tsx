@@ -24,7 +24,7 @@ import {
   scheduledToRide,
   type OpenScheduled,
 } from '../../lib/scheduling';
-import { colors, fontSize } from '../../theme';
+import { colors, fontSize, cardSurface } from '../../theme';
 import { OpenRequestCard } from './OpenRequestCard';
 
 type Props = {
@@ -169,10 +169,7 @@ const styles = StyleSheet.create({
   empty: { fontSize: fontSize.body - 2, color: colors.textMuted },
   card: {
     gap: 4,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    ...cardSurface,
   },
   openBox: { gap: 6 },
   when: { fontSize: fontSize.body + 4, fontWeight: '800', color: colors.text },

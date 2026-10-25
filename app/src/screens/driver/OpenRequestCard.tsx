@@ -18,7 +18,7 @@ import {
   type MyProposal,
   type Ride,
 } from '../../lib/rides';
-import { colors, fontSize } from '../../theme';
+import { colors, fontSize, cardSurface } from '../../theme';
 
 type Props = {
   ride: Ride;
@@ -210,10 +210,7 @@ export function OpenRequestCard({
 const styles = StyleSheet.create({
   card: {
     gap: 6,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    ...cardSurface,
   },
   price: {
     fontSize: fontSize.body + 4,

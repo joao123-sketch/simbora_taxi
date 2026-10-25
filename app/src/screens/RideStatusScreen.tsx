@@ -27,7 +27,7 @@ import {
 } from '../lib/rides';
 import { formatScheduled, isScheduledWait } from '../lib/scheduling';
 import { createRideShare, recipientMessage, tripShareMessage } from '../lib/share';
-import { colors, fontSize } from '../theme';
+import { colors, fontSize, cardSurface } from '../theme';
 import { ChatScreen } from './ChatScreen';
 
 type Props = {
@@ -339,10 +339,7 @@ const styles = StyleSheet.create({
   },
   driverCard: {
     gap: 4,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    ...cardSurface,
   },
   driverName: {
     fontSize: fontSize.body + 6,

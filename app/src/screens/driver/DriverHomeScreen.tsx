@@ -232,10 +232,10 @@ export function DriverHomeScreen({
         />
       ))}
 
-      <BigButton label="Meu QR para clientes" onPress={onOpenQr} variant="secondary" />
-      <BigButton label="Viagens agendadas" onPress={onOpenScheduled} variant="secondary" />
-      <BigButton label="Configurações" onPress={onOpenSettings} variant="secondary" />
-      <BigButton label="Voltar ao início" onPress={onExit} variant="secondary" />
+      <BigButton label="Meu QR para clientes" icon="qr-code" onPress={onOpenQr} variant="secondary" />
+      <BigButton label="Viagens agendadas" icon="calendar" onPress={onOpenScheduled} variant="secondary" />
+      <BigButton label="Configurações" icon="settings-sharp" onPress={onOpenSettings} variant="secondary" />
+      <BigButton label="Voltar ao início" icon="home" onPress={onExit} variant="secondary" />
     </Screen>
   );
 }

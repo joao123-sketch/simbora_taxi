@@ -11,7 +11,7 @@ import {
   setAdvancePercent,
   type Ride,
 } from '../lib/rides';
-import { colors, fontSize } from '../theme';
+import { colors, fontSize, cardSurface } from '../theme';
 import { BigButton } from './BigButton';
 import { ChoiceCard } from './ChoiceCard';
 
@@ -145,10 +145,7 @@ export function PassengerAdvanceNote({ ride }: { ride: Ride }) {
 const styles = StyleSheet.create({
   card: {
     gap: 8,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    ...cardSurface,
   },
   title: {
     fontSize: fontSize.body + 4,

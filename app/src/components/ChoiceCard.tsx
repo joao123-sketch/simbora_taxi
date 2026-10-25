@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontSize, touchTarget } from '../theme';
+import { colors, fontSize, radius, shadows, touchTarget } from '../theme';
 
 type Props = {
   label: string;
@@ -9,7 +9,8 @@ type Props = {
   onPress: () => void;
 };
 
-// Opção grande de escolha (carro ou moto, dinheiro ou Pix, cidade de destino).
+// Opção grande de escolha (carro ou moto, dinheiro ou Pix, cidade de destino). A opção
+// escolhida ganha borda vermelha, fundo rosado e a bolinha cheia: não depende só da cor.
 export function ChoiceCard({ label, detail, selected, onPress }: Props) {
   return (
     <Pressable
@@ -17,9 +18,11 @@ export function ChoiceCard({ label, detail, selected, onPress }: Props) {
       accessibilityState={{ selected }}
       accessibilityLabel={detail ? `${label}, ${detail}` : label}
       onPress={onPress}
-      style={[styles.card, selected && styles.selected]}
+      style={({ pressed }) => [styles.card, selected && styles.selected, pressed && styles.pressed]}
     >
-      <View style={[styles.radio, selected && styles.radioSelected]} />
+      <View style={[styles.radio, selected && styles.radioSelected]}>
+        {selected ? <View style={styles.radioDot} /> : null}
+      </View>
       <Text style={styles.label}>{label}</Text>
       {detail ? <Text style={styles.detail}>{detail}</Text> : null}
     </Pressable>
@@ -30,28 +33,41 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
     minHeight: touchTarget,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: radius.lg,
     borderWidth: 2,
-    borderColor: '#CCCCCC',
-    backgroundColor: colors.background,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   selected: {
     borderColor: colors.primary,
-    backgroundColor: '#FDECEC',
+    backgroundColor: colors.surfaceTint,
+    ...shadows.soft,
+  },
+  pressed: {
+    opacity: 0.9,
   },
   radio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
-    borderColor: colors.textMuted,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   radioSelected: {
-    borderWidth: 8,
     borderColor: colors.primary,
+  },
+  radioDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: colors.primary,
   },
   label: {
     flex: 1,
@@ -61,7 +77,7 @@ const styles = StyleSheet.create({
   },
   detail: {
     fontSize: fontSize.body + 2,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '800',
+    color: colors.primaryDark,
   },
 });

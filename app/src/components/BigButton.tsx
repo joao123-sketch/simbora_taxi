@@ -1,20 +1,44 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontSize, touchTarget } from '../theme';
+import { colors, fontSize, gradients, radius, shadows, touchTarget } from '../theme';
+
+type IconName = keyof typeof Ionicons.glyphMap;
 
 type Props = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
-  // secondary: botão menor, só com borda (ex.: Configurações).
+  // primary: botão principal com gradiente. secondary: menor, com borda (ex.: Configurações).
+  // link: texto sublinhado.
   variant?: 'primary' | 'link' | 'secondary';
+  // Ícone decorativo ao lado do texto (o leitor de tela lê só o texto).
+  icon?: IconName;
 };
 
-export function BigButton({ label, onPress, disabled, loading, variant = 'primary' }: Props) {
+export function BigButton({ label, onPress, disabled, loading, variant = 'primary', icon }: Props) {
   const isLink = variant === 'link';
   const isSecondary = variant === 'secondary';
   const inactive = disabled || loading;
+
+  const content = loading ? (
+    <ActivityIndicator color={isSecondary ? colors.primary : colors.onPrimary} size="large" />
+  ) : (
+    <View style={styles.row}>
+      {icon ? (
+        <Ionicons
+          name={icon}
+          size={isSecondary ? 24 : 30}
+          color={isSecondary ? colors.primary : colors.onPrimary}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
+      ) : null}
+      <Text style={isLink ? styles.linkText : isSecondary ? styles.secondaryText : styles.text}>{label}</Text>
+    </View>
+  );
 
   return (
     <Pressable
@@ -25,15 +49,17 @@ export function BigButton({ label, onPress, disabled, loading, variant = 'primar
       onPress={onPress}
       style={({ pressed }) => [
         isLink ? styles.link : isSecondary ? styles.secondary : styles.button,
-        !isLink && !isSecondary && pressed && styles.pressed,
         isSecondary && pressed && styles.secondaryPressed,
+        !isLink && pressed && styles.pressed,
         !isLink && inactive && styles.disabled,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={colors.onPrimary} size="large" />
+      {isLink || isSecondary ? (
+        content
       ) : (
-        <Text style={isLink ? styles.linkText : isSecondary ? styles.secondaryText : styles.text}>{label}</Text>
+        <LinearGradient colors={gradients.primary} style={styles.gradient}>
+          {content}
+        </LinearGradient>
       )}
     </Pressable>
   );
@@ -43,41 +69,57 @@ const styles = StyleSheet.create({
   button: {
     alignSelf: 'stretch',
     minHeight: touchTarget,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    ...shadows.button,
+  },
+  gradient: {
+    flex: 1,
+    minHeight: touchTarget,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   pressed: {
-    backgroundColor: colors.primaryDark,
+    transform: [{ scale: 0.985 }],
+    opacity: 0.92,
+  },
+  disabled: {
+    opacity: 0.45,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  text: {
+    fontSize: fontSize.button,
+    fontWeight: '800',
+    color: colors.onPrimary,
+    textAlign: 'center',
   },
   secondary: {
     alignSelf: 'stretch',
-    minHeight: 56,
-    borderRadius: 14,
+    minHeight: 60,
+    borderRadius: radius.md,
     borderWidth: 2,
     borderColor: colors.primary,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   secondaryPressed: {
-    backgroundColor: '#FDECEC',
+    backgroundColor: colors.surfaceTint,
   },
   secondaryText: {
     fontSize: fontSize.body + 2,
     fontWeight: '700',
     color: colors.primary,
-  },
-  disabled: {
-    opacity: 0.4,
-  },
-  text: {
-    fontSize: fontSize.button,
-    fontWeight: '700',
-    color: colors.onPrimary,
+    textAlign: 'center',
   },
   link: {
     alignSelf: 'center',
@@ -87,6 +129,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: fontSize.body,
+    fontWeight: '600',
     color: colors.primary,
     textDecorationLine: 'underline',
   },

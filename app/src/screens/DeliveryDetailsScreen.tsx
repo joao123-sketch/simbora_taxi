@@ -89,12 +89,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#CCCCCC',
+    borderColor: colors.borderStrong,
     backgroundColor: colors.background,
   },
   sizeSelected: {
     borderColor: colors.primary,
-    backgroundColor: '#FDECEC',
+    backgroundColor: colors.surfaceTint,
   },
   sizeHead: {
     flexDirection: 'row',

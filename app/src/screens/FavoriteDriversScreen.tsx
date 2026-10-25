@@ -16,7 +16,7 @@ import {
   type FavoriteDriver,
   type FrequentDriver,
 } from '../lib/favoriteDrivers';
-import { colors, fontSize } from '../theme';
+import { colors, fontSize, cardSurface } from '../theme';
 import { QrScanScreen } from './QrScanScreen';
 
 type Props = {
@@ -170,10 +170,7 @@ const styles = StyleSheet.create({
   section: { fontSize: fontSize.body + 4, fontWeight: '800', color: colors.text, marginTop: 8 },
   empty: { fontSize: fontSize.body - 2, color: colors.textMuted },
   card: {
-    borderWidth: 2,
-    borderColor: colors.text,
-    borderRadius: 16,
-    padding: 16,
+    ...cardSurface,
     gap: 4,
   },
   name: { fontSize: fontSize.body + 2, fontWeight: '800', color: colors.text },

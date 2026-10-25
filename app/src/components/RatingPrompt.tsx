@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { rateRide } from '../lib/rides';
-import { colors, fontSize } from '../theme';
+import { colors, fontSize, cardSurface } from '../theme';
 import { BigButton } from './BigButton';
 import { StarRating } from './StarRating';
 
@@ -49,10 +49,7 @@ export function RatingPrompt({ rideId, question, onDone }: Props) {
 const styles = StyleSheet.create({
   box: {
     gap: 8,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    ...cardSurface,
     alignItems: 'stretch',
   },
   question: {

@@ -4,7 +4,7 @@ import { BigButton } from '../components/BigButton';
 import { Screen } from '../components/Screen';
 import { formatMoney, type Ride } from '../lib/rides';
 import { formatScheduled } from '../lib/scheduling';
-import { colors, fontSize } from '../theme';
+import { colors, fontSize, cardSurface } from '../theme';
 
 type Props = {
   rides: Ride[];
@@ -57,10 +57,7 @@ export function ScheduledListScreen({ rides, proposalCounts, justCreated, onOpen
 const styles = StyleSheet.create({
   card: {
     gap: 4,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    ...cardSurface,
   },
   when: { fontSize: fontSize.body + 4, fontWeight: '800', color: colors.text },
   line: { fontSize: fontSize.body, color: colors.text },
