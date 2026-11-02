@@ -38,7 +38,7 @@ Cada motorista tem uma linha em **driver_subscriptions** (início do mês gráti
 - `status`: `open` (a pagar), `paid` (pago) ou `waived` (dispensado, como o mês grátis).
 - A cobrança é automática: o app do motorista gera o Pix e o link do cartão pelo Asaas e, quando o pagamento cai, o mês é baixado sozinho (`status` vira `paid`). É isso que faz o mês seguinte virar R$ 300.
 - Se um pagamento entrou por fora do Asaas, ou o Asaas não avisou, abra a aba **Mensalidades** do painel e use **Confirmar pagamento recebido por fora**. Antes, confira no painel do Asaas se a cobrança aparece como recebida.
-- Para passar do sandbox para valer: troque a chave do Asaas e `ASAAS_BASE_URL` no Worker `simbora-pagamentos` e registre o webhook de novo (ver `pagamentos/README.md`).
+- Para passar do sandbox para valer: troque o segredo `ASAAS_API_KEY` e `ASAAS_BASE_URL` na Edge Function `asaas` do Supabase e registre o webhook de novo (ver `pagamentos/README.md`).
 
 ## Reavaliação a cada 6 meses (o motorista não vê)
 

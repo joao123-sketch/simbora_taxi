@@ -4,10 +4,12 @@
   "type": "module",
   "scripts": {
     "test": "tsx --test test/*.test.ts",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "build:edge": "esbuild src/edge.ts --bundle --format=esm --platform=neutral --target=es2022 --outfile=dist/asaas.js"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "wrangler": "^4.156.2"

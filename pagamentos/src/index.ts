@@ -54,10 +54,12 @@ async function route(f: Fetch, request: Request, env: Env): Promise<Response> {
   const supabase = { url: env.SUPABASE_URL, serviceKey: env.SUPABASE_SERVICE_KEY };
 
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-  if (request.method === 'GET' && url.pathname === '/health') return new Response('ok');
+  // O caminho termina na rota; na Edge Function do Supabase vem com /functions/v1/asaas na frente.
+  const path = url.pathname.replace(/\/+$/, '');
+  if (request.method === 'GET' && path.endsWith('/health')) return new Response('ok');
 
   // O motorista pede a cobrança do mês dele.
-  if (request.method === 'POST' && url.pathname === '/fee/charge') {
+  if (request.method === 'POST' && path.endsWith('/fee/charge')) {
     const bearer = request.headers.get('Authorization')?.match(/^Bearer (.+)$/)?.[1];
     const driverId = bearer ? await userFromJwt(f, supabase, bearer) : null;
     if (!driverId) return json(401, { error: 'Entre no app para ver a cobrança' }, cors);
@@ -78,7 +80,7 @@ async function route(f: Fetch, request: Request, env: Env): Promise<Response> {
   }
 
   // O Asaas avisa que um pagamento caiu.
-  if (request.method === 'POST' && url.pathname === '/asaas/webhook') {
+  if (request.method === 'POST' && path.endsWith('/webhook')) {
     let body: unknown;
     try {
       body = await request.json();

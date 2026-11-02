@@ -137,3 +137,44 @@ test('erro inesperado vira 502 em JSON e nunca derruba o Worker', async () => {
   assert.equal(r.status, 502);
   assert.deepEqual(await r.json(), { error: 'Não conseguimos gerar a cobrança agora' });
 });
+
+// Na Edge Function do Supabase o caminho vem com o nome da função na frente.
+test('Edge: /functions/v1/asaas/health responde 200', async () => {
+  const { call } = app();
+  assert.equal((await call('/functions/v1/asaas/health')).status, 200);
+});
+
+test('Edge: /asaas/fee/charge sem login responde 401', async () => {
+  const { call } = app();
+  assert.equal((await call('/asaas/fee/charge', { method: 'POST' })).status, 401);
+});
+
+test('Edge: /asaas/fee/charge com login válido devolve a cobrança', async () => {
+  const { call } = app();
+  const r = await call('/asaas/fee/charge', withJwt('jwt-do-joao'));
+  assert.equal(r.status, 200);
+});
+
+test('Edge: /asaas/webhook com token certo baixa o mês e com token errado dá 401', async () => {
+  const { world, call } = app();
+  await call('/asaas/fee/charge', withJwt('jwt-do-joao'));
+  const bad = await call('/functions/v1/asaas/webhook', {
+    method: 'POST',
+    headers: { 'asaas-access-token': 'errado', 'content-type': 'application/json' },
+    body: JSON.stringify({ event: 'PAYMENT_RECEIVED', payment: { id: 'pay_1' } }),
+  });
+  assert.equal(bad.status, 401);
+  assert.equal(world.periods[0].status, 'open');
+  const ok = await call('/functions/v1/asaas/webhook', {
+    method: 'POST',
+    headers: { 'asaas-access-token': TOKEN, 'content-type': 'application/json' },
+    body: JSON.stringify({ event: 'PAYMENT_RECEIVED', payment: { id: 'pay_1' } }),
+  });
+  assert.equal(ok.status, 200);
+  assert.equal(world.periods[0].status, 'paid');
+});
+
+test('rota desconhecida responde 404', async () => {
+  const { call } = app();
+  assert.equal((await call('/qualquer/coisa')).status, 404);
+});
