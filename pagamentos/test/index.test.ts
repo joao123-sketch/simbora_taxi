@@ -110,3 +110,30 @@ test('/asaas/webhook com corpo que não é JSON responde 400', async () => {
   });
   assert.equal(r.status, 400);
 });
+
+test('segredo colado com espaço ou quebra de linha é limpo antes de ir no cabeçalho', async () => {
+  const world = newWorld();
+  const seen: Record<string, string>[] = [];
+  const inner = fakeFetch(world);
+  const spy = ((url: string | URL | Request, init?: RequestInit) => {
+    seen.push({ ...(init?.headers as Record<string, string>) });
+    return inner(url, init);
+  }) as typeof fetch;
+  const handler = makeHandler(spy);
+  const dirty: Env = { ...env, SUPABASE_SERVICE_KEY: ' service-de-teste\n', ASAAS_API_KEY: 'chave-de-teste \r\n' };
+  const r = await handler(new Request('https://pagamentos.test/fee/charge', withJwt('jwt-do-joao')), dirty);
+  assert.equal(r.status, 200);
+  for (const headers of seen) {
+    for (const value of Object.values(headers)) assert.equal(value, value.trim());
+  }
+});
+
+test('erro inesperado vira 502 em JSON e nunca derruba o Worker', async () => {
+  const boom = (async () => {
+    throw new TypeError('Invalid header value');
+  }) as unknown as typeof fetch;
+  const handler = makeHandler(boom);
+  const r = await handler(new Request('https://pagamentos.test/fee/charge', withJwt('jwt-do-joao')), env);
+  assert.equal(r.status, 502);
+  assert.deepEqual(await r.json(), { error: 'Não conseguimos gerar a cobrança agora' });
+});
