@@ -9,25 +9,25 @@ insert into public.cities (name, state, active, center) values
   ('São Benedito', 'CE', false, extensions.st_setsrid(extensions.st_makepoint(-40.8650, -4.0485), 4326)::extensions.geography)
 on conflict (name, state) do nothing;
 
-insert into public.fares (city_id, vehicle_type, effective_from, base, per_km, per_min, minimum)
-select c.id, v.vehicle_type::public.vehicle_type, date '2026-10-23', v.base, v.per_km, v.per_min, v.minimum
+insert into public.fares (city_id, vehicle_type, effective_from, base, per_km, per_min)
+select c.id, v.vehicle_type::public.vehicle_type, date '2026-11-02', v.base, v.per_km, v.per_min
 from public.cities c
 cross join (values
-  ('car', 12.00, 2.00, 0.30, 10.00),
-  ('moto', 7.00, 1.20, 0.20, 6.00)
-) as v (vehicle_type, base, per_km, per_min, minimum)
+  ('car', 8.00, 2.20, 0.30),
+  ('moto', 5.00, 1.40, 0.20)
+) as v (vehicle_type, base, per_km, per_min)
 where c.name = 'Guaraciaba do Norte'
 on conflict (city_id, vehicle_type, effective_from) do nothing;
 
--- Preços fechados de exemplo saindo de Guaraciaba.
+-- Preço único por par de cidades, igual nos dois sentidos (tabela B de Guaraciaba).
 insert into public.intercity_fares (origin_city_id, destination_city_id, vehicle_type, price)
-select o.id, d.id, v.vehicle_type::public.vehicle_type, v.price
-from public.cities o
-cross join (values
+select p.o, p.d, v.vehicle_type::public.vehicle_type, v.price
+from (values
   ('São Benedito', 'car', 40.00), ('São Benedito', 'moto', 25.00),
-  ('Ubajara', 'car', 60.00), ('Ubajara', 'moto', 35.00),
-  ('Tianguá', 'car', 80.00), ('Tianguá', 'moto', 45.00)
+  ('Ubajara', 'car', 90.00), ('Ubajara', 'moto', 55.00),
+  ('Tianguá', 'car', 115.00), ('Tianguá', 'moto', 70.00)
 ) as v (destination, vehicle_type, price)
 join public.cities d on d.name = v.destination
-where o.name = 'Guaraciaba do Norte'
+join public.cities o on o.name = 'Guaraciaba do Norte'
+cross join lateral (values (o.id, d.id), (d.id, o.id)) as p (o, d)
 on conflict do nothing;
