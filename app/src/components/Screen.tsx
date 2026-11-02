@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ReactNode, useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, fontSize, gradients, radius, shadows } from '../theme';
@@ -52,6 +52,13 @@ function ErrorBox({ error }: { error?: string | null }) {
 // segura (fora da barra de status e dos botões do Android) e sobe junto com o teclado.
 export function Screen({ title, subtitle, error, footer, corner, backdrop, onBack, children }: Props) {
   const [sheetHeight, setSheetHeight] = useState(0);
+  const scrollRef = useRef<ScrollViewInstance>(null);
+
+  // O aviso de erro fica no topo e o botão que o causou, embaixo: sobe a tela
+  // para a pessoa ver o aviso em vez de achar que nada aconteceu.
+  useEffect(() => {
+    if (error) scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, [error]);
 
   if (backdrop) {
     return (
@@ -71,6 +78,7 @@ export function Screen({ title, subtitle, error, footer, corner, backdrop, onBac
           >
             <View style={styles.handle} />
             <ScrollView
+              ref={scrollRef}
               style={styles.sheetScroll}
               contentContainerStyle={styles.sheetContent}
               keyboardShouldPersistTaps="handled"
@@ -93,7 +101,7 @@ export function Screen({ title, subtitle, error, footer, corner, backdrop, onBac
     <LinearGradient colors={gradients.page} style={styles.container}>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <KeyboardAvoidingView style={styles.container} behavior="padding">
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <View style={styles.content}>
               <View style={styles.header}>
                 {onBack ? (

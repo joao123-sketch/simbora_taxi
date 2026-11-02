@@ -10,6 +10,7 @@ import { driverCodeFromUrl } from '../lib/deeplink';
 import { expireScheduled, fetchMyScheduled } from '../lib/scheduling';
 import { loadPackageOptions } from '../lib/delivery';
 import { fetchMyDriver } from '../lib/drivers';
+import { reverseGeocode } from '../lib/geocode';
 import { feeNeedsAttention, fetchFeeStatus } from '../lib/fees';
 import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
 import {
@@ -32,17 +33,20 @@ import { HistoryScreen } from './HistoryScreen';
 import { DeleteAccountScreen } from './DeleteAccountScreen';
 import { LegalScreen } from './LegalScreen';
 import { HomeScreen } from './HomeScreen';
-import { MapPickScreen } from './MapPickScreen';
+import { PlaceSearchScreen } from './PlaceSearchScreen';
+import { RiderNameScreen } from './RiderNameScreen';
 import { RideStatusScreen } from './RideStatusScreen';
 import { ScheduledListScreen } from './ScheduledListScreen';
 import { SettingsScreen } from './SettingsScreen';
 
 type Step =
   | { kind: 'home' }
-  | { kind: 'origin' }
-  | { kind: 'destination'; origin: Place }
-  | { kind: 'destinationMap'; origin: Place }
-  | { kind: 'cityDropoff'; origin: Place; city: City }
+  // rider: nome de quem vai andar, quando o pedido é para outra pessoa.
+  | { kind: 'riderName' }
+  | { kind: 'riderOrigin'; rider: string }
+  | { kind: 'destination'; origin: Place; rider?: string }
+  | { kind: 'destinationSearch'; origin: Place; rider?: string }
+  | { kind: 'cityDropoff'; origin: Place; city: City; rider?: string }
   | { kind: 'deliveryOrigin' }
   | { kind: 'deliveryDestination'; origin: Place }
   | { kind: 'deliveryDetails'; origin: Place; destination: Place }
@@ -68,6 +72,8 @@ export function PassengerFlow({ userId, name }: Props) {
   const [here, setHere] = useState<Coord | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestedPlace[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Aviso na tela inicial quando o GPS não deixa chamar a corrida.
+  const [locationError, setLocationError] = useState<string | null>(null);
   // Já existe cadastro de motorista para esta conta (qualquer situação)?
   const [isDriver, setIsDriver] = useState(false);
   // Viagens agendadas da pessoa (para o cartão do início e a lista).
@@ -160,19 +166,26 @@ export function PassengerFlow({ userId, name }: Props) {
     }
   }
 
+  // A corrida sai sempre de onde o aparelho está: sem tela de "onde você está".
   async function startRequest() {
-    setStep({ kind: 'origin' });
-    // Os lugares de sempre chegam enquanto a pessoa marca onde está.
+    setLocationError(null);
+    // Os lugares de sempre chegam enquanto o GPS responde.
     fetchSuggestedPlaces(userId)
       .then(setSuggestions)
       .catch(() => setSuggestions([]));
     try {
       const { granted } = await Location.requestForegroundPermissionsAsync();
-      if (!granted) return;
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setHere({ lat: position.coords.latitude, lng: position.coords.longitude });
+      if (!granted) {
+        setLocationError('Para chamar uma corrida, permita o acesso à localização do aparelho nas configurações do navegador.');
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const coord = { lat: position.coords.latitude, lng: position.coords.longitude };
+      setHere(coord);
+      const address = (await reverseGeocode(coord)) ?? 'Minha localização';
+      setStep({ kind: 'destination', origin: { ...coord, address } });
     } catch {
-      // Sem GPS a pessoa ainda pode marcar no mapa a partir do centro da cidade.
+      setLocationError('Não conseguimos achar você. Ligue o GPS do celular e tente de novo.');
     }
   }
 
@@ -204,11 +217,13 @@ export function PassengerFlow({ userId, name }: Props) {
           isDriver={isDriver}
           center={here ?? city}
           here={here}
+          error={locationError}
           scheduled={scheduled}
           proposalTotal={Object.values(proposalCounts).reduce((sum, n) => sum + n, 0)}
           onOpenScheduled={() => setStep({ kind: 'scheduledList' })}
           onRequestRide={startRequest}
           onRequestDelivery={startDelivery}
+          onRequestForOther={() => setStep({ kind: 'riderName' })}
           onOpenFavorites={() => setStep({ kind: 'favorites', from: 'home' })}
           onDriverMode={() => setStep({ kind: 'driver' })}
           onOpenHistory={() => setStep({ kind: 'history', from: 'home' })}
@@ -216,30 +231,14 @@ export function PassengerFlow({ userId, name }: Props) {
         />
       );
 
-    case 'origin':
-      return (
-        <MapPickScreen
-          title="Onde você está?"
-          hint="O alfinete está onde você está. Se precisar, arraste o mapa."
-          buttonLabel="Estou aqui"
-          center={here ?? city}
-          city={city}
-          fallbackAddress="Local marcado no mapa"
-          onConfirm={(origin) => setStep({ kind: 'destination', origin })}
-          onBack={goHome}
-        />
-      );
-
     case 'deliveryOrigin':
       return (
-        <MapPickScreen
+        <PlaceSearchScreen
           title="Onde pegar o pacote?"
-          hint="O alfinete está onde você está. Arraste o mapa até o lugar da coleta."
-          withSearch
-          buttonLabel="Pegar aqui"
-          center={here ?? city}
+          hint="Escreva o endereço da coleta, ou use a sua localização."
+          allowMyLocation
           city={city}
-          fallbackAddress="Local de coleta marcado no mapa"
+          fallbackAddress="Local de coleta"
           onConfirm={(origin) => setStep({ kind: 'deliveryDestination', origin })}
           onBack={goHome}
         />
@@ -247,17 +246,30 @@ export function PassengerFlow({ userId, name }: Props) {
 
     case 'deliveryDestination':
       return (
-        <MapPickScreen
+        <PlaceSearchScreen
           title="Onde entregar?"
-          hint="Escreva o endereço ou arraste o mapa até o alfinete ficar no lugar da entrega."
-          withSearch
+          hint="Escreva o endereço ou o lugar da entrega."
           awayFrom={step.origin}
-          buttonLabel="Entregar aqui"
-          center={step.origin}
           city={city}
-          fallbackAddress="Local de entrega marcado no mapa"
+          fallbackAddress="Local de entrega"
           onConfirm={(destination) => setStep({ kind: 'deliveryDetails', origin: step.origin, destination })}
           onBack={() => setStep({ kind: 'deliveryOrigin' })}
+        />
+      );
+
+    case 'riderName':
+      return <RiderNameScreen onConfirm={(rider) => setStep({ kind: 'riderOrigin', rider })} onBack={goHome} />;
+
+    case 'riderOrigin':
+      return (
+        <PlaceSearchScreen
+          title={`Onde buscar ${step.rider.split(' ')[0]}?`}
+          hint="Escreva o endereço ou o lugar do embarque, ou use a sua localização."
+          allowMyLocation
+          city={city}
+          fallbackAddress="Local de embarque"
+          onConfirm={(origin) => setStep({ kind: 'destination', origin, rider: step.rider })}
+          onBack={() => setStep({ kind: 'riderName' })}
         />
       );
 
@@ -284,29 +296,28 @@ export function PassengerFlow({ userId, name }: Props) {
             setStep({
               kind: 'confirm',
               origin: step.origin,
-              destination: { lat: place.lat, lng: place.lng, address: place.title },
+              destination: { lat: place.lat, lng: place.lng, address: place.title, riderName: step.rider },
             })
           }
           otherCities={cities.filter((c) => c.id !== city.id)}
-          onPickOnMap={() => setStep({ kind: 'destinationMap', origin: step.origin })}
-          onPickCity={(dest) => setStep({ kind: 'cityDropoff', origin: step.origin, city: dest })}
-          onBack={() => setStep({ kind: 'origin' })}
+          onPickOnMap={() => setStep({ kind: 'destinationSearch', origin: step.origin, rider: step.rider })}
+          onPickCity={(dest) => setStep({ kind: 'cityDropoff', origin: step.origin, city: dest, rider: step.rider })}
+          onBack={step.rider ? () => setStep({ kind: 'riderOrigin', rider: step.rider as string }) : goHome}
         />
       );
 
-    case 'destinationMap':
+    case 'destinationSearch':
       return (
-        <MapPickScreen
-          title="Pra onde você vai?"
-          hint="Escreva o endereço ou o lugar, ou arraste o mapa até o alfinete ficar no destino."
-          withSearch
+        <PlaceSearchScreen
+          title="Pra onde vai?"
+          hint="Escreva o endereço ou o lugar de destino."
           awayFrom={step.origin}
-          buttonLabel="É aqui"
-          center={step.origin}
           city={city}
-          fallbackAddress="Destino marcado no mapa"
-          onConfirm={(destination) => setStep({ kind: 'confirm', origin: step.origin, destination })}
-          onBack={() => setStep({ kind: 'destination', origin: step.origin })}
+          fallbackAddress="Destino"
+          onConfirm={(destination) =>
+            setStep({ kind: 'confirm', origin: step.origin, destination: { ...destination, riderName: step.rider } })
+          }
+          onBack={() => setStep({ kind: 'destination', origin: step.origin, rider: step.rider })}
         />
       );
 
@@ -314,8 +325,10 @@ export function PassengerFlow({ userId, name }: Props) {
       return (
         <CityDropoffScreen
           city={step.city}
-          onConfirm={(destination) => setStep({ kind: 'confirm', origin: step.origin, destination })}
-          onBack={() => setStep({ kind: 'destination', origin: step.origin })}
+          onConfirm={(destination) =>
+            setStep({ kind: 'confirm', origin: step.origin, destination: { ...destination, riderName: step.rider } })
+          }
+          onBack={() => setStep({ kind: 'destination', origin: step.origin, rider: step.rider })}
         />
       );
 
@@ -333,7 +346,7 @@ export function PassengerFlow({ userId, name }: Props) {
           onBack={() =>
             step.destination.delivery
               ? setStep({ kind: 'deliveryDetails', origin: step.origin, destination: step.destination })
-              : setStep({ kind: 'destination', origin: step.origin })
+              : setStep({ kind: 'destination', origin: step.origin, rider: step.destination.riderName })
           }
         />
       );

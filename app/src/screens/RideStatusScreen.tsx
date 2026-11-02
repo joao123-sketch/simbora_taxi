@@ -292,6 +292,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
       ))}
 
       <View style={styles.details}>
+        {ride.rider_name ? <Text style={styles.line}>Quem vai andar: {ride.rider_name}</Text> : null}
         <Text style={styles.line}>{delivery ? 'Pegar em' : 'De'}: {ride.origin_address}</Text>
         <Text style={styles.line}>
           {delivery ? 'Entregar em' : 'Para'}: {ride.destination_address}

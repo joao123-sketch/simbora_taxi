@@ -27,6 +27,8 @@ export type Place = Coord & {
   // Entrega: o destino leva o pacote, o tamanho e quem recebe. Quando existe,
   // o preço e o pedido usam as funções de entrega do banco.
   delivery?: DeliveryInfo;
+  // Pedido para outra pessoa: o nome de quem vai andar (o motorista vê esse nome).
+  riderName?: string;
 };
 
 export type PackageSize = 'P' | 'M' | 'G';
@@ -95,6 +97,8 @@ export type Ride = {
   // A nota que o próprio usuário deu na corrida (passageiro avalia o motorista e vice-versa).
   my_rating: number | null;
   passenger_name: string | null;
+  // Quando a corrida foi pedida para outra pessoa, o nome de quem vai andar.
+  rider_name?: string | null;
   driver_name: string | null;
   vehicle_model: string | null;
   vehicle_color: string | null;
@@ -242,7 +246,9 @@ export async function requestRide(params: {
     if (error) throw error;
     return data as number;
   }
-  const { data, error } = await supabase.rpc('request_ride', {
+  const rpc = destination.riderName ? 'request_ride_for_other' : 'request_ride';
+  const { data, error } = await supabase.rpc(rpc, {
+    ...(destination.riderName ? { p_rider_name: destination.riderName } : {}),
     p_city_id: cityId,
     p_vehicle_type: vehicleType,
     p_payment_method: paymentMethod,

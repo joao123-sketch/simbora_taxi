@@ -20,6 +20,8 @@ type Props = {
   center: Coord;
   // Onde a pessoa está, para o marcador azul; nulo enquanto o GPS não respondeu.
   here: Coord | null;
+  // Aviso quando o GPS não deixa chamar a corrida.
+  error?: string | null;
   // Viagens agendadas da pessoa (a mais próxima primeiro).
   scheduled: Ride[];
   // Propostas de motoristas esperando resposta nas viagens agendadas.
@@ -27,6 +29,7 @@ type Props = {
   onOpenScheduled: () => void;
   onRequestRide: () => void;
   onRequestDelivery: () => void;
+  onRequestForOther: () => void;
   onOpenFavorites: () => void;
   onDriverMode: () => void;
   onOpenHistory: () => void;
@@ -43,11 +46,13 @@ export function HomeScreen({
   isDriver,
   center,
   here,
+  error,
   scheduled,
   proposalTotal,
   onOpenScheduled,
   onRequestRide,
   onRequestDelivery,
+  onRequestForOther,
   onOpenFavorites,
   onDriverMode,
   onOpenHistory,
@@ -56,6 +61,7 @@ export function HomeScreen({
   const firstName = name.split(' ')[0];
   const services: Service[] = [
     { label: 'Corrida', icon: 'car-sport', onPress: onRequestRide },
+    { label: 'Para outra pessoa', icon: 'people', onPress: onRequestForOther },
     { label: 'Entrega', icon: 'cube', onPress: onRequestDelivery },
     { label: 'Meus motoristas', icon: 'heart', onPress: onOpenFavorites },
   ];
@@ -63,6 +69,7 @@ export function HomeScreen({
   return (
     <Screen
       title={`Oi, ${firstName}!`}
+      error={error}
       backdrop={{ center, markers: here ? [{ coord: here, kind: 'me' }] : [] }}
       corner={
         <Pressable

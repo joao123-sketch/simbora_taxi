@@ -12,7 +12,7 @@ type Props = {
 
 // Cartão para escrever um endereço ou lugar. A busca roda ao tocar em "Buscar"
 // (o serviço grátis de endereços não aceita autocompletar). Ao escolher um
-// resultado o alfinete vai para lá e a pessoa ainda pode ajustar no mapa.
+// resultado, quem usa o componente recebe o lugar escolhido.
 export function PlaceSearch({ city, onPick }: Props) {
   const [text, setText] = useState('');
   const [results, setResults] = useState<PlaceResult[] | null>(null);
@@ -57,10 +57,10 @@ export function PlaceSearch({ city, onPick }: Props) {
         </Pressable>
       </View>
 
-      {failed ? <Text style={styles.note}>Não conseguimos buscar agora. Arraste o mapa até o lugar.</Text> : null}
+      {failed ? <Text style={styles.note}>Não conseguimos buscar agora. Confira a internet e tente de novo.</Text> : null}
 
       {results && results.length === 0 ? (
-        <Text style={styles.note}>Não achamos esse lugar. Tente outro nome ou arraste o mapa.</Text>
+        <Text style={styles.note}>Não achamos esse lugar. Tente outro nome, ou a rua e o bairro.</Text>
       ) : null}
 
       {results?.map((place) => (
@@ -82,11 +82,9 @@ export function PlaceSearch({ city, onPick }: Props) {
 const styles = StyleSheet.create({
   card: {
     gap: 4,
-    padding: 8,
-    borderRadius: 24,
-    backgroundColor: colors.background,
-    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.22)',
-    elevation: 8,
+    padding: 4,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceMuted,
   },
   row: {
     flexDirection: 'row',
@@ -103,7 +101,7 @@ const styles = StyleSheet.create({
   button: {
     minHeight: touchTarget - 8,
     paddingHorizontal: 22,
-    borderRadius: 18,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
@@ -125,7 +123,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderTopWidth: 1,
-    borderTopColor: '#E4E4E4',
+    borderTopColor: colors.border,
   },
   resultTitle: {
     fontSize: fontSize.body,
