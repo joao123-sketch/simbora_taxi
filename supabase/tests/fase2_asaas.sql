@@ -1,5 +1,5 @@
 -- Testes da fase 2 (cobrança da mensalidade pelo Asaas).
--- Rode inteiro no SQL Editor do Supabase DEPOIS de aplicar as migrations 20261103030000 e 20261103040000.
+-- Rode inteiro no SQL Editor do Supabase DEPOIS de aplicar as migrations 20261103030000, 20261103040000 e 20261103050000.
 -- Antes dela, falha (é o esperado). Tudo acontece numa transação que termina desfeita:
 -- o resultado aparece como um "erro" que começa com RESULTADO (é de propósito).
 
@@ -175,9 +175,33 @@ begin
   insert into public.zz_fx values ('ok:painel_lista_mostra_cobranca', '1');
 end $t$;
 
+-- fee_status_proximo_pagamento
+do $t$
+declare de uuid; pe1 bigint; pe2 bigint; dc uuid := (select v::uuid from public.zz_fx where k = 'dc'); r jsonb;
+begin
+  -- Mês aberto: o próximo pagamento é ele mesmo.
+  perform set_config('request.jwt.claims', json_build_object('sub', dc)::text, true);
+  r := public.my_fee_status();
+  if r ->> 'next_due_on' is distinct from (current_date + 5)::text or (r ->> 'next_amount')::numeric is distinct from 200::numeric then
+    raise exception 'FALHOU fee_status_proximo_pagamento: mês aberto next_due_on=%, next_amount=%', r ->> 'next_due_on', r ->> 'next_amount';
+  end if;
+  -- Sem mês aberto: o próximo vence quando o último acaba, e vale o preço da regra (depois de grátis e um pago, standard).
+  de := pg_temp.mk_driver('Motorista Proximo', 'AST0006', '45317828791', 'approved');
+  insert into public.driver_fee_periods (driver_id, period_start, period_end, kind, amount, status, due_on)
+  values (de, current_date - 40, current_date - 10, 'free', 0, 'waived', current_date - 40),
+         (de, current_date - 10, current_date + 20, 'entry', 200, 'paid', current_date - 10);
+  perform set_config('request.jwt.claims', json_build_object('sub', de)::text, true);
+  r := public.my_fee_status();
+  if r ->> 'next_due_on' is distinct from (current_date + 20)::text
+     or (r ->> 'next_amount')::numeric is distinct from coalesce(private.fee_amount('car', 'standard', current_date + 20), 0) then
+    raise exception 'FALHOU fee_status_proximo_pagamento: sem mês aberto next_due_on=%, next_amount=%', r ->> 'next_due_on', r ->> 'next_amount';
+  end if;
+  insert into public.zz_fx values ('ok:fee_status_proximo_pagamento', '1');
+end $t$;
+
 do $t$
 begin
-  raise exception 'RESULTADO: % de 8 testes OK (esta mensagem é esperada e desfaz tudo): %',
+  raise exception 'RESULTADO: % de 9 testes OK (esta mensagem é esperada e desfaz tudo): %',
     (select count(*) from public.zz_fx where k like 'ok:%'),
     (select string_agg(substr(k, 4), ', ' order by k) from public.zz_fx where k like 'ok:%');
 end $t$;

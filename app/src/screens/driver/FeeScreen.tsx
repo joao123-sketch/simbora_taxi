@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { BigButton } from '../../components/BigButton';
@@ -10,6 +10,7 @@ import {
   continueContract,
   fetchFeeCharge,
   formatDay,
+  formatDate,
   kindLabel,
   nagText,
   moneyLabel,
@@ -148,19 +149,21 @@ export function FeeScreen({ status, onChanged, onSkip, onBack }: Props) {
                 <BigButton label={copied ? 'Copiado!' : 'Copiar código Pix'} icon="copy" onPress={copyCode} />
               </>
             ) : null}
-            <BigButton
-              label="Pagar com cartão"
-              icon="card"
-              onPress={() => Linking.openURL(charge.invoiceUrl)}
-              variant={charge.pixPayload ? 'secondary' : 'primary'}
-            />
-            <Text style={styles.hint}>Quando o pagamento cair, esta tela atualiza sozinha.</Text>
+            {charge.pixPayload ? (
+              <Text style={styles.hint}>Quando o pagamento cair, esta tela atualiza sozinha.</Text>
+            ) : (
+              <Text style={styles.hint}>
+                O código Pix ainda não ficou pronto. Feche e abra esta tela em um minuto. Se continuar, fale com o suporte do Simbora Car.
+              </Text>
+            )}
           </>
         ) : chargeNote ? (
           <Text style={styles.hint}>{chargeNote}</Text>
         ) : (
           <Text style={styles.hint}>Gerando a cobrança...</Text>
         )}
+
+        <Summary status={status} />
 
         {onSkip && status.state !== 'overdue' ? (
           <BigButton
@@ -186,22 +189,45 @@ export function FeeScreen({ status, onChanged, onSkip, onBack }: Props) {
       onBack={onBack}
     >
       {paid ? <Text style={styles.ok}>Pagamento recebido. Obrigado!</Text> : null}
+      <Summary status={status} />
+    </Screen>
+  );
+}
+
+// Próximo pagamento (data e valor) e os pagamentos já feitos, com a data em que cada um caiu.
+function Summary({ status }: { status: FeeStatus }) {
+  return (
+    <>
+      {status.next_due_on ? (
+        <View style={styles.next}>
+          <Text style={styles.rowTitle}>Próximo pagamento</Text>
+          <Text style={styles.hint}>
+            {moneyLabel(status.next_amount)} · vence em {formatDay(status.next_due_on)}
+          </Text>
+        </View>
+      ) : null}
+      {status.history.length > 0 ? <Text style={styles.section}>Pagamentos</Text> : null}
       {status.history.map((item) => (
         <View key={item.period_start} style={styles.row}>
           <Text style={styles.rowTitle}>
             {formatDay(item.period_start)} a {formatDay(item.period_end)} · {kindLabel[item.kind]}
           </Text>
           <Text style={styles.hint}>
-            {item.amount > 0 ? `${moneyLabel(item.amount)} · ` : ''}
-            {item.status === 'paid' ? 'Pago' : item.status === 'waived' ? 'Grátis' : 'Em aberto'}
+            {item.status === 'paid'
+              ? `Pago${item.paid_at ? ` em ${formatDate(item.paid_at)}` : ''} · ${moneyLabel(item.amount)}`
+              : item.status === 'waived'
+                ? 'Grátis'
+                : `Em aberto · ${moneyLabel(item.amount)}`}
           </Text>
         </View>
       ))}
-    </Screen>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  next: { gap: 2, padding: 12, borderRadius: 12, backgroundColor: colors.surfaceMuted },
+  section: { fontSize: fontSize.body - 2, fontWeight: '700', color: colors.textMuted, marginTop: 4 },
   warning: { fontSize: fontSize.body, fontWeight: '700', color: colors.primaryDark },
   hint: { fontSize: fontSize.body - 2, color: colors.textMuted },
   ok: { fontSize: fontSize.body, fontWeight: '700', color: '#1B6E2D' },

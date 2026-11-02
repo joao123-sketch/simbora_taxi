@@ -7,8 +7,8 @@ export function isPayingEvent(event: string): boolean {
 
 export type AsaasPaymentBody = {
   customer: string;
-  // UNDEFINED deixa quem paga escolher entre Pix e cartão na página do Asaas.
-  billingType: 'UNDEFINED';
+  // Só Pix (decisão do dono: sem cartão nem boleto).
+  billingType: 'PIX';
   value: number;
   dueDate: string;
   externalReference: string;
@@ -26,7 +26,7 @@ export function paymentBody(
 ): AsaasPaymentBody {
   return {
     customer: input.customerId,
-    billingType: 'UNDEFINED',
+    billingType: 'PIX',
     value: input.amount,
     dueDate: input.dueOn < today ? today : input.dueOn,
     externalReference: `fee:${input.periodId}`,

@@ -16,11 +16,11 @@ test('isPayingEvent recusa outros eventos', () => {
 
 const base = { customerId: 'cus_1', amount: 200, periodId: 42, periodStart: '2026-11-01' };
 
-test('paymentBody mantém o vencimento futuro e usa os campos do plano', () => {
+test('paymentBody cobra só por Pix, mantém o vencimento futuro e usa os campos do plano', () => {
   const body = paymentBody({ ...base, dueOn: '2026-11-05' }, '2026-11-02');
   assert.deepEqual(body, {
     customer: 'cus_1',
-    billingType: 'UNDEFINED',
+    billingType: 'PIX',
     value: 200,
     dueDate: '2026-11-05',
     externalReference: 'fee:42',

@@ -30,6 +30,9 @@ export type FeeStatus = {
   period_end: string | null;
   // O mês acabou e o motorista ainda não abriu o próximo.
   needs_renewal: boolean;
+  // Data e valor do próximo pagamento (o mês aberto, ou o do mês que vem).
+  next_due_on: string | null;
+  next_amount: number | null;
   claimed_at: string | null;
   receipt_path: string | null;
   pix: PixInfo | null;
@@ -47,6 +50,13 @@ export function formatDay(iso: string | null): string {
   if (!iso) return '';
   const [, month, day] = iso.split('-');
   return `${day}/${month}`;
+}
+
+// "2026-11-02T14:30:00Z" -> "02/11/2026" (no horário do aparelho).
+export function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${two(d.getDate())}/${two(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 export function moneyLabel(value: number | null): string {
