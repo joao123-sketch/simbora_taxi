@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, fontSize, gradients, radius, shadows } from '../theme';
 import { BackdropMap } from './BackdropMap';
+import { BeetleLogo } from './BeetleLogo';
 import type { BackdropMapProps } from './BackdropMap.types';
 
 type Props = {
@@ -109,13 +110,7 @@ export function Screen({ title, subtitle, error, footer, corner, backdrop, onBac
                 ) : (
                   <View style={styles.brandRow}>
                     <LinearGradient colors={gradients.primary} style={styles.logo}>
-                      <Ionicons
-                        name="car-sport"
-                        size={20}
-                        color={colors.onPrimary}
-                        accessibilityElementsHidden
-                        importantForAccessibility="no"
-                      />
+                      <BeetleLogo size={26} color={colors.onPrimary} cutout="#CD2525" />
                     </LinearGradient>
                     <Text style={styles.brand}>Simbora Car</Text>
                   </View>
