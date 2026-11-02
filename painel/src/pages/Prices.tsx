@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { money, parseDecimal, toField, todayIso, formatDate, vehicleLabel } from '../lib/format';
+import { Field, useDismissOk } from '../lib/fields';
 import { friendlyError, supabase } from '../lib/supabase';
 
 type City = { id: number; name: string; state: string; active: boolean };
@@ -11,16 +12,7 @@ type Fare = {
   base: number;
   per_km: number;
   per_min: number;
-  minimum: number;
   effective_from: string;
-};
-type Intercity = {
-  origin_city_id: number;
-  origin_name: string;
-  destination_city_id: number;
-  destination_name: string;
-  vehicle_type: 'car' | 'moto';
-  price: number;
 };
 type Settings = {
   locked: boolean;
@@ -34,6 +26,10 @@ type Settings = {
   share_per_step: number;
   card_surcharge: number;
   delivery_discount: number;
+  night_surcharge: number;
+  night_from: number;
+  night_until: number;
+  max_factor: number;
 };
 type DeliverySize = {
   size: 'P' | 'M' | 'G';
@@ -46,7 +42,6 @@ type DeliverySize = {
 type Overview = {
   cities: City[];
   fares: Fare[];
-  intercity: Intercity[];
   delivery_sizes: DeliverySize[];
   settings: Settings;
 };
@@ -84,7 +79,6 @@ export function PricesPage() {
           <SettingsCard settings={data.settings} onSaved={load} />
           <DeliverySizesCard sizes={data.delivery_sizes ?? []} onSaved={load} />
           <FaresCard data={data} onSaved={load} />
-          <IntercityCard data={data} onSaved={load} />
         </>
       ) : null}
     </>
@@ -108,6 +102,10 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
   const [minRequests, setMinRequests] = useState(String(settings.min_requests));
   const [stepEvery, setStepEvery] = useState(String(settings.step_every_minutes));
   const [share, setShare] = useState(percent(settings.share_per_step));
+  const [nightSurcharge, setNightSurcharge] = useState(percent(settings.night_surcharge));
+  const [nightFrom, setNightFrom] = useState(String(settings.night_from));
+  const [nightUntil, setNightUntil] = useState(String(settings.night_until));
+  const [maxFactor, setMaxFactor] = useState(toField(settings.max_factor));
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   useDismissOk(msg, setMsg);
   const [busy, setBusy] = useState(false);
@@ -128,6 +126,10 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
       min_requests: parseDecimal(minRequests),
       step_every_minutes: parseDecimal(stepEvery),
       share_per_step: parseDecimal(share),
+      night_surcharge: parseDecimal(nightSurcharge),
+      night_from: parseDecimal(nightFrom),
+      night_until: parseDecimal(nightUntil),
+      max_factor: parseDecimal(maxFactor),
     };
     if (Object.values(numbers).some((n) => n === null)) {
       setMsg({ kind: 'error', text: 'Preencha todos os campos com números.' });
@@ -148,6 +150,10 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
         min_requests: numbers.min_requests,
         step_every_minutes: numbers.step_every_minutes,
         share_per_step: numbers.share_per_step! / 100,
+        night_surcharge: numbers.night_surcharge! / 100,
+        night_from: numbers.night_from,
+        night_until: numbers.night_until,
+        max_factor: numbers.max_factor,
       },
     });
     setBusy(false);
@@ -178,6 +184,17 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
         <Field label="Mínimo de pedidos para subir" value={minRequests} onChange={setMinRequests} />
         <Field label="Parcela de pedidos lentos por degrau (%)" value={share} onChange={setShare} />
         <Field label="Tempo mínimo entre degraus (minutos)" value={stepEvery} onChange={setStepEvery} />
+      </div>
+      <h2>Adicional noturno e teto</h2>
+      <p className="hint">
+        Vale só nas corridas dentro da cidade, junto com o preço dinâmico, e o total nunca passa do teto abaixo. Não
+        aparece para o passageiro nem para o motorista: eles só veem o preço final.
+      </p>
+      <div className="grid">
+        <Field label="Adicional noturno (%)" value={nightSurcharge} onChange={setNightSurcharge} />
+        <Field label="Noturno começa às (hora, 0 a 23)" value={nightFrom} onChange={setNightFrom} />
+        <Field label="Noturno termina às (hora, 0 a 23)" value={nightUntil} onChange={setNightUntil} />
+        <Field label="Teto do preço (× o normal)" value={maxFactor} onChange={setMaxFactor} />
       </div>
       <p className="hint">
         Teto do aumento: <b>{ceiling !== null ? `${toField(Math.round(ceiling * 100) / 100)}×` : '—'}</b>
@@ -288,38 +305,6 @@ function SizeRow({ size, onSaved }: { size: DeliverySize; onSaved: () => Promise
   );
 }
 
-// O aviso de "salvo" some depois de alguns segundos, para não ficar velho na tela.
-// Os de erro ficam até a próxima ação.
-function useDismissOk(
-  msg: { kind: 'ok' | 'error'; text: string } | null,
-  setMsg: (value: null) => void,
-) {
-  useEffect(() => {
-    if (msg?.kind !== 'ok') return;
-    const timer = setTimeout(() => setMsg(null), 6000);
-    return () => clearTimeout(timer);
-  }, [msg, setMsg]);
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = 'text',
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-}) {
-  return (
-    <label className="field">
-      {label}
-      <input type={type} inputMode={type === 'text' ? 'decimal' : undefined} value={value} onChange={(e) => onChange(e.target.value)} />
-    </label>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Tarifas dentro da cidade
 // ---------------------------------------------------------------------------
@@ -343,7 +328,7 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
   const [cityId, setCityId] = useState<number>(activeCities[0]?.id ?? data.cities[0]?.id ?? 0);
   const [vehicle, setVehicle] = useState<'car' | 'moto'>('car');
   const base = current.find((f) => f.city_id === cityId && f.vehicle_type === vehicle);
-  const [fields, setFields] = useState({ base: '', per_km: '', per_min: '', minimum: '' });
+  const [fields, setFields] = useState({ base: '', per_km: '', per_min: '' });
   const [from, setFrom] = useState(today);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   useDismissOk(msg, setMsg);
@@ -355,19 +340,17 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
       base: toField(base?.base),
       per_km: toField(base?.per_km),
       per_min: toField(base?.per_min),
-      minimum: toField(base?.minimum),
     });
-  }, [base?.city_id, base?.vehicle_type, base?.effective_from, base?.base, base?.per_km, base?.per_min, base?.minimum]);
+  }, [base?.city_id, base?.vehicle_type, base?.effective_from, base?.base, base?.per_km, base?.per_min]);
 
   async function save() {
     const values = {
       base: parseDecimal(fields.base),
       per_km: parseDecimal(fields.per_km),
       per_min: parseDecimal(fields.per_min),
-      minimum: parseDecimal(fields.minimum),
     };
     if (Object.values(values).some((v) => v === null)) {
-      setMsg({ kind: 'error', text: 'Preencha os quatro valores com números.' });
+      setMsg({ kind: 'error', text: 'Preencha os três valores com números.' });
       return;
     }
     setBusy(true);
@@ -378,7 +361,6 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
       p_base: values.base,
       p_per_km: values.per_km,
       p_per_min: values.per_min,
-      p_minimum: values.minimum,
       p_effective_from: from,
     });
     setBusy(false);
@@ -398,7 +380,7 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
       <div>
         <h2>Tarifas dentro da cidade</h2>
         <p className="hint">
-          Preço = bandeirada + valor por km + valor por minuto, nunca abaixo do mínimo. Para mudar, crie uma tarifa
+          Preço = bandeirada + valor por km + valor por minuto (sem valor mínimo). Para mudar, crie uma tarifa
           nova com a data em que passa a valer: a antiga fica no histórico.
         </p>
       </div>
@@ -411,8 +393,7 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
             <th>Bandeirada</th>
             <th>Por km</th>
             <th>Por minuto</th>
-            <th>Mínimo</th>
-            <th>Vale desde</th>
+                        <th>Vale desde</th>
           </tr>
         </thead>
         <tbody>
@@ -423,8 +404,7 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
               <td>{money(f.base)}</td>
               <td>{money(f.per_km)}</td>
               <td>{money(f.per_min)}</td>
-              <td>{money(f.minimum)}</td>
-              <td>{formatDate(f.effective_from)}</td>
+                            <td>{formatDate(f.effective_from)}</td>
             </tr>
           ))}
         </tbody>
@@ -452,7 +432,6 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
         <Field label="Bandeirada (R$)" value={fields.base} onChange={(v) => setFields({ ...fields, base: v })} />
         <Field label="Por km (R$)" value={fields.per_km} onChange={(v) => setFields({ ...fields, per_km: v })} />
         <Field label="Por minuto (R$)" value={fields.per_min} onChange={(v) => setFields({ ...fields, per_min: v })} />
-        <Field label="Mínimo da corrida (R$)" value={fields.minimum} onChange={(v) => setFields({ ...fields, minimum: v })} />
         <label className="field">
           Vale a partir de
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -475,8 +454,7 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
               <th>Bandeirada</th>
               <th>Por km</th>
               <th>Por minuto</th>
-              <th>Mínimo</th>
-              <th>Vale desde</th>
+                            <th>Vale desde</th>
             </tr>
           </thead>
           <tbody>
@@ -487,195 +465,12 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
                 <td>{money(f.base)}</td>
                 <td>{money(f.per_km)}</td>
                 <td>{money(f.per_min)}</td>
-                <td>{money(f.minimum)}</td>
-                <td>{formatDate(f.effective_from)}</td>
+                                <td>{formatDate(f.effective_from)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </details>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Preços entre cidades
-// ---------------------------------------------------------------------------
-
-type Route = { origin: number; originName: string; destination: number; destinationName: string; car: string; moto: string };
-
-function IntercityCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<void> }) {
-  const routes = useMemo(() => {
-    const map = new Map<string, Route>();
-    for (const row of data.intercity) {
-      const key = `${row.origin_city_id}-${row.destination_city_id}`;
-      const route =
-        map.get(key) ??
-        ({
-          origin: row.origin_city_id,
-          originName: row.origin_name,
-          destination: row.destination_city_id,
-          destinationName: row.destination_name,
-          car: '',
-          moto: '',
-        } satisfies Route);
-      route[row.vehicle_type] = toField(row.price);
-      map.set(key, route);
-    }
-    return [...map.values()];
-  }, [data.intercity]);
-
-  const [edits, setEdits] = useState<Record<string, { car?: string; moto?: string }>>({});
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
-  useDismissOk(msg, setMsg);
-  const [busyKey, setBusyKey] = useState<string | null>(null);
-
-  const [newOrigin, setNewOrigin] = useState<number>(data.cities[0]?.id ?? 0);
-  const [newDestination, setNewDestination] = useState<number>(data.cities[1]?.id ?? 0);
-  const [newCar, setNewCar] = useState('');
-  const [newMoto, setNewMoto] = useState('');
-
-  async function saveRoute(origin: number, destination: number, car: string, moto: string, key: string) {
-    const prices: { vehicle: 'car' | 'moto'; value: number }[] = [];
-    for (const [vehicle, text] of [['car', car], ['moto', moto]] as const) {
-      if (text.trim() === '') continue;
-      const value = parseDecimal(text);
-      if (value === null) {
-        setMsg({ kind: 'error', text: 'Os preços precisam ser números.' });
-        return;
-      }
-      prices.push({ vehicle, value });
-    }
-    if (prices.length === 0) {
-      setMsg({ kind: 'error', text: 'Preencha pelo menos um preço.' });
-      return;
-    }
-    setBusyKey(key);
-    setMsg(null);
-    for (const price of prices) {
-      const { error } = await supabase.rpc('staff_set_intercity_price', {
-        p_origin_city_id: origin,
-        p_destination_city_id: destination,
-        p_vehicle_type: price.vehicle,
-        p_price: price.value,
-      });
-      if (error) {
-        setBusyKey(null);
-        setMsg({ kind: 'error', text: friendlyError(error) });
-        return;
-      }
-    }
-    setBusyKey(null);
-    setMsg({ kind: 'ok', text: 'Preço salvo.' });
-    setEdits((e) => {
-      const next = { ...e };
-      delete next[key];
-      return next;
-    });
-    await onSaved();
-  }
-
-  return (
-    <section className="card">
-      <div>
-        <h2>Preços entre cidades</h2>
-        <p className="hint">
-          Valor fechado de uma cidade para outra, para carro e moto. A ida e volta usa o dobro da ida mais a
-          espera pelo valor por minuto da tarifa.
-        </p>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>De</th>
-            <th>Para</th>
-            <th>Carro (R$)</th>
-            <th>Moto (R$)</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {routes.map((route) => {
-            const key = `${route.origin}-${route.destination}`;
-            const edit = edits[key] ?? {};
-            const car = edit.car ?? route.car;
-            const moto = edit.moto ?? route.moto;
-            const changed = edit.car !== undefined || edit.moto !== undefined;
-            return (
-              <tr key={key}>
-                <td>{route.originName}</td>
-                <td>{route.destinationName}</td>
-                <td>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={car}
-                    onChange={(e) => setEdits({ ...edits, [key]: { ...edit, car: e.target.value } })}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={moto}
-                    onChange={(e) => setEdits({ ...edits, [key]: { ...edit, moto: e.target.value } })}
-                  />
-                </td>
-                <td>
-                  <button
-                    className="btn secondary"
-                    disabled={!changed || busyKey === key}
-                    onClick={() => saveRoute(route.origin, route.destination, car, moto, key)}
-                  >
-                    Salvar
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      <h2>Nova rota</h2>
-      <div className="grid">
-        <label className="field">
-          De
-          <select value={newOrigin} onChange={(e) => setNewOrigin(Number(e.target.value))}>
-            {data.cities.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Para
-          <select value={newDestination} onChange={(e) => setNewDestination(Number(e.target.value))}>
-            {data.cities.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Field label="Carro (R$)" value={newCar} onChange={setNewCar} />
-        <Field label="Moto (R$)" value={newMoto} onChange={setNewMoto} />
-      </div>
-      {msg ? <div className={`msg ${msg.kind}`}>{msg.text}</div> : null}
-      <div>
-        <button
-          className="btn"
-          disabled={busyKey === 'new'}
-          onClick={async () => {
-            await saveRoute(newOrigin, newDestination, newCar, newMoto, 'new');
-            setNewCar('');
-            setNewMoto('');
-          }}
-        >
-          Adicionar rota
-        </button>
-      </div>
     </section>
   );
 }

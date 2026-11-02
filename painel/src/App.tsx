@@ -5,12 +5,14 @@ import { configured, supabase } from './lib/supabase';
 import { DriversPage } from './pages/Drivers';
 import { FeesPage } from './pages/Fees';
 import { LoginPage } from './pages/Login';
+import { CitiesPage } from './pages/Cities';
 import { PricesPage } from './pages/Prices';
 import { PassengersPage } from './pages/Passengers';
 import { RegisteredPage } from './pages/Registered';
 import { ReportsPage } from './pages/Reports';
+import { RoutesPage } from './pages/Routes';
 
-type Tab = 'drivers' | 'registered' | 'passengers' | 'fees' | 'reports' | 'prices';
+type Tab = 'drivers' | 'registered' | 'passengers' | 'fees' | 'reports' | 'prices' | 'routes' | 'cities';
 
 export function App() {
   // undefined = ainda descobrindo se há alguém logado.
@@ -98,6 +100,12 @@ export function App() {
           <button className={`tab ${tab === 'prices' ? 'active' : ''}`} onClick={() => setTab('prices')}>
             Preços
           </button>
+          <button className={`tab ${tab === 'routes' ? 'active' : ''}`} onClick={() => setTab('routes')}>
+            Rotas
+          </button>
+          <button className={`tab ${tab === 'cities' ? 'active' : ''}`} onClick={() => setTab('cities')}>
+            Cidades
+          </button>
         </nav>
         <span className="hint">{session.user.email}</span>
         <button className="btn secondary" onClick={() => supabase.auth.signOut()}>
@@ -114,6 +122,10 @@ export function App() {
           <FeesPage />
         ) : tab === 'reports' ? (
           <ReportsPage />
+        ) : tab === 'routes' ? (
+          <RoutesPage />
+        ) : tab === 'cities' ? (
+          <CitiesPage />
         ) : (
           <PricesPage />
         )}</main>
