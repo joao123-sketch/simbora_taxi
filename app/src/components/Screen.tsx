@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
+import { Image, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, fontSize, gradients, radius, shadows } from '../theme';
 import { BackdropMap } from './BackdropMap';
-import { BeetleLogo } from './BeetleLogo';
 import type { BackdropMapProps } from './BackdropMap.types';
 
 type Props = {
@@ -109,9 +108,13 @@ export function Screen({ title, subtitle, error, footer, corner, backdrop, onBac
                   <BackButton onBack={onBack} />
                 ) : (
                   <View style={styles.brandRow}>
-                    <LinearGradient colors={gradients.primary} style={styles.logo}>
-                      <BeetleLogo size={26} color={colors.onPrimary} cutout="#CD2525" />
-                    </LinearGradient>
+                    <Image
+                      source={require('../../assets/logo-fusca.png')}
+                      style={styles.logo}
+                      resizeMode="contain"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no"
+                    />
                     <Text style={styles.brand}>Simbora Car</Text>
                   </View>
                 )}
@@ -177,11 +180,8 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   logo: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 42,
+    height: 36,
   },
   brand: {
     fontSize: fontSize.body,
