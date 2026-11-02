@@ -1,0 +1,14 @@
+{
+  // Worker que fala com o Asaas. Os segredos NÃO ficam aqui: ASAAS_API_KEY, ASAAS_WEBHOOK_TOKEN
+  // e SUPABASE_SERVICE_KEY são colocados no Cloudflare (Settings > Variables and secrets).
+  "name": "simbora-pagamentos",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-24",
+  "vars": {
+    // Sandbox do Asaas. Para produção troque por https://api.asaas.com e use a chave de produção.
+    "ASAAS_BASE_URL": "https://api-sandbox.asaas.com",
+    "SUPABASE_URL": "https://kqbfusrjxmyjzzjyagiu.supabase.co",
+    // Endereços do app, separados por vírgula.
+    "ALLOWED_ORIGINS": "https://simbora-app.joaovictordesouza123-9.workers.dev,https://app.simboracar.com.br,http://localhost:4173"
+  }
+}

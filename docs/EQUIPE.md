@@ -36,7 +36,9 @@ Cada motorista tem uma linha em **driver_subscriptions** (início do mês gráti
 
 - `kind`: `free` (mês grátis), `entry` (R$ 200) ou `standard` (R$ 300). Os valores ficam em **fee_schedule**.
 - `status`: `open` (a pagar), `paid` (pago) ou `waived` (dispensado, como o mês grátis).
-- Quando o motorista pagar o Pix do mês, mude `status` para `paid` e preencha `paid_at`. É isso que faz o mês seguinte virar R$ 300.
+- A cobrança é automática: o app do motorista gera o Pix e o link do cartão pelo Asaas e, quando o pagamento cai, o mês é baixado sozinho (`status` vira `paid`). É isso que faz o mês seguinte virar R$ 300.
+- Se um pagamento entrou por fora do Asaas, ou o Asaas não avisou, abra a aba **Mensalidades** do painel e use **Confirmar pagamento recebido por fora**. Antes, confira no painel do Asaas se a cobrança aparece como recebida.
+- Para passar do sandbox para valer: troque a chave do Asaas e `ASAAS_BASE_URL` no Worker `simbora-pagamentos` e registre o webhook de novo (ver `pagamentos/README.md`).
 
 ## Reavaliação a cada 6 meses (o motorista não vê)
 

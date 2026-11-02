@@ -17,13 +17,8 @@ type FeeRow = {
   needs_renewal: boolean;
   claimed_at: string | null;
   receipt_path: string | null;
-};
-
-type PixSettings = {
-  pix_key: string | null;
-  receiver_name: string | null;
-  receiver_city: string | null;
-  description: string;
+  // Cobrança gerada no Asaas para este mês (null = ainda não foi gerada).
+  asaas_payment_id: string | null;
 };
 
 const stateLabel: Record<FeeRow['state'], string> = {
@@ -60,8 +55,9 @@ export function FeesPage() {
         <div>
           <h1>Mensalidades</h1>
           <p className="hint">
-            O motorista paga o mês antes de começar. Confira o dinheiro no banco e confirme aqui. Passados 5 dias do
-            vencimento ele deixa de receber pedidos até regularizar.
+            O motorista paga o mês antes de começar, por Pix ou cartão, pela cobrança do Asaas. Quando o pagamento cai, o
+            mês é baixado sozinho. Use o botão abaixo só se o dinheiro entrou por fora. Passados 5 dias do vencimento ele
+            deixa de receber pedidos até regularizar.
           </p>
         </div>
         <label className="check">
@@ -69,8 +65,6 @@ export function FeesPage() {
           Mostrar também quem está em dia
         </label>
       </div>
-
-      <PixCard />
 
       {error ? <div className="msg error">{error}</div> : null}
       {rows === null && !error ? <p className="hint">Carregando...</p> : null}
@@ -136,6 +130,12 @@ function FeeCard({ row, onChanged }: { row: FeeRow; onChanged: () => Promise<voi
         </p>
       ) : null}
 
+      {row.period_id !== null ? (
+        <p className="hint">
+          {row.asaas_payment_id ? `Cobrança no Asaas: ${row.asaas_payment_id}` : 'Cobrança no Asaas ainda não gerada (abre 5 dias antes do vencimento).'}
+        </p>
+      ) : null}
+
       {row.claimed_at ? (
         <p>
           <b>O motorista avisou que pagou</b> em {formatDate(row.claimed_at)}.{' '}
@@ -153,82 +153,10 @@ function FeeCard({ row, onChanged }: { row: FeeRow; onChanged: () => Promise<voi
       {row.period_id !== null ? (
         <div>
           <button className="btn" disabled={busy} onClick={confirmPaid}>
-            Confirmar pagamento recebido
+            Confirmar pagamento recebido por fora
           </button>
         </div>
       ) : null}
-    </section>
-  );
-}
-
-function PixCard() {
-  const [pix, setPix] = useState<PixSettings | null>(null);
-  const [key, setKey] = useState('');
-  const [name, setName] = useState('');
-  const [city, setCity] = useState('');
-  const [description, setDescription] = useState('');
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    supabase.rpc('staff_get_pix_settings').then(({ data }) => {
-      const value = data as PixSettings | null;
-      if (!value) return;
-      setPix(value);
-      setKey(value.pix_key ?? '');
-      setName(value.receiver_name ?? '');
-      setCity(value.receiver_city ?? '');
-      setDescription(value.description);
-    });
-  }, []);
-
-  async function save() {
-    setBusy(true);
-    setMsg(null);
-    const { error } = await supabase.rpc('staff_set_pix_settings', {
-      p_key: key,
-      p_name: name,
-      p_city: city,
-      p_description: description,
-    });
-    setBusy(false);
-    setMsg(error ? { kind: 'error', text: friendlyError(error) } : { kind: 'ok', text: 'Dados do Pix salvos.' });
-  }
-
-  return (
-    <section className="card">
-      <div>
-        <h2>Pix para receber as mensalidades</h2>
-        <p className="hint">
-          O app monta o QR e o Pix copia e cola com estes dados e o valor do mês. O nome vai até 25 letras e a cidade
-          até 15, sem acento.
-          {pix && !pix.pix_key ? ' Ainda não há chave cadastrada: os motoristas não conseguem pagar pelo app.' : ''}
-        </p>
-      </div>
-      <div className="grid">
-        <label className="field">
-          Chave Pix
-          <input value={key} onChange={(e) => setKey(e.target.value)} />
-        </label>
-        <label className="field">
-          Nome de quem recebe
-          <input value={name} maxLength={25} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="field">
-          Cidade
-          <input value={city} maxLength={15} onChange={(e) => setCity(e.target.value)} />
-        </label>
-        <label className="field">
-          Descrição do Pix
-          <input value={description} maxLength={25} onChange={(e) => setDescription(e.target.value)} />
-        </label>
-      </div>
-      {msg ? <div className={`msg ${msg.kind}`}>{msg.text}</div> : null}
-      <div>
-        <button className="btn" disabled={busy} onClick={save}>
-          Salvar dados do Pix
-        </button>
-      </div>
     </section>
   );
 }

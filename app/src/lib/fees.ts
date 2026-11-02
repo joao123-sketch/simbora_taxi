@@ -93,21 +93,44 @@ export async function continueContract(version: string): Promise<void> {
   if (error) throw error;
 }
 
-// Envia a foto do comprovante para a pasta do próprio motorista e devolve o caminho.
-export async function uploadReceipt(userId: string, periodId: number, uri: string): Promise<string> {
-  const bytes = await fetch(uri).then((r) => r.arrayBuffer());
-  const path = `${userId}/${periodId}-${Date.now()}.jpg`;
-  const { error } = await supabase.storage.from('fee-receipts').upload(path, bytes, {
-    contentType: 'image/jpeg',
-  });
-  if (error) throw error;
-  return path;
+// A cobrança do mês (Pix e cartão) gerada pelo Asaas, pedida ao Worker simbora-pagamentos.
+export type FeeCharge = {
+  amount: number;
+  dueOn: string;
+  invoiceUrl: string;
+  pixPayload: string | null;
+  pixQrImage: string | null;
+};
+
+// Recusa que o Worker escreve em português (ex.: "A cobrança abre 5 dias antes do vencimento").
+export class FeeChargeError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
 }
 
-export async function claimFeePayment(periodId: number, receiptPath: string | null): Promise<void> {
-  const { error } = await supabase.rpc('claim_fee_payment', {
-    p_period_id: periodId,
-    p_receipt_path: receiptPath,
-  });
-  if (error) throw error;
+export async function fetchFeeCharge(): Promise<FeeCharge> {
+  const base = process.env.EXPO_PUBLIC_PAGAMENTOS_URL;
+  if (!base) throw new FeeChargeError('O pagamento ainda não está configurado. Fale com o suporte do Simbora Car.', 0);
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new FeeChargeError('Entre no app para ver a cobrança.', 401);
+
+  let response: Response;
+  try {
+    response = await fetch(`${base.replace(/\/$/, '')}/fee/charge`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new FeeChargeError('Sem conexão com o Simbora Car. Confira a internet.', 0);
+  }
+  const body = (await response.json().catch(() => null)) as (FeeCharge & { error?: string }) | null;
+  if (!response.ok) {
+    throw new FeeChargeError(body?.error ?? 'Não conseguimos gerar a cobrança agora. Tente de novo.', response.status);
+  }
+  return body as FeeCharge;
 }

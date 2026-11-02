@@ -110,10 +110,10 @@ select id from auth.users where email = 'equipe@exemplo.com';
 
 ## Mensalidade do motorista
 
-- **Pix:** o app monta o Pix copia e cola e o QR (`app/src/lib/pix.ts`, BR Code estático com CRC16) a partir da chave, do nome e da cidade cadastrados no painel (aba Mensalidades) e do valor do mês. O gerador reproduz exatamente os QR de R$ 200 e R$ 300 do Inter.
+- **Asaas (Pix ou cartão):** a cobrança de cada mês é gerada no Asaas até 5 dias antes do vencimento (e vale também para mês já vencido) pelo Worker `pagamentos/` (`simbora-pagamentos`, ver `pagamentos/README.md`). O Worker guarda a chave do Asaas, o app pede a cobrança com o login do motorista (`POST /fee/charge`) e recebe valor, vencimento, Pix copia e cola e link da fatura (cartão). O valor vem sempre do banco (`asaas_charge_context`). Quando o pagamento cai, o Asaas avisa o Worker (`POST /asaas/webhook`, eventos `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`) e o Worker baixa o mês (`asaas_mark_paid`, idempotente). Tabelas `asaas_customers` e `fee_charges`; as 4 funções `asaas_*` só a chave de serviço executa. O gerador antigo de Pix estático (`app/src/lib/pix.ts`) e os dados de Pix do painel não são mais usados.
 - **Estado (`private.fee_state`):** `ok`, `pending` (mês aberto, antes do vencimento), `due` (já passou do vencimento: a cobrança insistente começa no primeiro dia de atraso, mas ele ainda recebe pedidos por 5 dias) e `overdue` (passou da tolerância). Em `overdue` o motorista não fica online nem recebe pedidos (`dispatch_ride`, `can_see_offer`, `set_driver_online`).
-- **No app:** com mensalidade vencida o app cobra ao abrir (a tela de pagamento aparece sozinha), mostra um aviso vermelho no início do modo motorista e volta a cobrar a cada 5 minutos (em atraso não dá para dispensar). O motorista paga, anexa o comprovante (bucket privado `fee-receipts`, pasta do próprio motorista) e toca em "Já paguei". Quando o mês acaba, "Continuar" abre o próximo (`continue_contract`).
-- **No painel:** a equipe vê quem deve, abre o comprovante e confirma o pagamento (`staff_mark_fee_paid`).
+- **No app:** com mensalidade vencida o app cobra ao abrir (a tela de pagamento aparece sozinha), mostra um aviso vermelho no início do modo motorista e volta a cobrar a cada 5 minutos (em atraso não dá para dispensar). O motorista paga pelo QR do Pix ou pelo cartão (página do Asaas) e a tela atualiza sozinha quando o pagamento cai (confere a cada 10 s); não há mais comprovante nem "Já paguei". Quando o mês acaba, "Continuar" abre o próximo (`continue_contract`).
+- **No painel:** a equipe vê quem deve e o id da cobrança do Asaas de cada mês. O botão "Confirmar pagamento recebido por fora" (`staff_mark_fee_paid`) fica para quando o dinheiro entrou fora do Asaas.
 
 ## Relatórios da equipe
 

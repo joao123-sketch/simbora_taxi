@@ -1,23 +1,21 @@
 import * as Clipboard from 'expo-clipboard';
-import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { BigButton } from '../../components/BigButton';
 import { CheckCard } from '../../components/CheckCard';
 import { Screen } from '../../components/Screen';
 import {
-  claimFeePayment,
   continueContract,
+  fetchFeeCharge,
   formatDay,
   kindLabel,
   nagText,
   moneyLabel,
-  uploadReceipt,
+  type FeeCharge,
   type FeeStatus,
 } from '../../lib/fees';
-import { pixPayload } from '../../lib/pix';
 import { DRIVER_TERMS_VERSION } from '../../legal/driverTerms';
 import { colors, fontSize } from '../../theme';
 
@@ -38,15 +36,49 @@ const statusTitle: Record<FeeStatus['state'], string> = {
   overdue: 'Mensalidade em atraso',
 };
 
-export function FeeScreen({ userId, status, onChanged, onSkip, onBack }: Props) {
+// De quanto em quanto tempo a tela confere se o pagamento caiu.
+const POLL_MS = 10000;
+
+export function FeeScreen({ status, onChanged, onSkip, onBack }: Props) {
   const [accepted, setAccepted] = useState(false);
-  const [receipt, setReceipt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [charge, setCharge] = useState<FeeCharge | null>(null);
+  // Aviso (não é erro): a cobrança ainda não abriu, ou outra recusa em português.
+  const [chargeNote, setChargeNote] = useState<string | null>(null);
+  const [paid, setPaid] = useState(false);
 
-  const payload =
-    status.pix && status.amount !== null && status.period_id !== null ? pixPayload(status.pix, status.amount) : null;
+  const hasOpenMonth = status.period_id !== null && !status.needs_renewal;
+
+  // Pede a cobrança do mês ao abrir a tela (o Worker cria no Asaas na primeira vez).
+  useEffect(() => {
+    if (!hasOpenMonth) return;
+    let alive = true;
+    setChargeNote(null);
+    fetchFeeCharge()
+      .then((c) => alive && setCharge(c))
+      .catch((e: { message?: string }) => alive && setChargeNote(e.message ?? 'Não conseguimos gerar a cobrança agora.'));
+    return () => {
+      alive = false;
+    };
+  }, [hasOpenMonth, status.period_id]);
+
+  // Enquanto há cobrança na tela, confere se o pagamento caiu (o Asaas avisa o banco sozinho).
+  useEffect(() => {
+    if (!charge || !hasOpenMonth) return;
+    const timer = setInterval(() => {
+      onChanged().catch(() => {});
+    }, POLL_MS);
+    return () => clearInterval(timer);
+    // onChanged vem do pai e muda a cada render; a conferência só precisa recomeçar com a cobrança.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charge, hasOpenMonth]);
+
+  // O mês deixou de estar aberto depois de uma cobrança: o pagamento caiu.
+  useEffect(() => {
+    if (charge && !hasOpenMonth && !status.needs_renewal) setPaid(true);
+  }, [charge, hasOpenMonth, status.needs_renewal]);
 
   async function run(action: () => Promise<void>, failure: string) {
     setBusy(true);
@@ -61,32 +93,11 @@ export function FeeScreen({ userId, status, onChanged, onSkip, onBack }: Props) 
     }
   }
 
-  async function pickReceipt() {
-    setError(null);
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError('Libere o acesso às fotos para anexar o comprovante.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
-    if (!result.canceled) setReceipt(result.assets[0].uri);
-  }
-
   async function copyCode() {
-    if (!payload) return;
-    await Clipboard.setStringAsync(payload);
+    if (!charge?.pixPayload) return;
+    await Clipboard.setStringAsync(charge.pixPayload);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
-  }
-
-  async function iPaid() {
-    if (status.period_id === null) return;
-    const periodId = status.period_id;
-    await run(async () => {
-      const path = receipt ? await uploadReceipt(userId, periodId, receipt) : null;
-      await claimFeePayment(periodId, path);
-      setReceipt(null);
-    }, 'Não conseguimos avisar a equipe. Tente de novo.');
   }
 
   // O mês acabou: continuar abre o próximo (aceita o contrato).
@@ -111,8 +122,7 @@ export function FeeScreen({ userId, status, onChanged, onSkip, onBack }: Props) 
   }
 
   // Há um mês em aberto para pagar.
-  if (status.period_id !== null) {
-    const claimed = !!status.claimed_at;
+  if (hasOpenMonth) {
     return (
       <Screen
         title={statusTitle[status.state]}
@@ -123,37 +133,35 @@ export function FeeScreen({ userId, status, onChanged, onSkip, onBack }: Props) 
         {status.state === 'due' || status.state === 'overdue' ? (
           <Text style={styles.warning}>
             {nagText(status)}
-            {status.state === 'overdue' ? ' Depois que você pagar, a equipe confirma e libera.' : ''}
+            {status.state === 'overdue' ? ' Quando o pagamento cair, o app libera sozinho.' : ''}
           </Text>
         ) : null}
 
-        {payload ? (
+        {charge ? (
           <>
-            <View style={styles.qrBox}>
-              <QRCode value={payload} size={220} />
-            </View>
-            <Text style={styles.hint}>Abra o app do seu banco, escolha Pix e leia o QR, ou copie o código.</Text>
-            <BigButton label={copied ? 'Copiado!' : 'Copiar código Pix'} onPress={copyCode} />
+            {charge.pixPayload ? (
+              <>
+                <View style={styles.qrBox}>
+                  <QRCode value={charge.pixPayload} size={220} />
+                </View>
+                <Text style={styles.hint}>Abra o app do seu banco, escolha Pix e leia o QR, ou copie o código.</Text>
+                <BigButton label={copied ? 'Copiado!' : 'Copiar código Pix'} icon="copy" onPress={copyCode} />
+              </>
+            ) : null}
+            <BigButton
+              label="Pagar com cartão"
+              icon="card"
+              onPress={() => Linking.openURL(charge.invoiceUrl)}
+              variant={charge.pixPayload ? 'secondary' : 'primary'}
+            />
+            <Text style={styles.hint}>Quando o pagamento cair, esta tela atualiza sozinha.</Text>
           </>
+        ) : chargeNote ? (
+          <Text style={styles.hint}>{chargeNote}</Text>
         ) : (
-          <Text style={styles.hint}>
-            Os dados do Pix ainda não foram cadastrados pela equipe. Fale com o suporte do Simbora Car.
-          </Text>
+          <Text style={styles.hint}>Gerando a cobrança...</Text>
         )}
 
-        {claimed ? (
-          <Text style={styles.ok}>Aviso enviado. A equipe vai conferir o pagamento e liberar.</Text>
-        ) : (
-          <>
-            <BigButton
-              label={receipt ? 'Trocar o comprovante' : 'Anexar o comprovante'}
-              onPress={pickReceipt}
-              variant="link"
-            />
-            {receipt ? <Text style={styles.hint}>Comprovante escolhido.</Text> : null}
-            <BigButton label="Já paguei" onPress={iPaid} loading={busy} />
-          </>
-        )}
         {onSkip && status.state !== 'overdue' ? (
           <BigButton
             label={status.state === 'due' ? 'Agora não (aviso de novo em 5 minutos)' : 'Lembrar depois'}
@@ -177,6 +185,7 @@ export function FeeScreen({ userId, status, onChanged, onSkip, onBack }: Props) 
       }
       onBack={onBack}
     >
+      {paid ? <Text style={styles.ok}>Pagamento recebido. Obrigado!</Text> : null}
       {status.history.map((item) => (
         <View key={item.period_start} style={styles.row}>
           <Text style={styles.rowTitle}>
