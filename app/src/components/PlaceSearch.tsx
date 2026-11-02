@@ -1,7 +1,15 @@
-import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { searchPlaces, type PlaceResult } from '../lib/geocode';
+import {
+  newSearchSession,
+  resolveSuggestion,
+  suggestPlaces,
+  type PlaceResult,
+  type PlaceSuggestion,
+  type SearchSession,
+} from '../lib/geocode';
 import type { City } from '../lib/rides';
 import { colors, fontSize, touchTarget } from '../theme';
 
@@ -10,51 +18,82 @@ type Props = {
   onPick: (place: PlaceResult) => void;
 };
 
-// Cartão para escrever um endereço ou lugar. A busca roda ao tocar em "Buscar"
-// (o serviço grátis de endereços não aceita autocompletar). Ao escolher um
-// resultado, quem usa o componente recebe o lugar escolhido.
+// Espera a pessoa parar de digitar antes de consultar (cada consulta custa).
+const TYPING_PAUSE_MS = 350;
+
+// Campo para escrever um endereço ou lugar, com sugestões enquanto digita.
+// Ao escolher uma sugestão, quem usa o componente recebe o lugar com as coordenadas.
 export function PlaceSearch({ city, onPick }: Props) {
   const [text, setText] = useState('');
-  const [results, setResults] = useState<PlaceResult[] | null>(null);
+  const [results, setResults] = useState<PlaceSuggestion[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [failed, setFailed] = useState(false);
+  const session = useRef<SearchSession>(null);
+  // Só a resposta da última digitação vale; as antigas chegam fora de ordem.
+  const latest = useRef(0);
+  const picked = useRef('');
 
-  async function search() {
-    if (text.trim().length < 2) return;
+  useEffect(() => {
+    const query = text.trim();
+    if (query.length < 2 || query === picked.current) {
+      setResults(null);
+      setFailed(false);
+      return;
+    }
+    const id = ++latest.current;
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      setFailed(false);
+      try {
+        if (!session.current) session.current = await newSearchSession();
+        const found = await suggestPlaces(city, query, session.current);
+        if (id === latest.current) setResults(found);
+      } catch {
+        if (id === latest.current) {
+          setResults(null);
+          setFailed(true);
+        }
+      } finally {
+        if (id === latest.current) setSearching(false);
+      }
+    }, TYPING_PAUSE_MS);
+    return () => clearTimeout(timer);
+  }, [text, city]);
+
+  async function pick(suggestion: PlaceSuggestion) {
+    latest.current += 1;
     setSearching(true);
     setFailed(false);
     try {
-      setResults(await searchPlaces(city, text));
-    } catch {
+      const place = await resolveSuggestion(suggestion);
+      picked.current = suggestion.title;
+      setText(suggestion.title);
       setResults(null);
+      // A cobrança da sessão fecha aqui; a próxima busca abre uma nova.
+      session.current = null;
+      onPick(place);
+    } catch {
       setFailed(true);
     } finally {
       setSearching(false);
     }
   }
 
-  function pick(place: PlaceResult) {
-    setResults(null);
-    setText(place.title);
-    onPick(place);
-  }
-
   return (
     <View style={styles.card}>
       <View style={styles.row}>
+        <Ionicons name="search" size={22} color={colors.textMuted} style={styles.icon} />
         <TextInput
-          accessibilityLabel="Endereço ou lugar de destino"
+          accessibilityLabel="Endereço ou lugar"
           placeholder="Digite o endereço ou lugar"
           placeholderTextColor={colors.textMuted}
           value={text}
           onChangeText={setText}
-          onSubmitEditing={search}
+          autoCorrect={false}
           returnKeyType="search"
           style={styles.input}
         />
-        <Pressable accessibilityRole="button" accessibilityLabel="Buscar" onPress={search} style={styles.button}>
-          {searching ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>Buscar</Text>}
-        </Pressable>
+        {searching ? <ActivityIndicator color={colors.primary} style={styles.spinner} /> : null}
       </View>
 
       {failed ? <Text style={styles.note}>Não conseguimos buscar agora. Confira a internet e tente de novo.</Text> : null}
@@ -67,7 +106,7 @@ export function PlaceSearch({ city, onPick }: Props) {
         <Pressable
           key={place.id}
           accessibilityRole="button"
-          accessibilityLabel={place.title}
+          accessibilityLabel={place.subtitle ? `${place.title}, ${place.subtitle}` : place.title}
           onPress={() => pick(place)}
           style={styles.result}
         >
@@ -89,27 +128,20 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+  },
+  icon: {
+    marginLeft: 12,
   },
   input: {
     flex: 1,
     minHeight: touchTarget - 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     fontSize: fontSize.body,
     color: colors.text,
   },
-  button: {
-    minHeight: touchTarget - 8,
-    paddingHorizontal: 22,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  buttonText: {
-    color: colors.onPrimary,
-    fontSize: fontSize.body,
-    fontWeight: '700',
+  spinner: {
+    marginRight: 12,
   },
   note: {
     fontSize: fontSize.body - 2,

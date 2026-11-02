@@ -1,57 +1,74 @@
-// Mapa de fundo das telas com painel inferior. No navegador o Leaflet roda
-// direto na página; BackdropMap.tsx é só um fundo liso para o Expo Go.
-import 'leaflet/dist/leaflet.css';
-
-import L from 'leaflet';
-import { useEffect, useRef } from 'react';
+// Mapa de fundo das telas com painel inferior. No navegador usa o Google Maps;
+// BackdropMap.tsx é só um fundo liso para o Expo Go.
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { loadGoogleMaps, QUIET_MAP_STYLES } from '../lib/googleMaps';
 import { colors } from '../theme';
 import type { BackdropMapProps, BackdropMarker } from './BackdropMap.types';
 
-const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-function markerIcon(kind: BackdropMarker['kind']) {
-  const shadow = 'box-shadow:0 2px 6px rgba(0,0,0,.35)';
-  const html: Record<BackdropMarker['kind'], string> = {
-    me: `<div role="img" aria-label="Você" style="width:18px;height:18px;border-radius:50%;background:#2B6CF6;border:3px solid #fff;${shadow}"></div>`,
-    origin: `<div role="img" aria-label="Embarque" style="width:18px;height:18px;border-radius:50%;background:${colors.ink};border:4px solid #fff;${shadow}"></div>`,
-    dest: `<div role="img" aria-label="Destino" style="width:18px;height:18px;background:${colors.primary};border:4px solid #fff;${shadow}"></div>`,
-    car: `<div role="img" aria-label="Motorista" style="font-size:30px;line-height:30px;text-align:center;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">🚗</div>`,
-    moto: `<div role="img" aria-label="Motorista" style="font-size:30px;line-height:30px;text-align:center;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">🏍️</div>`,
+function svgIcon(svg: string, size: number): google.maps.Icon {
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(size / 2, size / 2),
   };
-  const big = kind === 'car' || kind === 'moto';
-  return L.divIcon({
-    className: '',
-    html: html[kind],
-    iconSize: big ? [34, 34] : [18, 18],
-    iconAnchor: big ? [17, 17] : [9, 9],
-  });
+}
+
+function markerIcon(kind: BackdropMarker['kind']): google.maps.Icon {
+  const shape = (inner: string) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26">${inner}</svg>`;
+  switch (kind) {
+    case 'me':
+      return svgIcon(shape('<circle cx="13" cy="13" r="9" fill="#2B6CF6" stroke="#fff" stroke-width="3.5"/>'), 26);
+    case 'origin':
+      return svgIcon(shape(`<circle cx="13" cy="13" r="9" fill="${colors.ink}" stroke="#fff" stroke-width="4"/>`), 26);
+    case 'dest':
+      return svgIcon(shape(`<rect x="4" y="4" width="18" height="18" fill="${colors.primary}" stroke="#fff" stroke-width="4"/>`), 26);
+    default: {
+      const emoji = kind === 'moto' ? '🏍️' : '🚗';
+      return svgIcon(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="20" y="29" font-size="28" text-anchor="middle">${emoji}</text></svg>`,
+        40,
+      );
+    }
+  }
 }
 
 export function BackdropMap({ center, markers = [], line = false, bottomInset = 0 }: BackdropMapProps) {
   const divRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const layerRef = useRef<L.LayerGroup | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const overlays = useRef<(google.maps.Marker | google.maps.Polyline)[]>([]);
   const framed = useRef(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!divRef.current) return;
-    const map = L.map(divRef.current, { zoomControl: false, attributionControl: false }).setView(
-      [center.lat, center.lng],
-      15,
-    );
-    L.tileLayer(TILE_URL, { maxZoom: 19 }).addTo(map);
-    L.control.attribution({ position: 'topright', prefix: false }).addAttribution('&copy; OpenStreetMap').addTo(map);
-    layerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
+    let cancelled = false;
+    loadGoogleMaps()
+      .then(() => google.maps.importLibrary('maps'))
+      .then(() => {
+        if (cancelled || !divRef.current) return;
+        mapRef.current = new google.maps.Map(divRef.current, {
+          center,
+          zoom: 15,
+          disableDefaultUI: true,
+          clickableIcons: false,
+          gestureHandling: 'greedy',
+          styles: QUIET_MAP_STYLES,
+        });
+        setReady(true);
+      })
+      .catch(() => {
+        // Sem chave ou sem internet: fica o fundo liso.
+      });
     return () => {
-      map.remove();
+      cancelled = true;
+      overlays.current.forEach((o) => o.setMap(null));
+      overlays.current = [];
       mapRef.current = null;
-      layerRef.current = null;
       framed.current = false;
     };
-    // O mapa nasce uma vez; centro e marcadores entram pelo efeito abaixo.
+    // O mapa nasce uma vez; centro e marcadores entram pelos efeitos abaixo.
   }, []);
 
   const moving = (m: BackdropMarker) => m.kind === 'car' || m.kind === 'moto' || m.kind === 'me';
@@ -62,38 +79,56 @@ export function BackdropMap({ center, markers = [], line = false, bottomInset = 
 
   useEffect(() => {
     const map = mapRef.current;
-    const layer = layerRef.current;
-    if (!map || !layer) return;
-    layer.clearLayers();
-    markers.forEach((m) =>
-      L.marker([m.coord.lat, m.coord.lng], { icon: markerIcon(m.kind), zIndexOffset: m.kind === 'car' || m.kind === 'moto' ? 1000 : 0 }).addTo(layer),
+    if (!ready || !map) return;
+    overlays.current.forEach((o) => o.setMap(null));
+    overlays.current = markers.map(
+      (m) =>
+        new google.maps.Marker({
+          map,
+          position: m.coord,
+          icon: markerIcon(m.kind),
+          zIndex: m.kind === 'car' || m.kind === 'moto' ? 1000 : 1,
+          clickable: false,
+        }),
     );
     if (line && markers.length > 1) {
-      L.polyline(
-        markers.map((m) => [m.coord.lat, m.coord.lng] as [number, number]),
-        { color: colors.ink, weight: 4, dashArray: '2 8', lineCap: 'round' },
-      ).addTo(layer);
+      overlays.current.push(
+        new google.maps.Polyline({
+          map,
+          path: markers.map((m) => m.coord),
+          strokeOpacity: 0,
+          clickable: false,
+          icons: [
+            {
+              icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, strokeColor: colors.ink, scale: 3 },
+              offset: '0',
+              repeat: '12px',
+            },
+          ],
+        }),
+      );
     }
-  }, [key, line]);
+  }, [ready, key, line]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!ready || !map) return;
     if (markers.length > 1) {
-      map.fitBounds(
-        markers.map((m) => [m.coord.lat, m.coord.lng] as [number, number]),
-        { paddingTopLeft: [40, 90], paddingBottomRight: [40, bottomInset + 30], maxZoom: 17, animate: framed.current },
-      );
+      const bounds = new google.maps.LatLngBounds();
+      markers.forEach((m) => bounds.extend(m.coord));
+      map.fitBounds(bounds, { top: 90, left: 40, right: 40, bottom: bottomInset + 30 });
+      google.maps.event.addListenerOnce(map, 'idle', () => {
+        if ((map.getZoom() ?? 0) > 17) map.setZoom(17);
+      });
     } else {
-      map.setView([center.lat, center.lng], map.getZoom(), { animate: framed.current });
+      map.panTo(center);
     }
     framed.current = true;
-  }, [frameKey, center.lat, center.lng, bottomInset]);
+  }, [ready, frameKey, center.lat, center.lng, bottomInset]);
 
   return (
     <View style={styles.box}>
-      {/* Tons de cinza deixam o mapa quieto, para o painel e os marcadores aparecerem. */}
-      <div ref={divRef} style={{ position: 'absolute', inset: 0, filter: 'grayscale(0.55) contrast(0.95) brightness(1.04)' }} />
+      <div ref={divRef} style={{ position: 'absolute', inset: 0 }} />
     </View>
   );
 }
