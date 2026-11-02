@@ -50,7 +50,7 @@ type Step =
   | { kind: 'ride'; ride: Ride }
   | { kind: 'settings' }
   | { kind: 'scheduledList'; created?: boolean }
-  | { kind: 'history' }
+  | { kind: 'history'; from?: 'home' }
   // from: de onde a pessoa veio, para o Voltar levar de volta (início ou configurações).
   | { kind: 'favorites'; code?: string; from?: 'home' }
   | { kind: 'legal' }
@@ -132,6 +132,16 @@ export function PassengerFlow({ userId, name }: Props) {
     }
   }, [userId]);
 
+  // O mapa do início abre onde a pessoa está. Sem permissão ou sem GPS, abre no centro da cidade.
+  useEffect(() => {
+    Location.requestForegroundPermissionsAsync()
+      .then(({ granted }) => (granted ? Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }) : null))
+      .then((position) => {
+        if (position) setHere({ lat: position.coords.latitude, lng: position.coords.longitude });
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     load();
     // Os nomes dos tamanhos de pacote (entrega) vêm do banco.
@@ -192,6 +202,8 @@ export function PassengerFlow({ userId, name }: Props) {
         <HomeScreen
           name={name}
           isDriver={isDriver}
+          center={here ?? city}
+          here={here}
           scheduled={scheduled}
           proposalTotal={Object.values(proposalCounts).reduce((sum, n) => sum + n, 0)}
           onOpenScheduled={() => setStep({ kind: 'scheduledList' })}
@@ -199,6 +211,7 @@ export function PassengerFlow({ userId, name }: Props) {
           onRequestDelivery={startDelivery}
           onOpenFavorites={() => setStep({ kind: 'favorites', from: 'home' })}
           onDriverMode={() => setStep({ kind: 'driver' })}
+          onOpenHistory={() => setStep({ kind: 'history', from: 'home' })}
           onOpenSettings={() => setStep({ kind: 'settings' })}
         />
       );
@@ -351,7 +364,7 @@ export function PassengerFlow({ userId, name }: Props) {
       );
 
     case 'history':
-      return <HistoryScreen role="passenger" userId={userId} onBack={goSettings} />;
+      return <HistoryScreen role="passenger" userId={userId} onBack={step.from === 'home' ? goHome : goSettings} />;
 
     case 'favorites':
       return <FavoriteDriversScreen autoAddCode={step.code} onBack={step.from === 'home' ? goHome : goSettings} />;

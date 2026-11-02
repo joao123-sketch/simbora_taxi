@@ -24,14 +24,14 @@ export function BigButton({ label, onPress, disabled, loading, variant = 'primar
   const inactive = disabled || loading;
 
   const content = loading ? (
-    <ActivityIndicator color={isSecondary ? colors.primary : colors.onPrimary} size="large" />
+    <ActivityIndicator color={isSecondary ? colors.ink : colors.onPrimary} size="large" />
   ) : (
     <View style={styles.row}>
       {icon ? (
         <Ionicons
           name={icon}
-          size={isSecondary ? 24 : 30}
-          color={isSecondary ? colors.primary : colors.onPrimary}
+          size={isSecondary ? 22 : 24}
+          color={isSecondary ? colors.ink : colors.onPrimary}
           accessibilityElementsHidden
           importantForAccessibility="no"
         />
@@ -102,23 +102,21 @@ const styles = StyleSheet.create({
   },
   secondary: {
     alignSelf: 'stretch',
-    minHeight: 60,
+    minHeight: 56,
     borderRadius: radius.md,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   secondaryPressed: {
-    backgroundColor: colors.surfaceTint,
+    backgroundColor: colors.border,
   },
   secondaryText: {
-    fontSize: fontSize.body + 2,
+    fontSize: fontSize.body,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.ink,
     textAlign: 'center',
   },
   link: {

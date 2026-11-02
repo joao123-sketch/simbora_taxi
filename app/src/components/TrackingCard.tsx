@@ -1,14 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { useDriverPosition } from '../hooks/useDriverPosition';
 import { distanceKm, etaMinutes, formatKm } from '../lib/geo';
 import type { Ride } from '../lib/rides';
+import type { DriverPosition } from '../lib/tracking';
 import { colors, fontSize } from '../theme';
-import { LiveMap } from './LiveMap';
 
-// Mostra o carro andando no mapa e quanto falta, enquanto a corrida está em andamento.
-export function TrackingCard({ ride }: { ride: Ride }) {
-  const { position, stale } = useDriverPosition(ride.driver_id, true);
+// Diz quanto falta para o motorista chegar, enquanto a corrida está em andamento.
+// O carro andando fica no mapa de fundo da tela; a posição vem de quem usa o cartão.
+export function TrackingCard({ ride, position, stale }: { ride: Ride; position: DriverPosition | null; stale: boolean }) {
   const pickup = { lat: ride.origin_lat, lng: ride.origin_lng };
   const dropoff = { lat: ride.destination_lat, lng: ride.destination_lng };
   const target = ride.status === 'in_progress' ? dropoff : pickup;
@@ -35,7 +34,6 @@ export function TrackingCard({ ride }: { ride: Ride }) {
         {text}
       </Text>
       {stale ? <Text style={styles.stale}>Sem sinal recente do motorista.</Text> : null}
-      {position ? <LiveMap target={target} driver={position} vehicle={ride.vehicle_type} /> : null}
     </View>
   );
 }

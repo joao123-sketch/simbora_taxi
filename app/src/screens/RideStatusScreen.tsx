@@ -7,6 +7,7 @@ import { RatingPrompt } from '../components/RatingPrompt';
 import { Screen } from '../components/Screen';
 import { SosButton } from '../components/SosButton';
 import { TrackingCard } from '../components/TrackingCard';
+import { useDriverPosition } from '../hooks/useDriverPosition';
 import { useChat } from '../hooks/useChat';
 import { usePassengerLocation } from '../hooks/usePassengerLocation';
 import { fetchDeliveryCode, isDelivery, packageLabel } from '../lib/delivery';
@@ -81,6 +82,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   // Enquanto espera o motorista, o passageiro compartilha onde está; ao embarcar para.
   const waitingForDriver = !!ride.driver_id && (status === 'accepted' || status === 'arrived') && !scheduledWait;
   usePassengerLocation(waitingForDriver);
+  const { position: driverPosition, stale: driverStale } = useDriverPosition(ride.driver_id, inRide);
 
   // O código de 4 dígitos da entrega: quem pediu manda a quem recebe.
   useEffect(() => {
@@ -211,13 +213,22 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
             : (delivery ? deliveryStatusText : statusText)[status]
       }
       error={error}
+      backdrop={{
+        center: { lat: ride.origin_lat, lng: ride.origin_lng },
+        line: !driverPosition,
+        markers: [
+          { coord: { lat: ride.origin_lat, lng: ride.origin_lng }, kind: 'origin' },
+          { coord: { lat: ride.destination_lat, lng: ride.destination_lng }, kind: 'dest' },
+          ...(driverPosition ? [{ coord: driverPosition, kind: ride.vehicle_type === 'moto' ? ('moto' as const) : ('car' as const) }] : []),
+        ],
+      }}
     >
       {ride.scheduled_for && scheduledWait ? (
         <Text style={styles.price}>Marcada para {formatScheduled(ride.scheduled_for)}</Text>
       ) : null}
       {status === 'requested' ? <ActivityIndicator size="large" color={colors.primary} /> : null}
 
-      {inRide ? <TrackingCard ride={ride} /> : null}
+      {inRide ? <TrackingCard ride={ride} position={driverPosition} stale={driverStale} /> : null}
       {waitingForDriver && !delivery ? (
         <Text style={styles.hint}>O motorista vê onde você está enquanto vem te buscar.</Text>
       ) : null}

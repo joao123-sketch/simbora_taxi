@@ -1,0 +1,13 @@
+{
+  // O app é uma página estática: o Cloudflare entrega o que o `npm run build:web`
+  // gera na pasta dist. O "name" precisa ser igual ao nome do Worker no Cloudflare
+  // (Settings > General > Name).
+  "name": "simbora-app",
+  "compatibility_date": "2026-10-24",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+  // Quando o domínio estiver no Cloudflare, acrescente:
+  // "routes": [{ "pattern": "app.simboracar.com.br", "custom_domain": true }]
+}

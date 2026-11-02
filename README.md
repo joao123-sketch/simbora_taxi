@@ -71,7 +71,7 @@ cd app
 npm run build:web
 ```
 
-Isso gera `app/dist` (`expo export -p web` mais `scripts/pwa-build.mjs`, que liga `manifest.webmanifest`, ícones e `sw.js` ao `index.html`). Suba a pasta `dist` em Vercel, Netlify ou Cloudflare Pages (HTTPS é obrigatório para GPS, câmera e instalação). `vercel.json` e `public/_redirects` mandam qualquer rota (como `/m/CODIGO`) para o `index.html`. Depois ponha o endereço do app em `VITE_DOWNLOAD_URL` no painel.
+Isso gera `app/dist` (`expo export -p web` mais `scripts/pwa-build.mjs`, que liga `manifest.webmanifest`, ícones e `sw.js` ao `index.html`). Hospedagem: Cloudflare, como o painel (HTTPS é obrigatório para GPS, câmera e instalação). Crie um Worker `simbora-app` ligado a este repositório: **Root directory** `app`, **Build command** `npm install && npm run build:web`, **Deploy command** `npx wrangler deploy` (configuração em `app/wrangler.jsonc`, que já manda qualquer rota, como `/m/CODIGO`, para o `index.html` e liga o domínio `app.simboracar.com.br`). Em **Build variables** coloque `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_KEY`, `EXPO_PUBLIC_SOS_WHATSAPP`, `EXPO_PUBLIC_SHARE_BASE_URL` e `NODE_VERSION` = `22` (as `EXPO_PUBLIC_*` são lidas na hora de compilar). Depois ponha `https://app.simboracar.com.br` em `VITE_DOWNLOAD_URL` no painel.
 
 Limites da web: o GPS do motorista só atualiza com o app aberto e a tela ligada (o app pede a tela sempre ligada enquanto ele está online, `app/src/hooks/useWakeLock.ts`); notificações push no iPhone exigem iOS 16.4 ou mais e o app na tela inicial.
 

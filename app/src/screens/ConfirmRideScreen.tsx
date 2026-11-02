@@ -112,24 +112,42 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
   }
 
   return (
-    <Screen title={delivery ? 'Confira a entrega' : destination.scheduledFor ? 'Confira o agendamento' : 'Confira e chame'} error={error}>
+    <Screen
+      title={delivery ? 'Confira a entrega' : destination.scheduledFor ? 'Confira o agendamento' : 'Escolha uma viagem'}
+      error={error}
+      onBack={onBack}
+      backdrop={{
+        center: origin,
+        line: true,
+        markers: [
+          { coord: origin, kind: 'origin' },
+          { coord: destination, kind: 'dest' },
+        ],
+      }}
+    >
       <View style={styles.route}>
-        <Text style={styles.routeLine}>{delivery ? 'Pegar em' : 'De'}: {origin.address}</Text>
-        <Text style={styles.routeLine}>
-          {delivery ? 'Entregar em' : 'Para'}: {destination.address}
-          {destination.dropoffPlace ? ` — ${destination.dropoffPlace}` : ''}
-        </Text>
+        <View style={styles.routeRow}>
+          <View style={styles.dotOrigin} />
+          <Text numberOfLines={2} style={styles.routeLine}>{origin.address}</Text>
+        </View>
+        <View style={styles.routeRow}>
+          <View style={styles.dotDest} />
+          <Text numberOfLines={2} style={styles.routeLine}>
+            {destination.address}
+            {destination.dropoffPlace ? ` — ${destination.dropoffPlace}` : ''}
+          </Text>
+        </View>
         {delivery ? (
           <>
-            <Text style={styles.routeLine}>Pacote: {packageLabel(delivery.size)}</Text>
-            <Text style={styles.routeLine}>Quem recebe: {delivery.recipientName}</Text>
+            <Text style={styles.extraLine}>Pacote: {packageLabel(delivery.size)}</Text>
+            <Text style={styles.extraLine}>Quem recebe: {delivery.recipientName}</Text>
           </>
         ) : null}
         {destination.scheduledFor ? (
-          <Text style={styles.routeLine}>Quando: {formatScheduled(destination.scheduledFor)}</Text>
+          <Text style={styles.extraLine}>Quando: {formatScheduled(destination.scheduledFor)}</Text>
         ) : null}
         {destination.roundTrip ? (
-          <Text style={styles.routeLine}>{roundTripLabel({ round_trip: true, wait_minutes: destination.waitMinutes })}</Text>
+          <Text style={styles.extraLine}>{roundTripLabel({ round_trip: true, wait_minutes: destination.waitMinutes })}</Text>
         ) : null}
       </View>
 
@@ -141,6 +159,7 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
         <ChoiceCard
           key={quote.vehicle_type}
           label={vehicleLabel[quote.vehicle_type]}
+          icon={quote.vehicle_type === 'moto' ? 'bicycle' : 'car-sport'}
           detail={formatMoney(priceFor(quote, payment))}
           selected={vehicle === quote.vehicle_type}
           onPress={() => setVehicle(quote.vehicle_type)}
@@ -149,7 +168,7 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
 
       {quotes?.length ? (
         <>
-          <Text style={styles.section}>Como vai pagar?</Text>
+          <Text style={styles.section}>Pagamento</Text>
           {options.map((method) => (
             <ChoiceCard
               key={method}
@@ -173,22 +192,44 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
         </>
       ) : null}
 
-      <BigButton label="Voltar" onPress={onBack} variant="link" />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   route: {
-    gap: 4,
+    gap: 10,
+  },
+  routeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dotOrigin: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.ink,
+  },
+  dotDest: {
+    width: 12,
+    height: 12,
+    backgroundColor: colors.primary,
   },
   routeLine: {
+    flex: 1,
     fontSize: fontSize.body,
+    fontWeight: '600',
     color: colors.text,
   },
+  extraLine: {
+    fontSize: fontSize.body - 2,
+    color: colors.textMuted,
+  },
   section: {
-    fontSize: fontSize.body,
+    fontSize: fontSize.body - 2,
     fontWeight: '700',
     color: colors.textMuted,
+    marginTop: 4,
   },
 });

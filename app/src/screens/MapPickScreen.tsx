@@ -9,7 +9,7 @@ import { PlaceSearch } from '../components/PlaceSearch';
 import { distanceKm } from '../lib/geo';
 import { reverseGeocode } from '../lib/geocode';
 import type { City, Place } from '../lib/rides';
-import { colors, fontSize } from '../theme';
+import { colors, fontSize, radius, shadows } from '../theme';
 
 type Props = {
   title: string;
@@ -137,12 +137,17 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 560,
     alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    ...shadows.sheet,
   },
   title: {
-    fontSize: fontSize.title - 4,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.3,
     color: colors.text,
   },
   hint: {
