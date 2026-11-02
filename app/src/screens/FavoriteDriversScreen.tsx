@@ -118,7 +118,7 @@ export function FavoriteDriversScreen({ autoAddCode, onBack }: Props) {
       title="Meus motoristas"
       subtitle="Seu motorista favorito recebe o seu pedido primeiro."
       error={error}
-      footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+      onBack={onBack}
     >
       {message ? (
         <Text accessibilityRole="alert" style={styles.ok}>

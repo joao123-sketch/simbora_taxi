@@ -27,6 +27,7 @@ export function MyQrScreen({ onBack }: Props) {
       title="Meu QR"
       subtitle="Mostre este QR ou mande o código para os seus clientes. Quem ler fica com você na lista de motoristas favoritos e te chama primeiro."
       error={error}
+      onBack={onBack}
     >
       {code === undefined && !error ? <ActivityIndicator size="large" color={colors.primary} /> : null}
       {code ? (
@@ -40,7 +41,6 @@ export function MyQrScreen({ onBack }: Props) {
           <BigButton label="Mandar pelo WhatsApp" onPress={() => Share.share({ message: driverShareMessage(code) })} />
         </>
       ) : null}
-      <BigButton label="Voltar" onPress={onBack} variant="link" />
     </Screen>
   );
 }

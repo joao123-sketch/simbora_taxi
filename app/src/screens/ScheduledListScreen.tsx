@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BigButton } from '../components/BigButton';
 import { Screen } from '../components/Screen';
 import { formatMoney, type Ride } from '../lib/rides';
 import { formatScheduled } from '../lib/scheduling';
@@ -28,7 +27,7 @@ export function ScheduledListScreen({ rides, proposalCounts, justCreated, onOpen
             ? 'Você não tem viagem agendada.'
             : undefined
       }
-      footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+      onBack={onBack}
     >
       {rides.map((ride) => (
         <Pressable

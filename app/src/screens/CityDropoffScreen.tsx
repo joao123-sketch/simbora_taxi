@@ -45,12 +45,8 @@ export function CityDropoffScreen({ city, onConfirm, onBack }: Props) {
   return (
     <Screen
       title={`Onde deixar em ${city.name}?`}
-      footer={
-        <>
-          <BigButton label="Continuar" onPress={confirm} disabled={!valid} />
-          <BigButton label="Voltar" onPress={onBack} variant="link" />
-        </>
-      }
+      onBack={onBack}
+      footer={<BigButton label="Continuar" onPress={confirm} disabled={!valid} />}
     >
       <ChoiceCard label={`No centro de ${city.name}`} selected={!elsewhere} onPress={() => setElsewhere(false)} />
       <ChoiceCard label="Em outro lugar" selected={elsewhere} onPress={() => setElsewhere(true)} />

@@ -42,6 +42,7 @@ export function PaymentSettingsScreen({ accepted, onSaved, onBack }: Props) {
       title="Como eu recebo"
       subtitle="Marque as formas que você aceita. O passageiro só vê os pedidos que combinam com elas."
       error={error}
+      onBack={onBack}
     >
       {PAYMENT_ORDER.map((method) => (
         <CheckCard
@@ -53,7 +54,6 @@ export function PaymentSettingsScreen({ accepted, onSaved, onBack }: Props) {
         />
       ))}
       <BigButton label="Salvar" onPress={save} disabled={selected.length === 0} loading={loading} />
-      <BigButton label="Voltar" onPress={onBack} variant="link" />
     </Screen>
   );
 }

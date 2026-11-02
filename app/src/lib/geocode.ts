@@ -17,8 +17,11 @@ const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 const NOMINATIM_REVERSE = 'https://nominatim.openstreetmap.org/reverse';
 // O Nominatim pede que o app se identifique; o navegador já manda o Referer.
 const HEADERS: Record<string, string> = Platform.OS === 'web' ? {} : { 'User-Agent': 'SimboraCar/1.0' };
-// Um quadrado de ~25 km ao redor da cidade, para achar sítios e distritos.
+// Um quadrado de ~25 km ao redor da cidade, para achar sítios e distritos (Nominatim).
 const BOX = 0.25;
+// Para o Google o quadrado é de ~11 km: mais que isso traz as cidades vizinhas
+// (São Benedito, Ipu, Reriutaba) na frente dos lugares da própria cidade.
+const GOOGLE_BOX = 0.1;
 
 async function nominatimSearch(city: City, rawQuery: string): Promise<PlaceResult[]> {
   const query = rawQuery.trim();
@@ -112,11 +115,13 @@ export async function suggestPlaces(city: City, input: string, session: SearchSe
     language: 'pt-BR',
     region: 'br',
     includedRegionCodes: ['br'],
+    // origin ordena pelo mais perto do centro da cidade.
+    origin: { lat: city.lat, lng: city.lng },
     locationRestriction: {
-      west: city.lng - BOX,
-      east: city.lng + BOX,
-      south: city.lat - BOX,
-      north: city.lat + BOX,
+      west: city.lng - GOOGLE_BOX,
+      east: city.lng + GOOGLE_BOX,
+      south: city.lat - GOOGLE_BOX,
+      north: city.lat + GOOGLE_BOX,
     },
   });
   return suggestions

@@ -19,10 +19,12 @@ export function loadGoogleMaps(): Promise<void> {
   if (typeof google !== 'undefined' && typeof google.maps?.importLibrary === 'function') return Promise.resolve();
   if (!loading) {
     loading = new Promise<void>((resolve, reject) => {
+      // Com loading=async o evento onload dispara antes de importLibrary existir;
+      // o callback só chama quando a API está pronta.
+      (window as unknown as { __simboraMapsReady?: () => void }).__simboraMapsReady = () => resolve();
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(KEY)}&v=weekly&loading=async&language=pt-BR&region=BR`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(KEY)}&v=weekly&loading=async&language=pt-BR&region=BR&callback=__simboraMapsReady`;
       script.async = true;
-      script.onload = () => resolve();
       script.onerror = () => {
         loading = null;
         reject(new Error('Não foi possível carregar o Google Maps'));
@@ -32,10 +34,3 @@ export function loadGoogleMaps(): Promise<void> {
   }
   return loading;
 }
-
-// Cinza claro: o mapa fica quieto e os marcadores e o painel aparecem.
-export const QUIET_MAP_STYLES: google.maps.MapTypeStyle[] = [
-  { stylers: [{ saturation: -55 }, { lightness: 4 }] },
-  { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-];

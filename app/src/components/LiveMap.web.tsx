@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { loadGoogleMaps, QUIET_MAP_STYLES } from '../lib/googleMaps';
+import { loadGoogleMaps } from '../lib/googleMaps';
 import type { LiveMapProps } from './LiveMap.types';
 
 function emojiIcon(emoji: string): google.maps.Icon {
@@ -58,7 +58,6 @@ export function LiveMap({ target, driver, vehicle, passenger }: LiveMapProps) {
           disableDefaultUI: true,
           clickableIcons: false,
           gestureHandling: 'greedy',
-          styles: QUIET_MAP_STYLES,
         });
         targetMarker.current = new google.maps.Marker({ map, position: target, icon: emojiIcon('📍'), clickable: false });
         mapRef.current = map;

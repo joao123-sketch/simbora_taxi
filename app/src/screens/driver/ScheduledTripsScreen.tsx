@@ -104,7 +104,7 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
       title="Viagens agendadas"
       subtitle="Viagens entre cidades marcadas para outro dia. Aceite uma e ela fica na sua agenda e na do passageiro."
       error={error}
-      footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+      onBack={onBack}
     >
       <Text style={styles.section}>Minhas viagens agendadas</Text>
       {mine.length === 0 ? <Text style={styles.empty}>Nenhuma por enquanto.</Text> : null}

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { loadGoogleMaps, QUIET_MAP_STYLES } from '../lib/googleMaps';
+import { loadGoogleMaps } from '../lib/googleMaps';
 import { colors } from '../theme';
 import type { BackdropMapProps, BackdropMarker } from './BackdropMap.types';
 
@@ -50,11 +50,10 @@ export function BackdropMap({ center, markers = [], line = false, bottomInset = 
         if (cancelled || !divRef.current) return;
         mapRef.current = new google.maps.Map(divRef.current, {
           center,
-          zoom: 15,
+          zoom: 16,
           disableDefaultUI: true,
           clickableIcons: false,
           gestureHandling: 'greedy',
-          styles: QUIET_MAP_STYLES,
         });
         setReady(true);
       })
@@ -121,7 +120,9 @@ export function BackdropMap({ center, markers = [], line = false, bottomInset = 
         if ((map.getZoom() ?? 0) > 17) map.setZoom(17);
       });
     } else {
-      map.panTo(center);
+      // O ponto fica no meio da parte do mapa que sobra acima do painel.
+      map.setCenter(center);
+      if (bottomInset > 0) map.panBy(0, Math.round(bottomInset / 2));
     }
     framed.current = true;
   }, [ready, frameKey, center.lat, center.lng, bottomInset]);

@@ -13,7 +13,7 @@ type Props = {
 
 export function SettingsScreen({ onOpenHistory, onOpenFavorites, onOpenLegal, onDeleteAccount, onBack }: Props) {
   return (
-    <Screen title="Configurações" footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}>
+    <Screen title="Configurações" onBack={onBack}>
       <InstallCard />
       <BigButton label="Minhas corridas" icon="time" onPress={onOpenHistory} variant="secondary" />
       <BigButton label="Meus motoristas" icon="heart" onPress={onOpenFavorites} variant="secondary" />

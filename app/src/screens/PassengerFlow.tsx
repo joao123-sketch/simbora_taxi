@@ -45,7 +45,6 @@ type Step =
   | { kind: 'riderName' }
   | { kind: 'riderOrigin'; rider: string }
   | { kind: 'destination'; origin: Place; rider?: string }
-  | { kind: 'destinationSearch'; origin: Place; rider?: string }
   | { kind: 'cityDropoff'; origin: Place; city: City; rider?: string }
   | { kind: 'deliveryOrigin' }
   | { kind: 'deliveryDestination'; origin: Place }
@@ -291,6 +290,8 @@ export function PassengerFlow({ userId, name }: Props) {
     case 'destination':
       return (
         <DestinationScreen
+          city={city}
+          origin={step.origin}
           suggestions={suggestions}
           onPickSuggestion={(place) =>
             setStep({
@@ -300,24 +301,11 @@ export function PassengerFlow({ userId, name }: Props) {
             })
           }
           otherCities={cities.filter((c) => c.id !== city.id)}
-          onPickOnMap={() => setStep({ kind: 'destinationSearch', origin: step.origin, rider: step.rider })}
-          onPickCity={(dest) => setStep({ kind: 'cityDropoff', origin: step.origin, city: dest, rider: step.rider })}
-          onBack={step.rider ? () => setStep({ kind: 'riderOrigin', rider: step.rider as string }) : goHome}
-        />
-      );
-
-    case 'destinationSearch':
-      return (
-        <PlaceSearchScreen
-          title="Pra onde vai?"
-          hint="Escreva o endereço ou o lugar de destino."
-          awayFrom={step.origin}
-          city={city}
-          fallbackAddress="Destino"
-          onConfirm={(destination) =>
+          onPickPlace={(destination) =>
             setStep({ kind: 'confirm', origin: step.origin, destination: { ...destination, riderName: step.rider } })
           }
-          onBack={() => setStep({ kind: 'destination', origin: step.origin, rider: step.rider })}
+          onPickCity={(dest) => setStep({ kind: 'cityDropoff', origin: step.origin, city: dest, rider: step.rider })}
+          onBack={step.rider ? () => setStep({ kind: 'riderOrigin', rider: step.rider as string }) : goHome}
         />
       );
 

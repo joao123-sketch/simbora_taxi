@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BigButton } from '../components/BigButton';
 import { Dashboard } from '../components/Dashboard';
 import { Screen } from '../components/Screen';
 import { StarRating } from '../components/StarRating';
@@ -46,7 +45,7 @@ export function HistoryScreen({ role, userId, onBack }: Props) {
     <Screen
       title="Minhas corridas"
       error={error}
-      footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+      onBack={onBack}
     >
       <Dashboard role={role} userId={userId} />
 

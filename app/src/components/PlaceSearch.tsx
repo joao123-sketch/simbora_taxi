@@ -16,6 +16,8 @@ import { colors, fontSize, touchTarget } from '../theme';
 type Props = {
   city: City;
   onPick: (place: PlaceResult) => void;
+  // Abre o teclado já no campo (quando a pessoa acabou de pedir para escrever).
+  autoFocus?: boolean;
 };
 
 // Espera a pessoa parar de digitar antes de consultar (cada consulta custa).
@@ -23,7 +25,7 @@ const TYPING_PAUSE_MS = 350;
 
 // Campo para escrever um endereço ou lugar, com sugestões enquanto digita.
 // Ao escolher uma sugestão, quem usa o componente recebe o lugar com as coordenadas.
-export function PlaceSearch({ city, onPick }: Props) {
+export function PlaceSearch({ city, onPick, autoFocus }: Props) {
   const [text, setText] = useState('');
   const [results, setResults] = useState<PlaceSuggestion[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -90,6 +92,7 @@ export function PlaceSearch({ city, onPick }: Props) {
           value={text}
           onChangeText={setText}
           autoCorrect={false}
+          autoFocus={autoFocus}
           returnKeyType="search"
           style={styles.input}
         />

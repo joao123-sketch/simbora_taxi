@@ -96,7 +96,7 @@ export function FeeScreen({ userId, status, onChanged, onSkip, onBack }: Props) 
         title={status.state === 'overdue' ? 'Mensalidade em atraso' : 'Continuar no Simbora Car'}
         subtitle={`Seu mês terminou em ${formatDay(status.period_end)}. Para seguir recebendo pedidos, abra o próximo mês: ${moneyLabel(status.amount)}, pago antes de começar.`}
         error={error}
-        footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+        onBack={onBack}
       >
         <CheckCard label="Aceito o contrato do motorista" checked={accepted} onPress={() => setAccepted(!accepted)} />
         <BigButton
@@ -118,7 +118,7 @@ export function FeeScreen({ userId, status, onChanged, onSkip, onBack }: Props) 
         title={statusTitle[status.state]}
         subtitle={`${kindLabel[status.kind ?? 'standard']}: ${moneyLabel(status.amount)}, vence em ${formatDay(status.due_on)}.`}
         error={error}
-        footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+        onBack={onBack}
       >
         {status.state === 'due' || status.state === 'overdue' ? (
           <Text style={styles.warning}>
@@ -175,7 +175,7 @@ export function FeeScreen({ userId, status, onChanged, onSkip, onBack }: Props) 
           ? `${kindLabel[current.kind]} até ${formatDay(current.period_end)}. Nada a pagar agora.`
           : 'Nada a pagar agora.'
       }
-      footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+      onBack={onBack}
     >
       {status.history.map((item) => (
         <View key={item.period_start} style={styles.row}>

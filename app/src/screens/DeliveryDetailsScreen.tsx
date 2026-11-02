@@ -35,7 +35,7 @@ export function DeliveryDetailsScreen({ initial, onConfirm, onBack }: Props) {
     <Screen
       title="Sobre o pacote"
       subtitle="Escolha o tamanho e diga quem vai receber."
-      footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+      onBack={onBack}
     >
       {options.map((option) => (
         <Pressable

@@ -97,7 +97,7 @@ export function DriverSignupScreen({ cityId, onRegistered, onBack }: Props) {
   const titles = ['Quero dirigir', 'Sua CNH', 'Seu veículo', 'Termos do motorista'];
 
   return (
-    <Screen title={titles[step - 1]} subtitle={`Passo ${step} de ${STEPS}`} error={error}>
+    <Screen title={titles[step - 1]} subtitle={`Passo ${step} de ${STEPS}`} error={error} onBack={back}>
       {step === 1 ? (
         <>
           <Text style={styles.label}>Você vai dirigir</Text>
@@ -267,7 +267,6 @@ export function DriverSignupScreen({ cityId, onRegistered, onBack }: Props) {
         disabled={!canContinue}
         loading={loading}
       />
-      <BigButton label="Voltar" onPress={back} variant="link" />
     </Screen>
   );
 }

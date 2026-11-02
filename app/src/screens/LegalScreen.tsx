@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BigButton } from '../components/BigButton';
 import { Screen } from '../components/Screen';
 import { PRIVACY, TERMS, type LegalSection } from '../legal/general';
 import { colors, fontSize } from '../theme';
@@ -31,7 +30,7 @@ export function LegalScreen({ onBack }: Props) {
   return (
     <Screen
       title="Termos e privacidade"
-      footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}
+      onBack={onBack}
     >
       <Text style={styles.notice}>Texto provisório, em revisão.</Text>
       <Block title="Termos de uso" sections={TERMS} />
