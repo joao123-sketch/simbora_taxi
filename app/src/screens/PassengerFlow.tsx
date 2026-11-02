@@ -305,6 +305,7 @@ export function PassengerFlow({ userId, name }: Props) {
             setStep({ kind: 'confirm', origin: step.origin, destination: { ...destination, riderName: step.rider } })
           }
           onPickCity={(dest) => setStep({ kind: 'cityDropoff', origin: step.origin, city: dest, rider: step.rider })}
+          forOther={!!step.rider}
           onBack={step.rider ? () => setStep({ kind: 'riderOrigin', rider: step.rider as string }) : goHome}
         />
       );

@@ -21,30 +21,32 @@ type Props = {
   // Destino escolhido na busca ("Aqui na cidade").
   onPickPlace: (place: Place) => void;
   onPickCity: (city: City) => void;
+  // Pedido para outra pessoa: a pergunta muda e os lugares de sempre (do titular) não aparecem.
+  forOther?: boolean;
   onBack: () => void;
 };
 
 // Destino mais perto que isso da origem é o mesmo lugar.
 const MIN_TRIP_KM = 0.05;
 
-export function DestinationScreen({ city, origin, suggestions, onPickSuggestion, otherCities, onPickPlace, onPickCity, onBack }: Props) {
-  // "Aqui na cidade" abre a busca nesta mesma tela e esconde o resto.
-  const [searching, setSearching] = useState(false);
+export function DestinationScreen({ city, origin, suggestions, onPickSuggestion, otherCities, onPickPlace, onPickCity, forOther, onBack }: Props) {
+  // "Aqui na cidade" abre a busca nesta mesma tela e "Em outra cidade" abre a lista de cidades; as duas escondem o resto.
+  const [mode, setMode] = useState<'choose' | 'search' | 'cities'>('choose');
   const [problem, setProblem] = useState<string | null>(null);
 
-  function leaveSearch() {
-    setSearching(false);
+  function leave() {
+    setMode('choose');
     setProblem(null);
   }
 
   return (
     <Screen
-      title="Pra onde você vai?"
+      title={forOther ? 'Para onde a pessoa vai?' : 'Pra onde você vai?'}
       error={problem}
-      onBack={searching ? leaveSearch : onBack}
+      onBack={mode === 'choose' ? onBack : leave}
       backdrop={{ center: origin, markers: [{ coord: origin, kind: 'origin' }] }}
     >
-      {searching ? (
+      {mode === 'search' ? (
         <PlaceSearch
           city={city}
           autoFocus
@@ -57,10 +59,17 @@ export function DestinationScreen({ city, origin, suggestions, onPickSuggestion,
             onPickPlace({ lat: place.lat, lng: place.lng, address: place.title });
           }}
         />
+      ) : mode === 'cities' ? (
+        otherCities.map((other) => (
+          <ChoiceCard key={other.id} label={other.name} icon="location" onPress={() => onPickCity(other)} />
+        ))
       ) : (
         <>
-          <ChoiceCard label="Aqui na cidade" icon="search" onPress={() => setSearching(true)} />
-          {suggestions.length > 0 ? (
+          <ChoiceCard label="Aqui na cidade" icon="search" onPress={() => setMode('search')} />
+          {otherCities.length > 0 ? (
+            <ChoiceCard label="Em outra cidade" icon="location" onPress={() => setMode('cities')} />
+          ) : null}
+          {!forOther && suggestions.length > 0 ? (
             <>
               <Text style={styles.section}>Seus lugares de sempre</Text>
               {suggestions.map((place) => (
@@ -71,14 +80,6 @@ export function DestinationScreen({ city, origin, suggestions, onPickSuggestion,
                   caption={`${place.trips} viagens`}
                   onPress={() => onPickSuggestion(place)}
                 />
-              ))}
-            </>
-          ) : null}
-          {otherCities.length > 0 ? (
-            <>
-              <Text style={styles.section}>Outra cidade (preço fechado)</Text>
-              {otherCities.map((other) => (
-                <ChoiceCard key={other.id} label={other.name} icon="location" onPress={() => onPickCity(other)} />
               ))}
             </>
           ) : null}
