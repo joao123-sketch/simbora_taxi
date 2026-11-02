@@ -1,41 +1,37 @@
-import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 
 type Props = {
   size?: number;
-  // Cor do fusca e cor do que fica "vazado" (para-brisa, vincos, faróis), que deve ser a do fundo.
+  // Cor do fusca e cor do que fica "vazado" (para-brisa, vinco, faróis), que deve ser a do fundo.
   color: string;
   cutout: string;
 };
 
-// O fusca da marca, visto de frente. Mesmo desenho dos ícones do app (app/assets/logo-fusca.svg).
+// O fusca da marca, visto de frente, em duas cores. Mesmo desenho dos ícones do app
+// (app/assets/logo-fusca.svg tem a versão colorida).
 export function BeetleLogo({ size = 24, color, cutout }: Props) {
   return (
     <Svg
       width={size}
-      height={size * 0.82}
-      viewBox="54 82 404 330"
+      height={size * 0.79}
+      viewBox="50 90 412 326"
       accessibilityElementsHidden
       importantForAccessibility="no"
     >
       <G>
-        <Ellipse cx={124} cy={204} rx={17} ry={10} rotation={-28} origin="124, 204" fill={color} />
-        <Ellipse cx={388} cy={204} rx={17} ry={10} rotation={28} origin="388, 204" fill={color} />
+        <Rect x={112} y={364} width={58} height={40} rx={14} fill={color} />
+        <Rect x={342} y={364} width={58} height={40} rx={14} fill={color} />
         <Path
           fill={color}
-          d="M150 222 C148 134 192 90 256 90 C320 90 364 134 362 222 C396 236 438 266 438 324 L438 352 L74 352 L74 324 C74 266 116 236 150 222 Z"
+          d="M256 94 C320 94 354 134 357 200 C357 214 361 224 372 230 C416 244 447 280 447 332 L447 354 C447 364 439 372 429 372 L83 372 C73 372 65 364 65 354 L65 332 C65 280 96 244 140 230 C151 224 155 214 155 200 C158 134 192 94 256 94 Z"
         />
-        <Path fill={cutout} d="M174 208 C174 164 198 132 256 132 C314 132 338 164 338 208 C300 198 212 198 174 208 Z" />
-        <Path d="M256 222 L256 292" stroke={cutout} strokeWidth={7} strokeLinecap="round" fill="none" />
-        <Path d="M150 240 C128 258 118 280 116 300" stroke={cutout} strokeWidth={7} strokeLinecap="round" fill="none" />
-        <Path d="M362 240 C384 258 394 280 396 300" stroke={cutout} strokeWidth={7} strokeLinecap="round" fill="none" />
-        <Circle cx={142} cy={304} r={36} fill={cutout} />
-        <Circle cx={370} cy={304} r={36} fill={cutout} />
-        <Circle cx={142} cy={304} r={24} fill={color} />
-        <Circle cx={370} cy={304} r={24} fill={color} />
-        <Rect x={112} y={368} width={58} height={36} rx={12} fill={color} />
-        <Rect x={342} y={368} width={58} height={36} rx={12} fill={color} />
-        <Rect x={62} y={340} width={388} height={34} rx={14} fill={color} stroke={cutout} strokeWidth={8} />
-        <Path d="M74 357 L438 357" stroke={cutout} strokeWidth={4} fill="none" />
+        <Path fill={cutout} d="M179 204 C181 152 207 124 256 124 C305 124 331 152 333 204 C297 194 215 194 179 204 Z" />
+        <Path d="M256 214 L256 284" stroke={cutout} strokeWidth={7} strokeLinecap="round" fill="none" />
+        <Circle cx={140} cy={306} r={36} fill={cutout} />
+        <Circle cx={372} cy={306} r={36} fill={cutout} />
+        <Circle cx={140} cy={306} r={24} fill={color} />
+        <Circle cx={372} cy={306} r={24} fill={color} />
+        <Rect x={58} y={342} width={396} height={32} rx={16} fill={color} stroke={cutout} strokeWidth={8} />
       </G>
     </Svg>
   );
