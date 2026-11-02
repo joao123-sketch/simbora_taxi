@@ -38,7 +38,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export -p web && node scripts/pwa-build.mjs",
-    "test": "tsx --test src/lib/photo.test.ts"
+    "test": "tsx --test src/lib/*.test.ts"
   },
   "private": true
 }

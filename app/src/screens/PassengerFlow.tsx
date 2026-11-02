@@ -12,6 +12,8 @@ import { loadPackageOptions } from '../lib/delivery';
 import { fetchMyDriver } from '../lib/drivers';
 import { reverseGeocode } from '../lib/geocode';
 import { feeNeedsAttention, fetchFeeStatus } from '../lib/fees';
+import { reminderText, todayLocal } from '../lib/feeReminder';
+import { notifyOncePerDay } from '../lib/notify';
 import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
 import {
   fetchActiveRide,
@@ -77,6 +79,8 @@ export function PassengerFlow({ userId, name }: Props) {
   const [locationError, setLocationError] = useState<string | null>(null);
   // Já existe cadastro de motorista para esta conta (qualquer situação)?
   const [isDriver, setIsDriver] = useState(false);
+  // Lembrete da mensalidade (só motorista, nos 5 dias antes do vencimento): aparece toda vez que abre.
+  const [feeReminder, setFeeReminder] = useState<string | null>(null);
   // Viagens agendadas da pessoa (para o cartão do início e a lista).
   const [scheduled, setScheduled] = useState<Ride[]>([]);
   // Propostas de motoristas esperando resposta, por viagem agendada.
@@ -125,9 +129,14 @@ export function PassengerFlow({ userId, name }: Props) {
           setProposalCounts(counts);
         })
         .catch(() => {});
+      // A mensalidade não trava nada: sem ela (ou sem ser motorista) segue normal.
+      const feeStatus = await fetchFeeStatus().catch(() => null);
+      const reminder = reminderText(feeStatus);
+      setFeeReminder(reminder);
+      if (reminder) notifyOncePerDay('fee-reminder', 'Mensalidade do Simbora Car', reminder, todayLocal());
       if (activeRide) {
         setStep({ kind: 'ride', ride: activeRide });
-      } else if (!feeNagged.current && feeNeedsAttention(await fetchFeeStatus().catch(() => null))) {
+      } else if (!feeNagged.current && feeNeedsAttention(feeStatus)) {
         // Motorista com a mensalidade vencida: o app cobra logo ao abrir.
         feeNagged.current = true;
         setStep({ kind: 'driver' });
@@ -229,6 +238,8 @@ export function PassengerFlow({ userId, name }: Props) {
           onDriverMode={() => setStep({ kind: 'driver' })}
           onOpenHistory={() => setStep({ kind: 'history', from: 'home' })}
           onOpenSettings={() => setStep({ kind: 'settings' })}
+          reminder={feeReminder}
+          onOpenReminder={() => setStep({ kind: 'driver' })}
         />
       );
 

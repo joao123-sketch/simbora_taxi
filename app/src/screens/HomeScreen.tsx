@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { InstallCard } from '../components/InstallCard';
+import { NotifyCard } from '../components/NotifyCard';
 import type { Coord } from '../components/PinMap.types';
 import { Screen } from '../components/Screen';
 import { TabBar } from '../components/TabBar';
@@ -34,6 +35,9 @@ type Props = {
   onDriverMode: () => void;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
+  // Lembrete da mensalidade (motorista perto do vencimento), com o atalho para pagar.
+  reminder?: string | null;
+  onOpenReminder?: () => void;
 };
 
 type Service = { label: string; icon: IconName; onPress: () => void };
@@ -57,6 +61,8 @@ export function HomeScreen({
   onDriverMode,
   onOpenHistory,
   onOpenSettings,
+  reminder,
+  onOpenReminder,
 }: Props) {
   const firstName = name.split(' ')[0];
   const services: Service[] = [
@@ -140,6 +146,14 @@ export function HomeScreen({
         ))}
       </View>
 
+      {reminder ? (
+        <View style={styles.scheduled}>
+          <Text style={styles.scheduledText}>{reminder}</Text>
+          {onOpenReminder ? <BigButton label="Pagar agora" onPress={onOpenReminder} /> : null}
+        </View>
+      ) : null}
+
+      <NotifyCard message="Receba um aviso quando o motorista aceitar, chegar e terminar a corrida." />
       <InstallCard />
     </Screen>
   );

@@ -1,6 +1,6 @@
 // Service worker mínimo: guarda o "casco" do app para abrir rápido e deixa
 // tudo que é dado (Supabase, mapas, geocodificação) sempre ir para a rede.
-const CACHE = 'simbora-v1';
+const CACHE = 'simbora-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.add('/')).then(() => self.skipWaiting()));
@@ -40,4 +40,15 @@ self.addEventListener('fetch', (event) => {
       ),
     );
   }
+});
+
+// Toque num aviso: leva para o app que já está aberto, ou abre ele.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => 'focus' in w);
+      return open ? open.focus() : self.clients.openWindow('/');
+    }),
+  );
 });

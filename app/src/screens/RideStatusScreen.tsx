@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Share, StyleSheet, Text, View } from 'react-native';
 
 import { PassengerAdvanceNote } from '../components/AdvancePayment';
+import { notify } from '../lib/notify';
 import { BigButton } from '../components/BigButton';
 import { RatingPrompt } from '../components/RatingPrompt';
 import { Screen } from '../components/Screen';
@@ -69,6 +70,20 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   const [sharing, setSharing] = useState(false);
   const delivery = isDelivery(ride);
   const { status } = ride;
+  // Aviso do sistema quando o estado da corrida muda e o app está em segundo plano.
+  const lastStatus = useRef(status);
+  useEffect(() => {
+    if (lastStatus.current === status) return;
+    lastStatus.current = status;
+    const texts: Partial<Record<RideStatus, [string, string]>> = {
+      accepted: ['Motorista a caminho', 'Um motorista aceitou a sua corrida.'],
+      arrived: ['O motorista chegou', 'Ele está esperando você.'],
+      completed: ['Corrida concluída', 'Obrigado por andar com o Simbora Car.'],
+      cancelled: ['Corrida cancelada', 'Toque para voltar ao início.'],
+    };
+    const text = texts[status];
+    if (text) notify(text[0], text[1], { tag: `corrida-${ride.id}` });
+  }, [status, ride.id]);
   // Viagem agendada ainda longe da hora: o pedido e o motorista existem, mas ninguém está a caminho.
   const [, setTick] = useState(0);
   useEffect(() => {

@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
+import { NotifyCard } from '../../components/NotifyCard';
 import type { Coord } from '../../components/PinMap.types';
 import { Screen } from '../../components/Screen';
 import { distanceKm } from '../../lib/geo';
+import { notify } from '../../lib/notify';
 import {
   acceptRide,
   claimOpenRequests,
@@ -66,6 +68,26 @@ export function DriverHomeScreen({
   const [toggling, setToggling] = useState(false);
   const [accepting, setAccepting] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Pedidos que o motorista já viu: só o que chega depois vira aviso do sistema (com o app em segundo plano).
+  const seen = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    const keys = [...requests.map((r) => `r${r.id}`), ...scheduledOpen.map((s) => `s${s.ride_id}`)];
+    if (seen.current === null) {
+      // A primeira leitura é o que já estava na fila quando o app abriu.
+      seen.current = new Set(keys);
+      return;
+    }
+    const known = seen.current;
+    const fresh = keys.filter((k) => !known.has(k));
+    fresh.forEach((k) => known.add(k));
+    if (online && fresh.length > 0) {
+      notify('Novo pedido de corrida', fresh.length === 1 ? 'Toque para ver e aceitar.' : `${fresh.length} pedidos esperando você.`, {
+        tag: 'novo-pedido',
+      });
+    }
+  }, [requests, scheduledOpen, online]);
 
   const refresh = useCallback(() => {
     // Entra na fila dos pedidos abertos (se acabou de ficar online) e só então lê a lista.
@@ -205,6 +227,7 @@ export function DriverHomeScreen({
           <BigButton label="Pagar agora" onPress={onOpenFee} />
         </View>
       ) : null}
+      <NotifyCard message="Receba um aviso quando chegar um pedido de corrida, mesmo com o app em segundo plano." />
       {online && locationDenied ? (
         <Text style={styles.warning}>Libere a localização para os passageiros te acharem.</Text>
       ) : null}

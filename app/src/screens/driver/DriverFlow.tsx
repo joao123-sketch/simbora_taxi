@@ -7,6 +7,7 @@ import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { loadPackageOptions } from '../../lib/delivery';
 import { fetchMyDriver, setOnline, type Driver } from '../../lib/drivers';
 import { feeNeedsAttention, fetchFeeStatus, nagText, type FeeStatus } from '../../lib/fees';
+import { reminderText } from '../../lib/feeReminder';
 import { fetchActiveRide, type Ride } from '../../lib/rides';
 import { colors } from '../../theme';
 import { HistoryScreen } from '../HistoryScreen';
@@ -201,7 +202,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
       onOpenScheduled={() => setShowScheduled(true)}
       onOpenSettings={() => setShowSettings(true)}
       onOpenFee={() => setShowFee(true)}
-      feeNotice={fee && feeNeedsAttention(fee) ? nagText(fee) : null}
+      feeNotice={fee && feeNeedsAttention(fee) ? nagText(fee) : reminderText(fee)}
       onExit={onExit}
     />
   );
