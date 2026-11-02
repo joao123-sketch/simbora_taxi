@@ -6,10 +6,11 @@ import { DriversPage } from './pages/Drivers';
 import { FeesPage } from './pages/Fees';
 import { LoginPage } from './pages/Login';
 import { PricesPage } from './pages/Prices';
+import { PassengersPage } from './pages/Passengers';
 import { RegisteredPage } from './pages/Registered';
 import { ReportsPage } from './pages/Reports';
 
-type Tab = 'drivers' | 'registered' | 'fees' | 'reports' | 'prices';
+type Tab = 'drivers' | 'registered' | 'passengers' | 'fees' | 'reports' | 'prices';
 
 export function App() {
   // undefined = ainda descobrindo se há alguém logado.
@@ -85,6 +86,9 @@ export function App() {
           <button className={`tab ${tab === 'registered' ? 'active' : ''}`} onClick={() => setTab('registered')}>
             Cadastrados
           </button>
+          <button className={`tab ${tab === 'passengers' ? 'active' : ''}`} onClick={() => setTab('passengers')}>
+            Passageiros
+          </button>
           <button className={`tab ${tab === 'fees' ? 'active' : ''}`} onClick={() => setTab('fees')}>
             Mensalidades
           </button>
@@ -104,6 +108,8 @@ export function App() {
           <DriversPage />
         ) : tab === 'registered' ? (
           <RegisteredPage />
+        ) : tab === 'passengers' ? (
+          <PassengersPage />
         ) : tab === 'fees' ? (
           <FeesPage />
         ) : tab === 'reports' ? (

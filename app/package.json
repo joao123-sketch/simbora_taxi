@@ -29,6 +29,7 @@
   "devDependencies": {
     "@types/google.maps": "^3.66.9",
     "@types/react": "~19.3.0",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -36,7 +37,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "expo export -p web && node scripts/pwa-build.mjs"
+    "build:web": "expo export -p web && node scripts/pwa-build.mjs",
+    "test": "tsx --test src/lib/photo.test.ts"
   },
   "private": true
 }

@@ -97,6 +97,8 @@ export type Ride = {
   // A nota que o próprio usuário deu na corrida (passageiro avalia o motorista e vice-versa).
   my_rating: number | null;
   passenger_name: string | null;
+  // Foto de quem pediu (o titular da conta), mesmo quando outra pessoa vai andar.
+  passenger_photo_path?: string | null;
   // Quando a corrida foi pedida para outra pessoa, o nome de quem vai andar.
   rider_name?: string | null;
   driver_name: string | null;

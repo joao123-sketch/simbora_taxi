@@ -3,23 +3,33 @@ import { StyleSheet, Text } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { Screen } from '../components/Screen';
+import { removeMyPhoto } from '../lib/photo';
 import { supabase } from '../lib/supabase';
 import { colors, fontSize } from '../theme';
 
 type Props = {
+  userId: string;
   onBack: () => void;
 };
 
 // Excluir a própria conta (exigência das lojas). Pede confirmação e explica o
 // que acontece; não dá para desfazer. Depois de excluir, o app volta para a
 // tela de entrar.
-export function DeleteAccountScreen({ onBack }: Props) {
+export function DeleteAccountScreen({ userId, onBack }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function confirm() {
     setLoading(true);
     setError(null);
+    // A foto sai do Storage antes: depois da conta excluída ninguém mais teria permissão para apagar.
+    try {
+      await removeMyPhoto(userId);
+    } catch {
+      setLoading(false);
+      setError('Não conseguimos apagar a sua foto agora. Tente de novo.');
+      return;
+    }
     const { error: rpcError } = await supabase.rpc('delete_my_account');
     if (rpcError) {
       setLoading(false);

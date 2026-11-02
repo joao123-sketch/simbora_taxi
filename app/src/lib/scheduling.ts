@@ -116,7 +116,8 @@ export type OpenScheduled = {
   distance_km: number;
   round_trip: boolean;
   wait_minutes: number;
-  passenger_first_name: string;
+  passenger_name: string;
+  passenger_photo_path: string | null;
   // Já tem outra viagem agendada a menos de 2 horas dessa.
   conflict: boolean;
 };
@@ -169,7 +170,8 @@ export function scheduledToRide(s: OpenScheduled): Ride {
     completed_at: null,
     cancelled_at: null,
     my_rating: null,
-    passenger_name: s.passenger_first_name,
+    passenger_name: s.passenger_name,
+    passenger_photo_path: s.passenger_photo_path,
     driver_name: null,
     vehicle_model: null,
     vehicle_color: null,

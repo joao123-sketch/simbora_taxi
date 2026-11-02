@@ -16,6 +16,7 @@ import { MyQrScreen } from './MyQrScreen';
 import { ScheduledTripsScreen } from './ScheduledTripsScreen';
 import { PaymentSettingsScreen } from './PaymentSettingsScreen';
 import { DriverRideScreen } from './DriverRideScreen';
+import { BlockedPassengersScreen } from './BlockedPassengersScreen';
 import { DriverSettingsScreen } from './DriverSettingsScreen';
 import { DriverSignupScreen } from './DriverSignupScreen';
 import { FeeScreen } from './FeeScreen';
@@ -35,6 +36,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   const [showHistory, setShowHistory] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
   const [showScheduled, setShowScheduled] = useState(false);
   const [fee, setFee] = useState<FeeStatus | null>(null);
   const [showFee, setShowFee] = useState(false);
@@ -171,12 +173,17 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     );
   }
 
+  if (showBlocked) {
+    return <BlockedPassengersScreen onBack={() => setShowBlocked(false)} />;
+  }
+
   if (showSettings) {
     return (
       <DriverSettingsScreen
         onOpenPayments={() => setEditingPayments(true)}
         onOpenHistory={() => setShowHistory(true)}
         onOpenFee={() => setShowFee(true)}
+        onOpenBlocked={() => setShowBlocked(true)}
         onBack={() => setShowSettings(false)}
       />
     );

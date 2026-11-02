@@ -25,6 +25,7 @@ import {
   type OpenScheduled,
 } from '../../lib/scheduling';
 import { colors, fontSize, cardSurface } from '../../theme';
+import { blockPassenger } from '../../lib/blocks';
 import { OpenRequestCard } from './OpenRequestCard';
 
 type Props = {
@@ -157,6 +158,15 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
               await load();
             }}
             onDecline={async () => {}}
+            onBlock={async () => {
+              setError(null);
+              try {
+                await blockPassenger(s.ride_id);
+              } catch {
+                setError('Não conseguimos bloquear agora. Tente de novo.');
+              }
+              await load();
+            }}
           />
         </View>
       ))}

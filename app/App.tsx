@@ -9,6 +9,7 @@ import { supabase } from './src/lib/supabase';
 import { CodeScreen } from './src/screens/CodeScreen';
 import { NameScreen } from './src/screens/NameScreen';
 import { PassengerFlow } from './src/screens/PassengerFlow';
+import { PhotoScreen } from './src/screens/PhotoScreen';
 import { PhoneScreen } from './src/screens/PhoneScreen';
 import { colors } from './src/theme';
 
@@ -16,6 +17,9 @@ import { colors } from './src/theme';
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [name, setName] = useState<string | null | undefined>(undefined);
+  // Já tem a foto de perfil? undefined = ainda carregando. Se a consulta falhar, não trava a pessoa:
+  // o banco recusa o pedido de corrida sem foto de qualquer jeito.
+  const [hasPhoto, setHasPhoto] = useState<boolean | undefined>(undefined);
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   // Aviso na tela de entrada (ex.: a conta foi aberta em outro celular).
   const [notice, setNotice] = useState<string | null>(null);
@@ -73,8 +77,21 @@ export default function App() {
       .then(({ data }) => setName(data?.full_name ?? null));
   }, [userId]);
 
+  useEffect(() => {
+    if (!userId) {
+      setHasPhoto(undefined);
+      return;
+    }
+    supabase
+      .from('profiles')
+      .select('photo_path')
+      .eq('id', userId)
+      .single()
+      .then(({ data, error }) => setHasPhoto(error ? true : !!data?.photo_path));
+  }, [userId]);
+
   let content;
-  if (session === undefined || (userId && name === undefined)) {
+  if (session === undefined || (userId && (name === undefined || (!!name && hasPhoto === undefined)))) {
     content = (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -94,6 +111,8 @@ export default function App() {
     );
   } else if (!name) {
     content = <NameScreen userId={userId} onSaved={setName} />;
+  } else if (!hasPhoto) {
+    content = <PhotoScreen userId={userId} onSaved={() => setHasPhoto(true)} />;
   } else {
     content = <PassengerFlow userId={userId} name={name} />;
   }

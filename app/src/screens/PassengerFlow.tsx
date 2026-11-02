@@ -33,6 +33,7 @@ import { HistoryScreen } from './HistoryScreen';
 import { DeleteAccountScreen } from './DeleteAccountScreen';
 import { LegalScreen } from './LegalScreen';
 import { HomeScreen } from './HomeScreen';
+import { PhotoScreen } from './PhotoScreen';
 import { PlaceSearchScreen } from './PlaceSearchScreen';
 import { RiderNameScreen } from './RiderNameScreen';
 import { RideStatusScreen } from './RideStatusScreen';
@@ -56,6 +57,7 @@ type Step =
   | { kind: 'history'; from?: 'home' }
   // from: de onde a pessoa veio, para o Voltar levar de volta (início ou configurações).
   | { kind: 'favorites'; code?: string; from?: 'home' }
+  | { kind: 'photo' }
   | { kind: 'legal' }
   | { kind: 'deleteAccount' }
   | { kind: 'driver' };
@@ -359,6 +361,7 @@ export function PassengerFlow({ userId, name }: Props) {
         <SettingsScreen
           onOpenHistory={() => setStep({ kind: 'history' })}
           onOpenFavorites={() => setStep({ kind: 'favorites' })}
+          onOpenPhoto={() => setStep({ kind: 'photo' })}
           onOpenLegal={() => setStep({ kind: 'legal' })}
           onDeleteAccount={() => setStep({ kind: 'deleteAccount' })}
           onBack={goHome}
@@ -372,7 +375,10 @@ export function PassengerFlow({ userId, name }: Props) {
       return <FavoriteDriversScreen autoAddCode={step.code} onBack={step.from === 'home' ? goHome : goSettings} />;
 
     case 'deleteAccount':
-      return <DeleteAccountScreen onBack={goSettings} />;
+      return <DeleteAccountScreen userId={userId} onBack={goSettings} />;
+
+    case 'photo':
+      return <PhotoScreen userId={userId} onSaved={goSettings} onBack={goSettings} />;
 
     case 'legal':
       return <LegalScreen onBack={goSettings} />;

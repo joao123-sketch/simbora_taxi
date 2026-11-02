@@ -90,6 +90,10 @@ O botão de SOS abre o WhatsApp do plantão com a mensagem pronta (corrida, moto
 
 O motorista escolhe o adiantamento (sem, 50% ou 100%) ao aceitar ou propor. O passageiro paga direto a ele, e o motorista toca em "Recebi" para poder iniciar a viagem. A equipe não participa do pagamento.
 
+## Foto de passageiro (só para denúncia)
+
+Na aba **Passageiros** do painel, busque pelo nome ou telefone (3 letras ou números no mínimo) e toque em **Ver foto**. Use só para investigar uma denúncia. O sistema registra quem abriu a foto e quando: para conferir, rode no SQL Editor `select * from public.photo_views order by id desc;`.
+
 ## Quem pede para excluir a conta
 
 A própria pessoa exclui pelo app (**Excluir minha conta**). O banco apaga nome, telefone e login e guarda só um código irreversível do CPF do motorista. Se o pedido chegar por outro canal, peça para ela mesma excluir pelo app.

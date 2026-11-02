@@ -20,6 +20,7 @@ import {
 } from '../../lib/rides';
 import { acceptScheduled, fetchOpenScheduled, scheduledToRide, type OpenScheduled } from '../../lib/scheduling';
 import { colors, fontSize } from '../../theme';
+import { blockPassenger } from '../../lib/blocks';
 import { OpenRequestCard } from './OpenRequestCard';
 
 type Props = {
@@ -163,6 +164,16 @@ export function DriverHomeScreen({
     refresh();
   }
 
+  async function block(rideId: number) {
+    setError(null);
+    try {
+      await blockPassenger(rideId);
+    } catch {
+      setError('Não conseguimos bloquear agora. Tente de novo.');
+    }
+    refresh();
+  }
+
   async function withdraw(rideId: number) {
     setError(null);
     try {
@@ -215,6 +226,7 @@ export function DriverHomeScreen({
           onPropose={(extra, advance) => propose(ride.id, extra, advance)}
           onWithdraw={() => withdraw(ride.id)}
           onDecline={() => decline(ride.id)}
+          onBlock={() => block(ride.id)}
         />
       ))}
 
@@ -229,6 +241,7 @@ export function DriverHomeScreen({
           onPropose={(extra, advance) => propose(s.ride_id, extra, advance)}
           onWithdraw={() => withdraw(s.ride_id)}
           onDecline={async () => {}}
+          onBlock={() => block(s.ride_id)}
         />
       ))}
 

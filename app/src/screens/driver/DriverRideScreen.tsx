@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { DriverAdvanceCard } from '../../components/AdvancePayment';
+import { Avatar } from '../../components/Avatar';
 import { BigButton } from '../../components/BigButton';
 import { BigInput } from '../../components/BigInput';
 import { LiveMap } from '../../components/LiveMap';
@@ -176,7 +177,10 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
   return (
     <Screen title={(delivery ? deliveryTitles : titles)[ride.status] ?? ''} error={error}>
       <View style={styles.details}>
-        <Text style={styles.name}>{ride.passenger_name ?? 'Passageiro'}</Text>
+        <View style={styles.who}>
+          <Avatar path={ride.passenger_photo_path} size={64} />
+          <Text style={styles.name}>{ride.passenger_name ?? 'Passageiro'}</Text>
+        </View>
         <Text style={styles.line}>{delivery ? 'Pegar' : 'Buscar'}: {ride.origin_address}</Text>
         <Text style={styles.line}>{delivery ? 'Entregar' : 'Levar'}: {ride.destination_address}</Text>
         {delivery ? (
@@ -270,7 +274,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
   },
+  who: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   name: {
+    flex: 1,
     fontSize: fontSize.body + 6,
     fontWeight: '700',
     color: colors.text,

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
+import { Avatar } from '../../components/Avatar';
 import { BigInput } from '../../components/BigInput';
 import { ChoiceCard } from '../../components/ChoiceCard';
 import { isDelivery, packageLabel } from '../../lib/delivery';
@@ -30,6 +31,8 @@ type Props = {
   onPropose: (extra: number, advance: number | null) => Promise<void>;
   onWithdraw: () => Promise<void>;
   onDecline: () => Promise<void>;
+  // Bloqueia o passageiro: ele nunca mais chega a este motorista.
+  onBlock: () => Promise<void>;
 };
 
 export function OpenRequestCard({
@@ -41,7 +44,9 @@ export function OpenRequestCard({
   onPropose,
   onWithdraw,
   onDecline,
+  onBlock,
 }: Props) {
+  const [confirmingBlock, setConfirmingBlock] = useState(false);
   const [proposing, setProposing] = useState(false);
   const [extraText, setExtraText] = useState('');
   const [sending, setSending] = useState(false);
@@ -90,6 +95,16 @@ export function OpenRequestCard({
     }
   }
 
+  async function block() {
+    setSending(true);
+    try {
+      await onBlock();
+    } finally {
+      setSending(false);
+      setConfirmingBlock(false);
+    }
+  }
+
   async function withdraw() {
     setSending(true);
     try {
@@ -101,6 +116,10 @@ export function OpenRequestCard({
 
   return (
     <View style={styles.card}>
+      <View style={styles.who}>
+        <Avatar path={ride.passenger_photo_path} size={64} />
+        <Text style={styles.whoName}>{ride.passenger_name ?? 'Passageiro'}</Text>
+      </View>
       <Text style={styles.price}>
         {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}
       </Text>
@@ -203,11 +222,32 @@ export function OpenRequestCard({
           ) : null}
         </>
       )}
+
+      {confirmingBlock ? (
+        <View style={styles.advance}>
+          <Text style={styles.line}>Esse passageiro nunca mais vai te chamar. Confirmar?</Text>
+          <BigButton label="Sim, bloquear" onPress={block} loading={sending} />
+          <BigButton label="Cancelar" onPress={() => setConfirmingBlock(false)} variant="link" />
+        </View>
+      ) : (
+        <BigButton label="Não atender este passageiro" onPress={() => setConfirmingBlock(true)} variant="link" />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  who: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  whoName: {
+    flex: 1,
+    fontSize: fontSize.body + 4,
+    fontWeight: '800',
+    color: colors.text,
+  },
   card: {
     gap: 6,
     ...cardSurface,
