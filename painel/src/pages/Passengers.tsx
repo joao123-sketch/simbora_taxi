@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { DeleteAccountButton } from '../components/DeleteAccountButton';
 import { friendlyError, supabase } from '../lib/supabase';
 
 type Row = {
@@ -58,13 +59,13 @@ export function PassengersPage() {
       {error ? <div className="msg error">{error}</div> : null}
       {rows && rows.length === 0 && !error ? <p className="hint">Nenhum passageiro nessa busca.</p> : null}
       {rows?.map((row) => (
-        <PassengerCard key={row.passenger_id} row={row} />
+        <PassengerCard key={row.passenger_id} row={row} onChanged={search} />
       ))}
     </>
   );
 }
 
-function PassengerCard({ row }: { row: Row }) {
+function PassengerCard({ row, onChanged }: { row: Row; onChanged: () => void | Promise<void> }) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -105,6 +106,9 @@ function PassengerCard({ row }: { row: Row }) {
         ) : (
           <span className="hint">Sem foto</span>
         )}
+        {row.full_name !== 'Conta excluída' ? (
+          <DeleteAccountButton userId={row.passenger_id} name={row.full_name ?? 'esta conta'} onDeleted={onChanged} />
+        ) : null}
       </div>
       {msg ? <div className="msg error">{msg}</div> : null}
       {photo ? <img src={photo} alt="Foto do passageiro" style={{ maxWidth: 240, borderRadius: 12 }} /> : null}

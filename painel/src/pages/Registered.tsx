@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { formatCpf, formatDate, money, vehicleLabel } from '../lib/format';
+import { DeleteAccountButton } from '../components/DeleteAccountButton';
 import { friendlyError, supabase } from '../lib/supabase';
 
 type Status = 'pending' | 'approved' | 'suspended' | 'blocked';
@@ -227,9 +228,12 @@ function DriverCard({ row, onChanged }: { row: Row; onChanged: () => Promise<voi
             {row.rating_count > 0 ? ` · nota ${String(row.rating_avg).replace('.', ',')} (${row.rating_count})` : ' · sem notas ainda'}
           </p>
         </div>
-        <button className="btn secondary" onClick={() => setOpen(!open)}>
-          {open ? 'Fechar' : 'Ver informações'}
-        </button>
+        <div className="row">
+          <button className="btn secondary" onClick={() => setOpen(!open)}>
+            {open ? 'Fechar' : 'Ver informações'}
+          </button>
+          {!deleted ? <DeleteAccountButton userId={row.driver_id} name={name} onDeleted={onChanged} /> : null}
+        </div>
       </div>
 
       {locked && row.lock_note ? (
