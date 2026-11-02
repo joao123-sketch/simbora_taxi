@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { BigInput } from '../components/BigInput';
@@ -13,10 +14,38 @@ type Props = {
 
 const CODE_LENGTH = 6;
 
+// Espera entre um reenvio e outro: cada SMS custa, e o Supabase também limita os pedidos seguidos.
+const RESEND_WAIT_SECONDS = 60;
+
 export function CodeScreen({ phone, onBack }: Props) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [wait, setWait] = useState(RESEND_WAIT_SECONDS);
+
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = setTimeout(() => setWait(wait - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [wait]);
+
+  async function resend() {
+    setResending(true);
+    setError(null);
+    setResent(false);
+    const { error } = await supabase.auth.signInWithOtp({ phone });
+    setResending(false);
+
+    if (error) {
+      setError('Não conseguimos mandar o código de novo. Espere um pouco e tente outra vez.');
+      return;
+    }
+    setCode('');
+    setResent(true);
+    setWait(RESEND_WAIT_SECONDS);
+  }
 
   // Ao confirmar, o Supabase cria a sessão e o App troca de tela sozinho.
   async function verify(token: string) {
@@ -59,6 +88,14 @@ export function CodeScreen({ phone, onBack }: Props) {
         onPress={() => verify(code)}
         disabled={code.length !== CODE_LENGTH}
         loading={loading}
+      />
+      {resent ? <Text style={{ fontSize: 18, color: '#555555' }}>Mandamos um código novo. Use o último que chegou.</Text> : null}
+      <BigButton
+        label={wait > 0 ? `Reenviar código (${wait}s)` : 'Reenviar código'}
+        onPress={resend}
+        disabled={wait > 0}
+        loading={resending}
+        variant="link"
       />
       <BigButton label="Trocar o número" onPress={onBack} variant="link" />
     </Screen>
