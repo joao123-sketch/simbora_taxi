@@ -77,10 +77,12 @@ Tabela **rides**. Filtre por `status`:
 
 ## Preços e tarifas
 
-Tudo em **Table Editor**:
+O jeito mais simples é o painel: abas **Preços**, **Rotas** e **Cidades**. Por trás ficam estas tabelas (**Table Editor**):
 
-- **fares**: tarifa de cada veículo (bandeirada `base`, `per_km`, `per_min`, `minimum`). Para mudar o preço, **crie uma linha nova** com `effective_from` na data em que vale; a mais recente que já começou é a que vale, e a antiga fica de histórico.
-- **intercity_fares**: preço fechado de cada cidade de destino, por veículo.
+- **fares**: tarifa de cada veículo (bandeirada `base`, `per_km`, `per_min`), sem valor mínimo. Para mudar o preço, **crie uma linha nova** com `effective_from` na data em que vale; a mais recente que já começou é a que vale, e a antiga fica de histórico.
+- **intercity_fares**: preço fechado entre duas cidades, por veículo, **igual nos dois sentidos** (cada par tem duas linhas). Na aba **Rotas** você adiciona, edita e remove pares; o painel grava a ida e a volta juntas.
+- **Cidades** (aba Cidades): adiciona cidade (nasce desativada, com latitude e longitude do centro) e ativa ou desativa. Só ativa se a cidade já tiver tarifa cadastrada na aba Preços.
+- **Adicional noturno**: +20% das 22h às 5h59 (horário de Fortaleza), só na corrida dentro da cidade (não vale na entrega nem entre cidades). Soma com o preço dinâmico e o total nunca passa do teto de ×1,50. Os quatro valores (adicional, hora que começa, hora que termina e teto) ficam em Preços. O passageiro e o motorista **não** veem nenhum aviso: só o preço final.
 - Espera da ida e volta: usa o `per_min` da tarifa (hoje R$ 0,30 por minuto no carro).
 - **pricing_settings**: o preço dinâmico (aumento só quando falta carro). `locked = true` trava o fator em `locked_factor`; para ver como está agindo, olhe `city_pricing_state` (degrau atual por cidade e veículo) e `ride_pricing` (fator de cada corrida). Nenhuma dessas tabelas aparece no app.
 
