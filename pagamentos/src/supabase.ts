@@ -10,15 +10,19 @@ export class DbError extends Error {
   }
 }
 
+// A chave nova do Supabase (sb_secret_...) não é um JWT: vai só em apikey. A chave antiga
+// (service_role, um JWT que começa com eyJ) também vai em Authorization.
+function serviceHeaders(cfg: SupabaseConfig): Record<string, string> {
+  const headers: Record<string, string> = { apikey: cfg.serviceKey, 'Content-Type': 'application/json' };
+  if (cfg.serviceKey.startsWith('eyJ')) headers.Authorization = `Bearer ${cfg.serviceKey}`;
+  return headers;
+}
+
 // Chama uma função do banco com a chave de serviço (só ela executa as funções asaas_*).
 export async function rpc<T>(f: Fetch, cfg: SupabaseConfig, name: string, args: object): Promise<T> {
   const response = await f(`${cfg.url}/rest/v1/rpc/${name}`, {
     method: 'POST',
-    headers: {
-      apikey: cfg.serviceKey,
-      Authorization: `Bearer ${cfg.serviceKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers: serviceHeaders(cfg),
     body: JSON.stringify(args),
   });
   if (response.status === 204) return undefined as T;
