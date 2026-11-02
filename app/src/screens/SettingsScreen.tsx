@@ -1,4 +1,5 @@
 import { BigButton } from '../components/BigButton';
+import { InstallCard } from '../components/InstallCard';
 import { Screen } from '../components/Screen';
 import { supabase } from '../lib/supabase';
 
@@ -13,6 +14,7 @@ type Props = {
 export function SettingsScreen({ onOpenHistory, onOpenFavorites, onOpenLegal, onDeleteAccount, onBack }: Props) {
   return (
     <Screen title="Configurações" footer={<BigButton label="Voltar" onPress={onBack} variant="link" />}>
+      <InstallCard />
       <BigButton label="Minhas corridas" icon="time" onPress={onOpenHistory} variant="secondary" />
       <BigButton label="Meus motoristas" icon="heart" onPress={onOpenFavorites} variant="secondary" />
       <BigButton label="Termos e privacidade" icon="document-text" onPress={onOpenLegal} variant="secondary" />

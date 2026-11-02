@@ -50,12 +50,12 @@ export function DriverInvitePage({ code }: { code: string }) {
         <p>Seu código de motorista:</p>
         <p className="invite-code">{clean}</p>
         <ol className="steps">
-          <li>{DOWNLOAD_URL ? <a href={DOWNLOAD_URL}>Baixe o Simbora Car</a> : 'Instale o Simbora Car (em breve nas lojas).'}</li>
+          <li>{DOWNLOAD_URL ? <a href={DOWNLOAD_URL}>Abra o Simbora Car</a> : 'Abra o Simbora Car no navegador do celular.'} Depois ponha na tela inicial (Android: “Instalar o app”; iPhone: Compartilhar, “Adicionar à Tela de Início”).</li>
           <li>Entre com o seu celular.</li>
           <li>Toque em “Meus motoristas” e digite o código acima, ou leia o QR do motorista.</li>
         </ol>
         <p className="hint">Quando {invite.first_name} estiver online, os seus pedidos chegam primeiro para ele.</p>
-        <a className="btn" href={`simboracar://motorista/${clean}`}>
+        <a className="btn" href={DOWNLOAD_URL ? `${DOWNLOAD_URL.replace(/\/$/, '')}/m/${clean}` : `simboracar://motorista/${clean}`}>
           Já tenho o app: abrir
         </a>
       </div>

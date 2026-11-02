@@ -53,7 +53,7 @@ Abra no celular com o app Expo Go, ou rode `npm run android` com um emulador.
 - Chat: número parecido com telefone (8 dígitos ou mais) é trocado por "(número escondido)" antes de salvar (`private.mask_phones`).
 - Busca de endereço no destino: `app/src/lib/geocode.ts` usa o Nominatim (grátis, só ao tocar em Buscar). Antes de publicar, trocar pelo Google Geocoding e Places mexendo só nesse arquivo. A origem já vem na localização do celular.
 - Destinos sugeridos (`app/src/lib/favorites.ts`): o lugar para onde o passageiro já foi 3 vezes (destinos a menos de 100 m contam como o mesmo) aparece na tela de destino. Calculado no app, só com o histórico da própria pessoa.
-- Motorista favorito (`app/src/lib/favoriteDrivers.ts`): cada motorista tem um código de 8 caracteres (`drivers.share_code`), mostrado como QR e link em "Meu QR para clientes". O passageiro lê o QR (câmera) ou digita o código em "Meus motoristas" e o favorito chama primeiro nos pedidos dele (`private.dispatch_ride`); o preço não muda. Abrir o app por um link `simboracar://motorista/CODIGO` (ou `/m/CODIGO`) favorita o motorista sozinho (`app/src/lib/deeplink.ts`); só funciona num build do app, não no Expo Go.
+- Motorista favorito (`app/src/lib/favoriteDrivers.ts`): cada motorista tem um código de 8 caracteres (`drivers.share_code`), mostrado como QR e link em "Meu QR para clientes". O passageiro lê o QR (câmera) ou digita o código em "Meus motoristas" e o favorito chama primeiro nos pedidos dele (`private.dispatch_ride`); o preço não muda. Abrir o app por um link `/m/CODIGO` (ou `simboracar://motorista/CODIGO` no Expo Go) favorita o motorista sozinho (`app/src/lib/deeplink.ts`).
 - Dashboard de Minhas corridas (`app/src/lib/stats.ts`): faturamento ou gasto, corridas, quilômetros e média por hoje, 7 e 30 dias, calculados no app; o motorista também vê o tempo online (`driver_online_seconds`, sessões em `driver_online_sessions`).
 - Excluir conta (`delete_my_account`): apaga nome, telefone e login; o histórico fica para a outra pessoa sem o nome. Do motorista guarda só o hash do CPF (`deleted_driver_cpfs`), para não repetir o mês grátis.
 - Termos e privacidade: texto provisório em `app/src/legal/general.ts` (e `driverTerms.ts`), à espera do advogado.
@@ -62,18 +62,18 @@ Abra no celular com o app Expo Go, ou rode `npm run android` com um emulador.
 
 O app é pensado para um idoso usar sozinho: letras de no mínimo 18 (corpo 20), contraste de pelo menos 4,5:1 (as cores do tema passam), alvos de toque de 56 a 72 px, um botão principal por tela e botão de voltar sempre visível em listas longas (`footer` do `Screen`).
 
-## Primeiro build (Etapa 3, ainda não feito)
+## Publicação como PWA (sem Google Play nem App Store)
 
-Precisa das suas contas (Expo, Google Play, depois Apple). O `app.json` e o `eas.json` já estão prontos (pacote `br.com.simboracar.app`, perfis `development`, `preview` e `production`).
+O app roda no navegador do celular e é instalado pela própria pessoa: no Android, o Chrome oferece "Instalar o app" (botão no início e em Configurações); no iPhone, só pelo Safari: Compartilhar, "Adicionar à Tela de Início". O cartão `InstallCard` mostra o passo a passo certo para cada caso.
 
 ```bash
 cd app
-npx eas-cli@latest login
-npx eas-cli@latest build:configure
-npx eas-cli@latest build --profile development --platform android
+npm run build:web
 ```
 
-Não instale o `expo-dev-client` antes de fazer o build de desenvolvimento: ele muda o `expo start` e o app deixa de abrir no Expo Go. Localização em segundo plano, notificações push e o SMS de verdade (Twilio) também entram nessa etapa.
+Isso gera `app/dist` (`expo export -p web` mais `scripts/pwa-build.mjs`, que liga `manifest.webmanifest`, ícones e `sw.js` ao `index.html`). Suba a pasta `dist` em Vercel, Netlify ou Cloudflare Pages (HTTPS é obrigatório para GPS, câmera e instalação). `vercel.json` e `public/_redirects` mandam qualquer rota (como `/m/CODIGO`) para o `index.html`. Depois ponha o endereço do app em `VITE_DOWNLOAD_URL` no painel.
+
+Limites da web: o GPS do motorista só atualiza com o app aberto e a tela ligada (o app pede a tela sempre ligada enquanto ele está online, `app/src/hooks/useWakeLock.ts`); notificações push no iPhone exigem iOS 16.4 ou mais e o app na tela inicial.
 
 ## Testes com Expo Go
 
@@ -103,7 +103,7 @@ select id from auth.users where email = 'equipe@exemplo.com';
 ## Trajeto compartilhado, convite do motorista e entrega
 
 - **Trajeto compartilhado:** `create_ride_share` gera um código por corrida; a página `/t/CODIGO` (em `painel/src/public/SharedRide.tsx`, sem login) mostra o primeiro nome do motorista, o veículo, a placa, o status e a posição ao vivo, e vence quando a corrida termina. O SOS leva esse link na mensagem do WhatsApp. O endereço do site vem de `EXPO_PUBLIC_SHARE_BASE_URL` (padrão: o site do painel).
-- **Convite do motorista:** o QR e o link do motorista abrem `/m/CODIGO` (`DriverInvite.tsx`), que explica como baixar o app e usar o código. O link de download vem de `VITE_DOWNLOAD_URL` (painel) quando o app estiver nas lojas.
+- **Convite do motorista:** o QR e o link do motorista abrem `/m/CODIGO` (`DriverInvite.tsx`), que explica como baixar o app e usar o código. O endereço do app vem de `VITE_DOWNLOAD_URL` (painel).
 - **Entrega:** "Pedir entrega" na tela inicial. Tamanhos P/M/G, com nome, faixa de peso, exemplo e veículos editáveis no painel (Preços > Tamanhos de pacote; textos de reserva em `app/src/lib/delivery.ts`), preço da tabela do veículo com o desconto de entrega (painel > Preços), quem pede paga direto ao motorista, e o motorista finaliza com o código de 4 dígitos de quem recebe (`complete_delivery`, sem limite de tentativas). Quem pede copia a mensagem pronta para o destinatário (link de acompanhamento, código e convite para o app).
 
 ## Mensalidade do motorista

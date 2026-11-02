@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 
 import type { Coord } from '../components/PinMap.types';
 import { sendLocation } from '../lib/drivers';
+import { useWakeLock } from './useWakeLock';
 
 // Enquanto o motorista está online, manda a posição para o banco a cada
 // 10 s ou 20 m, o que vier primeiro.
 export function useDriverLocation(enabled: boolean) {
   const [position, setPosition] = useState<Coord | null>(null);
   const [denied, setDenied] = useState(false);
+  useWakeLock(enabled);
 
   useEffect(() => {
     if (!enabled) return;

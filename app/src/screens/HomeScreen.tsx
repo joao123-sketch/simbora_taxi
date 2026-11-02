@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
+import { InstallCard } from '../components/InstallCard';
 import type { Ride } from '../lib/rides';
 import { formatScheduled } from '../lib/scheduling';
 import { Screen } from '../components/Screen';
@@ -66,6 +67,7 @@ export function HomeScreen({
           <BigButton label="Ver viagens agendadas" onPress={onOpenScheduled} variant="link" />
         </View>
       ) : null}
+      <InstallCard />
       <BigButton label="Pedir corrida" icon="car-sport" onPress={onRequestRide} />
       <BigButton label="Pedir entrega" icon="cube" onPress={onRequestDelivery} />
       <BigButton label="Meus motoristas" icon="heart" onPress={onOpenFavorites} variant="secondary" />

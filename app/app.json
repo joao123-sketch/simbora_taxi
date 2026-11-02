@@ -8,24 +8,14 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "primaryColor": "#D62828",
-    "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "br.com.simboracar.app",
-      "buildNumber": "1"
-    },
-    "android": {
-      "package": "br.com.simboracar.app",
-      "adaptiveIcon": {
-        "backgroundColor": "#D62828",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "predictiveBackGestureEnabled": false,
-      "versionCode": 1
-    },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "bundler": "metro",
+      "output": "single",
+      "name": "Simbora Car",
+      "shortName": "Simbora",
+      "favicon": "./assets/favicon.png",
+      "themeColor": "#D62828",
+      "backgroundColor": "#D62828"
     },
     "plugins": [
       [

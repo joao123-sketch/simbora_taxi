@@ -1,6 +1,6 @@
 // Links que abrem o app já no motorista certo:
 //   simboracar://motorista/CODIGO            (o botão "Já tenho o app: abrir" da página do convite)
-//   https://<site>/m/CODIGO                  (o link do convite, quando as lojas existirem)
+//   https://<site>/m/CODIGO                  (o link do convite; no navegador/PWA é o endereço da própria página)
 // Devolve o código do motorista ou null se o link for de outra coisa.
 export function driverCodeFromUrl(url: string | null | undefined): string | null {
   if (!url) return null;
