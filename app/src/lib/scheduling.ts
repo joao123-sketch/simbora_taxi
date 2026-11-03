@@ -180,3 +180,16 @@ export function scheduledToRide(s: OpenScheduled): Ride {
     wait_minutes: s.wait_minutes,
   };
 }
+
+// O passageiro confirma a viagem agendada (de 12 h até 2 h antes da hora marcada).
+export async function confirmScheduledRide(rideId: number): Promise<void> {
+  const { error } = await supabase.rpc('confirm_scheduled_ride', { p_ride_id: rideId });
+  if (error) throw error;
+}
+
+// O teto da proposta do motorista, como fração do valor calculado (0,30 = 30%).
+export async function fetchProposalCap(): Promise<number> {
+  const { data, error } = await supabase.rpc('proposal_cap');
+  if (error) throw error;
+  return Number(data);
+}

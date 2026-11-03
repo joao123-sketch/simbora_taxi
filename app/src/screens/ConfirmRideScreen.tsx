@@ -134,7 +134,6 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
           <View style={styles.dotDest} />
           <Text numberOfLines={2} style={styles.routeLine}>
             {destination.address}
-            {destination.dropoffPlace ? ` — ${destination.dropoffPlace}` : ''}
           </Text>
         </View>
         {destination.riderName ? <Text style={styles.extraLine}>Quem vai andar: {destination.riderName}</Text> : null}

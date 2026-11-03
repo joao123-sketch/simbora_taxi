@@ -13,11 +13,13 @@ import { fetchMyDriver } from '../lib/drivers';
 import { reverseGeocode } from '../lib/geocode';
 import { feeNeedsAttention, fetchFeeStatus } from '../lib/fees';
 import { reminderText, todayLocal } from '../lib/feeReminder';
-import { notifyOncePerDay } from '../lib/notify';
+import { confirmState, tripEvents, type TripSnapshot } from '../lib/intercity';
+import { notify, notifyOncePerDay } from '../lib/notify';
 import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
 import {
   fetchActiveRide,
   fetchCities,
+  fetchRide,
   fetchRideProposals,
   type City,
   type DeliveryInfo,
@@ -25,7 +27,7 @@ import {
   type Ride,
 } from '../lib/rides';
 import { colors } from '../theme';
-import { CityDropoffScreen } from './CityDropoffScreen';
+import { TripOptionsScreen } from './TripOptionsScreen';
 import { ConfirmRideScreen } from './ConfirmRideScreen';
 import { DeliveryDetailsScreen } from './DeliveryDetailsScreen';
 import { DestinationScreen } from './DestinationScreen';
@@ -48,7 +50,7 @@ type Step =
   | { kind: 'riderName' }
   | { kind: 'riderOrigin'; rider: string }
   | { kind: 'destination'; origin: Place; rider?: string }
-  | { kind: 'cityDropoff'; origin: Place; city: City; rider?: string }
+  | { kind: 'tripOptions'; origin: Place; destination: Place; rider?: string }
   | { kind: 'deliveryOrigin' }
   | { kind: 'deliveryDestination'; origin: Place }
   | { kind: 'deliveryDetails'; origin: Place; destination: Place }
@@ -104,6 +106,62 @@ export function PassengerFlow({ userId, name }: Props) {
     return () => subscription.remove();
   }, []);
 
+  // As viagens agendadas e as propostas de cada uma. Compara com a última vez para avisar (aviso local):
+  // nova proposta, viagem cancelada, sem efeito ou que venceu sem motorista.
+  const tripSnaps = useRef<Record<number, TripSnapshot>>({});
+  const refreshScheduled = useCallback(() => {
+    expireScheduled()
+      .catch(() => {})
+      .then(() => fetchMyScheduled('passenger', userId))
+      .then(async (list) => {
+        setScheduled(list);
+        const counts: Record<number, number> = {};
+        await Promise.all(
+          list
+            .filter((r) => r.status === 'requested')
+            .map(async (r) => {
+              counts[r.id] = (await fetchRideProposals(r.id).catch(() => [])).length;
+            }),
+        );
+        setProposalCounts(counts);
+
+        const previous = tripSnaps.current;
+        const next: Record<number, TripSnapshot> = {};
+        for (const ride of list) {
+          next[ride.id] = {
+            status: ride.status,
+            proposals: counts[ride.id] ?? 0,
+            confirmedAt: ride.confirmed_at ?? null,
+            voided: false,
+          };
+          for (const event of tripEvents(previous[ride.id] ?? null, next[ride.id], 'passenger')) {
+            notify(event.title, event.body, { tag: `${event.tag}-${ride.id}` });
+          }
+          // De manhã (ou ao abrir), lembra de confirmar a viagem que já pode ser confirmada.
+          if (ride.status === 'accepted' && ride.scheduled_for && confirmState(ride.scheduled_for, ride.confirmed_at ?? null, new Date()) === 'open') {
+            notifyOncePerDay(`confirm-${ride.id}`, 'Confirme sua viagem', 'Toque para confirmar a viagem agendada.', todayLocal());
+          }
+        }
+        // Viagem que saiu da lista: foi cancelada, ficou sem efeito ou venceu.
+        for (const id of Object.keys(previous).map(Number).filter((id) => !next[id])) {
+          const gone = await fetchRide(id).catch(() => null);
+          if (!gone || gone.status !== 'cancelled') continue;
+          const after: TripSnapshot = { ...previous[id], status: 'cancelled', voided: gone.void_reason === 'not_confirmed' };
+          for (const event of tripEvents(previous[id], after, 'passenger')) {
+            notify(event.title, event.body, { tag: `${event.tag}-${id}` });
+          }
+        }
+        tripSnaps.current = next;
+      })
+      .catch(() => {});
+  }, [userId]);
+
+  // Com o app aberto, olha as viagens agendadas de minuto em minuto.
+  useEffect(() => {
+    const timer = setInterval(refreshScheduled, 60000);
+    return () => clearInterval(timer);
+  }, [refreshScheduled]);
+
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -113,22 +171,7 @@ export function PassengerFlow({ userId, name }: Props) {
       fetchMyDriver(userId)
         .then((driver) => setIsDriver(!!driver))
         .catch(() => {});
-      expireScheduled()
-        .catch(() => {})
-        .then(() => fetchMyScheduled('passenger', userId))
-        .then(async (list) => {
-          setScheduled(list);
-          const counts: Record<number, number> = {};
-          await Promise.all(
-            list
-              .filter((r) => r.status === 'requested')
-              .map(async (r) => {
-                counts[r.id] = (await fetchRideProposals(r.id).catch(() => [])).length;
-              }),
-          );
-          setProposalCounts(counts);
-        })
-        .catch(() => {});
+      refreshScheduled();
       // A mensalidade não trava nada: sem ela (ou sem ser motorista) segue normal.
       const feeStatus = await fetchFeeStatus().catch(() => null);
       const reminder = reminderText(feeStatus);
@@ -146,7 +189,7 @@ export function PassengerFlow({ userId, name }: Props) {
     } catch {
       setError('Sem conexão com o Simbora Car. Confira a internet.');
     }
-  }, [userId]);
+  }, [userId, refreshScheduled]);
 
   // O mapa do início abre onde a pessoa está. Sem permissão ou sem GPS, abre no centro da cidade.
   useEffect(() => {
@@ -317,16 +360,18 @@ export function PassengerFlow({ userId, name }: Props) {
           onPickPlace={(destination) =>
             setStep({ kind: 'confirm', origin: step.origin, destination: { ...destination, riderName: step.rider } })
           }
-          onPickCity={(dest) => setStep({ kind: 'cityDropoff', origin: step.origin, city: dest, rider: step.rider })}
+          onPickOtherCityPlace={(destination) =>
+            setStep({ kind: 'tripOptions', origin: step.origin, destination, rider: step.rider })
+          }
           forOther={!!step.rider}
           onBack={step.rider ? () => setStep({ kind: 'riderOrigin', rider: step.rider as string }) : goHome}
         />
       );
 
-    case 'cityDropoff':
+    case 'tripOptions':
       return (
-        <CityDropoffScreen
-          city={step.city}
+        <TripOptionsScreen
+          destination={step.destination}
           onConfirm={(destination) =>
             setStep({ kind: 'confirm', origin: step.origin, destination: { ...destination, riderName: step.rider } })
           }

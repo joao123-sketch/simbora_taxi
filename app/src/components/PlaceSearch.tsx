@@ -18,6 +18,8 @@ type Props = {
   onPick: (place: PlaceResult) => void;
   // Abre o teclado já no campo (quando a pessoa acabou de pedir para escrever).
   autoFocus?: boolean;
+  // Alarga a busca (graus ao redor de `city`), para procurar em outras cidades.
+  box?: number;
 };
 
 // Espera a pessoa parar de digitar antes de consultar (cada consulta custa).
@@ -25,7 +27,7 @@ const TYPING_PAUSE_MS = 350;
 
 // Campo para escrever um endereço ou lugar, com sugestões enquanto digita.
 // Ao escolher uma sugestão, quem usa o componente recebe o lugar com as coordenadas.
-export function PlaceSearch({ city, onPick, autoFocus }: Props) {
+export function PlaceSearch({ city, onPick, autoFocus, box }: Props) {
   const [text, setText] = useState('');
   const [results, setResults] = useState<PlaceSuggestion[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -48,7 +50,7 @@ export function PlaceSearch({ city, onPick, autoFocus }: Props) {
       setFailed(false);
       try {
         if (!session.current) session.current = await newSearchSession();
-        const found = await suggestPlaces(city, query, session.current);
+        const found = await suggestPlaces(city, query, session.current, box);
         if (id === latest.current) setResults(found);
       } catch {
         if (id === latest.current) {
@@ -60,7 +62,7 @@ export function PlaceSearch({ city, onPick, autoFocus }: Props) {
       }
     }, TYPING_PAUSE_MS);
     return () => clearTimeout(timer);
-  }, [text, city]);
+  }, [text, city, box]);
 
   async function pick(suggestion: PlaceSuggestion) {
     latest.current += 1;

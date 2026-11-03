@@ -7,6 +7,9 @@ import { loadGoogleMaps } from '../lib/googleMaps';
 import { colors } from '../theme';
 import type { BackdropMapProps, BackdropMarker } from './BackdropMap.types';
 
+// Altura do ponto na parte do mapa que sobra acima do painel (0 = topo, 0,5 = meio).
+const POINT_HEIGHT = 0.4;
+
 function svgIcon(svg: string, size: number): google.maps.Icon {
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
@@ -120,9 +123,13 @@ export function BackdropMap({ center, markers = [], line = false, bottomInset = 
         if ((map.getZoom() ?? 0) > 17) map.setZoom(17);
       });
     } else {
-      // O ponto fica no meio da parte do mapa que sobra acima do painel.
+      // O ponto fica na parte do mapa que sobra acima do painel.
       map.setCenter(center);
-      if (bottomInset > 0) map.panBy(0, Math.round(bottomInset / 2));
+      // Um pouco acima do meio do mapa que sobra: o ponto não fica colado no painel.
+      const height = divRef.current?.clientHeight ?? 0;
+      if (bottomInset > 0 && height > bottomInset) {
+        map.panBy(0, Math.round(height / 2 - (height - bottomInset) * POINT_HEIGHT));
+      }
     }
     framed.current = true;
   }, [ready, frameKey, center.lat, center.lng, bottomInset]);

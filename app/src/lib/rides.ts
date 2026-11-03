@@ -16,9 +16,6 @@ export type City = Coord & {
 export type Place = Coord & {
   address: string;
   cityId?: number;
-  // Viagem para outra cidade: onde o passageiro quer ser deixado, se não for o
-  // centro. O motorista vê o lugar e decide se aceita ou propõe um acréscimo.
-  dropoffPlace?: string;
   // Viagem para outra cidade com ida e volta: o motorista espera e traz de volta.
   roundTrip?: boolean;
   waitMinutes?: number;
@@ -94,6 +91,9 @@ export type Ride = {
   requested_at: string;
   completed_at: string | null;
   cancelled_at: string | null;
+  // Viagem agendada: quando o passageiro confirmou e, se ficou sem efeito, por quê (ausentes até o banco ter a migration).
+  confirmed_at?: string | null;
+  void_reason?: string | null;
   // A nota que o próprio usuário deu na corrida (passageiro avalia o motorista e vice-versa).
   my_rating: number | null;
   passenger_name: string | null;
@@ -262,7 +262,6 @@ export async function requestRide(params: {
     p_destination_address: destination.address,
     p_quote_id: quoteId,
     p_destination_city_id: destination.cityId ?? null,
-    p_destination_place: destination.dropoffPlace ?? null,
     ...(destination.scheduledFor ? { p_scheduled_for: destination.scheduledFor } : {}),
     ...roundTripArgs(destination),
   });

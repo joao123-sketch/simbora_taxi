@@ -27,7 +27,8 @@ import {
   type RideProposal,
   type RideStatus,
 } from '../lib/rides';
-import { formatScheduled, isScheduledWait } from '../lib/scheduling';
+import { confirmState, tripEvents, type TripSnapshot } from '../lib/intercity';
+import { confirmScheduledRide, formatScheduled, isScheduledWait } from '../lib/scheduling';
 import { createRideShare, recipientMessage, tripShareMessage } from '../lib/share';
 import { colors, fontSize, cardSurface } from '../theme';
 import { ChatScreen } from './ChatScreen';
@@ -68,6 +69,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   const [chatOpen, setChatOpen] = useState(false);
   const [deliveryCode, setDeliveryCode] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const delivery = isDelivery(ride);
   const { status } = ride;
   // Aviso do sistema quando o estado da corrida muda e o app está em segundo plano.
@@ -81,7 +83,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
       completed: ['Corrida concluída', 'Obrigado por andar com o Simbora Car.'],
       cancelled: ['Corrida cancelada', 'Toque para voltar ao início.'],
     };
-    const text = texts[status];
+    // Viagem entre cidades: o aviso de cancelamento sai pelo acompanhamento da viagem (abaixo).
+    const text = isIntercity(ride) && status === 'cancelled' ? undefined : texts[status];
     if (text) notify(text[0], text[1], { tag: `corrida-${ride.id}` });
   }, [status, ride.id]);
   // Viagem agendada ainda longe da hora: o pedido e o motorista existem, mas ninguém está a caminho.
@@ -129,8 +132,23 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   useEffect(() => {
     if (!inRide) setChatOpen(false);
   }, [inRide]);
-  const waitingProposals =
-    status === 'requested' && (!!ride.destination_place || !!ride.round_trip || !!ride.scheduled_for);
+  const waitingProposals = status === 'requested' && isIntercity(ride);
+
+  // Avisos da viagem entre cidades: nova proposta, cancelamento, viagem sem efeito.
+  const lastTrip = useRef<TripSnapshot | null>(null);
+  useEffect(() => {
+    if (!isIntercity(ride)) return;
+    const next: TripSnapshot = {
+      status,
+      proposals: proposals.length,
+      confirmedAt: ride.confirmed_at ?? null,
+      voided: ride.void_reason === 'not_confirmed',
+    };
+    for (const event of tripEvents(lastTrip.current, next, 'passenger')) {
+      notify(event.title, event.body, { tag: `${event.tag}-${ride.id}` });
+    }
+    lastTrip.current = next;
+  }, [status, proposals.length, ride]);
 
   // A cada mudança (motorista aceitou, chegou...) busca de novo os detalhes,
   // que trazem nome, carro e placa do motorista.
@@ -144,8 +162,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
     [initialRide.id],
   );
 
-  // Motoristas podem propor um acréscimo quando o passageiro pediu um lugar
-  // fora do centro de outra cidade; as propostas chegam em tempo real.
+  // Motoristas aceitam o valor ou propõem outro nas viagens para outra cidade; as propostas chegam em tempo real.
   const loadProposals = useCallback(() => {
     fetchRideProposals(initialRide.id)
       .then(setProposals)
@@ -187,6 +204,19 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   function finishRating() {
     setRated(true);
     setTimeout(onFinished, 1200);
+  }
+
+  async function confirmTrip() {
+    setConfirming(true);
+    setError(null);
+    try {
+      await confirmScheduledRide(ride.id);
+      setRide(await fetchRide(ride.id));
+    } catch (e) {
+      setError((e as { message?: string }).message || 'Não conseguimos confirmar. Tente de novo.');
+    } finally {
+      setConfirming(false);
+    }
   }
 
   async function cancel() {
@@ -257,6 +287,29 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
 
       {waitingForDriver && isIntercity(ride) ? <PassengerAdvanceNote ride={ride} /> : null}
 
+      {ride.void_reason === 'not_confirmed' ? (
+        <Text style={styles.hint}>Viagem sem efeito: você não confirmou a tempo. Peça de novo quando quiser.</Text>
+      ) : null}
+
+      {ride.scheduled_for && status === 'accepted' && !!ride.driver_id
+        ? (() => {
+            const state = confirmState(ride.scheduled_for, ride.confirmed_at ?? null, new Date());
+            if (state === 'open') {
+              return (
+                <>
+                  <Text style={styles.hint}>Confirme a viagem para ela valer. Sem confirmar até 2 horas antes, ela fica sem efeito.</Text>
+                  <BigButton label="Confirmar viagem" onPress={confirmTrip} loading={confirming} />
+                </>
+              );
+            }
+            if (state === 'too_early') {
+              return <Text style={styles.hint}>Você poderá confirmar a viagem a partir de 12 horas antes da hora marcada.</Text>;
+            }
+            if (state === 'not_needed') return <Text style={styles.hint}>Viagem confirmada.</Text>;
+            return null;
+          })()
+        : null}
+
       {hasDriver ? (
         <View style={styles.driverCard}>
           <Text style={styles.driverName}>{ride.driver_name}</Text>
@@ -269,12 +322,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
 
       {waitingProposals ? (
         <Text style={styles.hint}>
-          {ride.destination_place
-            ? `Você pediu para ser deixado em ${ride.destination_place}. `
-            : ride.round_trip
-              ? 'Você pediu ida e volta. '
-              : 'Você agendou a viagem. '}
-          O motorista pode aceitar pelo valor ou propor um acréscimo.
+          {ride.round_trip ? 'Você pediu ida e volta. ' : ''}
+          Os motoristas podem aceitar pelo valor ou propor outro. Você escolhe com quem ir.
         </Text>
       ) : null}
 
@@ -285,7 +334,9 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
             {proposal.vehicle_model} {proposal.vehicle_color} · {proposal.vehicle_plate}
           </Text>
           <Text style={styles.price}>
-            Propõe + {formatMoney(proposal.extra_amount)} (total {formatMoney(ride.estimated_price + proposal.extra_amount)})
+            {proposal.extra_amount > 0
+              ? `Propõe ${formatMoney(ride.estimated_price + proposal.extra_amount)} (+ ${formatMoney(proposal.extra_amount)})`
+              : `Aceita o valor: ${formatMoney(ride.estimated_price)}`}
           </Text>
           {proposal.advance_percent === 0 ? (
             <Text style={styles.line}>Sem adiantamento: você paga ao motorista no fim da viagem.</Text>
@@ -311,7 +362,6 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
         <Text style={styles.line}>{delivery ? 'Pegar em' : 'De'}: {ride.origin_address}</Text>
         <Text style={styles.line}>
           {delivery ? 'Entregar em' : 'Para'}: {ride.destination_address}
-          {ride.destination_place ? ` — ${ride.destination_place}` : ''}
         </Text>
         {delivery ? (
           <>
