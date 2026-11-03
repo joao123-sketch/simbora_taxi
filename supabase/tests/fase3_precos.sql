@@ -119,7 +119,7 @@ begin
   insert into public.zz_fx values ('ok:entrega_sem_noturno', '1');
 end $t$;
 
--- preco_entre_cidades: viagem para outra cidade usa a tarifa da cidade de origem (sem tabela de rotas)
+-- preco_entre_cidades: viagem para outra cidade usa a tarifa da cidade de origem, com valor por km próprio e tempo a 100 km/h
 do $t$
 declare g bigint := (select id from public.cities where name = 'Guaraciaba do Norte');
         u bigint := (select id from public.cities where name = 'Ubajara');
@@ -129,7 +129,7 @@ declare g bigint := (select id from public.cities where name = 'Guaraciaba do No
 begin
   select * into f from public.fares where city_id = g and vehicle_type = 'car' and effective_from <= current_date order by effective_from desc limit 1;
   km := round((extensions.st_distance(o, d) / 1000 * 1.3)::numeric, 2);
-  esperado := round(f.base + f.per_km * km + f.per_min * (km / 30 * 60), 2);
+  esperado := round(f.base + f.intercity_per_km * km + f.per_min * (km / 100 * 60), 2);
   select r.price into got from private.ride_quote(g, 'car', o, d, u) r;
   if got is distinct from esperado then
     raise exception 'FALHOU preco_entre_cidades: preço % (esperado %)', got, esperado;
