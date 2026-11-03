@@ -10,9 +10,8 @@ import { PricesPage } from './pages/Prices';
 import { PassengersPage } from './pages/Passengers';
 import { RegisteredPage } from './pages/Registered';
 import { ReportsPage } from './pages/Reports';
-import { RoutesPage } from './pages/Routes';
 
-type Tab = 'drivers' | 'registered' | 'passengers' | 'fees' | 'reports' | 'prices' | 'routes' | 'cities';
+type Tab = 'drivers' | 'registered' | 'passengers' | 'fees' | 'reports' | 'prices' | 'cities';
 
 export function App() {
   // undefined = ainda descobrindo se há alguém logado.
@@ -100,9 +99,6 @@ export function App() {
           <button className={`tab ${tab === 'prices' ? 'active' : ''}`} onClick={() => setTab('prices')}>
             Preços
           </button>
-          <button className={`tab ${tab === 'routes' ? 'active' : ''}`} onClick={() => setTab('routes')}>
-            Rotas
-          </button>
           <button className={`tab ${tab === 'cities' ? 'active' : ''}`} onClick={() => setTab('cities')}>
             Cidades
           </button>
@@ -122,8 +118,6 @@ export function App() {
           <FeesPage />
         ) : tab === 'reports' ? (
           <ReportsPage />
-        ) : tab === 'routes' ? (
-          <RoutesPage />
         ) : tab === 'cities' ? (
           <CitiesPage />
         ) : (

@@ -77,10 +77,10 @@ Tabela **rides**. Filtre por `status`:
 
 ## Preços e tarifas
 
-O jeito mais simples é o painel: abas **Preços**, **Rotas** e **Cidades**. Por trás ficam estas tabelas (**Table Editor**):
+O jeito mais simples é o painel: abas **Preços** e **Cidades**. Por trás ficam estas tabelas (**Table Editor**):
 
 - **fares**: tarifa de cada veículo (bandeirada `base`, `per_km`, `per_min`), sem valor mínimo. Para mudar o preço, **crie uma linha nova** com `effective_from` na data em que vale; a mais recente que já começou é a que vale, e a antiga fica de histórico.
-- **intercity_fares**: preço fechado entre duas cidades, por veículo, **igual nos dois sentidos** (cada par tem duas linhas). Na aba **Rotas** você adiciona, edita e remove pares; o painel grava a ida e a volta juntas.
+- **Viagem para outra cidade**: não há mais preço fechado por rota. O preço é calculado pela distância do endereço até onde o passageiro está, na tarifa da cidade de origem (a mesma conta da corrida dentro da cidade). Ida e volta soma a volta e a espera (`per_min`).
 - **Cidades** (aba Cidades): adiciona cidade (nasce desativada, com latitude e longitude do centro) e ativa ou desativa. Só ativa se a cidade já tiver tarifa cadastrada na aba Preços.
 - **Adicional noturno**: +20% das 22h às 5h59 (horário de Fortaleza), só na corrida dentro da cidade (não vale na entrega nem entre cidades). Soma com o preço dinâmico e o total nunca passa do teto de ×1,50. Os quatro valores (adicional, hora que começa, hora que termina e teto) ficam em Preços. O passageiro e o motorista **não** veem nenhum aviso: só o preço final.
 - Espera da ida e volta: usa o `per_min` da tarifa (hoje R$ 0,30 por minuto no carro).
@@ -92,7 +92,13 @@ O botão de SOS abre o WhatsApp do plantão com a mensagem pronta (corrida, moto
 
 ## Viagem entre cidades
 
-O motorista escolhe o adiantamento (sem, 50% ou 100%) ao aceitar ou propor. O passageiro paga direto a ele, e o motorista toca em "Recebi" para poder iniciar a viagem. A equipe não participa do pagamento.
+O passageiro digita só o endereço, escolhe ida ou ida e volta (com a espera) e quando quer ir (hoje ou outro dia). O app mostra o valor calculado.
+
+- **Motorista:** aceita o valor ou propõe um valor maior, até o limite definido em **Preços** ("Limite da proposta do motorista", 30% no começo). Ele escolhe o adiantamento (sem, 50% ou 100%) ao aceitar ou propor. O passageiro paga direto a ele, e o motorista toca em "Recebi" para poder iniciar a viagem. A equipe não participa do pagamento.
+- **Hoje:** quem aceita o valor calculado leva a viagem na hora (o primeiro). Propostas de outro valor esperam o passageiro escolher.
+- **Agendada:** nenhum aceite fecha sozinho. O passageiro vê todas as opções (aceites do valor e propostas) e escolhe.
+- **Confirmação no dia (agendada):** depois de fechada, o passageiro confirma a viagem entre 12 h e 2 h antes da hora marcada. Se ela for fechada com menos de 2 h de antecedência, já vale. Sem confirmar, a viagem fica sem efeito e o horário do motorista é liberado. Pedido agendado que ninguém aceita até a hora marcada é cancelado.
+- Os avisos são do app (aparecem com o app aberto ou em segundo plano). Com o app fechado por completo eles não chegam.
 
 ## Foto de passageiro (só para denúncia)
 
