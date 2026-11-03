@@ -109,3 +109,12 @@ Na aba **Passageiros** do painel, busque pelo nome ou telefone (3 letras ou núm
 ## Quem pede para excluir a conta
 
 A própria pessoa exclui pelo app (**Excluir minha conta**). O banco apaga nome, telefone e login e guarda só um código irreversível do CPF do motorista. Se o pedido chegar por outro canal, peça para ela mesma excluir pelo app.
+
+## Código de login por SMS
+
+O código que a pessoa recebe ao entrar é enviado pela **Comtele**, por uma função do Supabase chamada `send-sms` (o "Send SMS Hook" em Authentication > Hooks). Cada SMS custa cerca de R$ 0,12 (rota 17, "Premium").
+
+- **Saldo:** o crédito fica no painel da Comtele (portal.comtele.com.br) e não vence. Se o saldo acabar, ninguém recebe o código e não dá para entrar: confira o saldo antes de campanhas de divulgação.
+- **Segredos:** ficam em Edge Functions > Secrets: `COMTELE_API_KEY`, `COMTELE_ROUTE` (17) e `SEND_SMS_HOOK_SECRET` (gerado ao ativar o hook). A função fica com "Verify JWT" desligado de propósito, porque ela confere a assinatura do hook por conta própria.
+- **Se o código não chega:** veja Edge Functions > send-sms > Logs (o código do SMS nunca aparece no log, só o final do telefone) e o relatório de entregas no painel da Comtele.
+- **Limite de envios:** ajuste em Authentication > Rate Limits, para ninguém gastar o saldo pedindo código em excesso.
