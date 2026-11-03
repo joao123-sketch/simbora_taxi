@@ -80,10 +80,12 @@ Tabela **rides**. Filtre por `status`:
 O jeito mais simples é o painel: abas **Preços** e **Cidades**. Por trás ficam estas tabelas (**Table Editor**):
 
 - **fares**: tarifa de cada veículo (bandeirada `base`, `per_km`, `per_min`), sem valor mínimo. Para mudar o preço, **crie uma linha nova** com `effective_from` na data em que vale; a mais recente que já começou é a que vale, e a antiga fica de histórico.
-- **Viagem para outra cidade**: não há mais preço fechado por rota. O preço é calculado pela distância do endereço até onde o passageiro está, na tarifa da cidade de origem (a mesma conta da corrida dentro da cidade). Ida e volta soma a volta e a espera (`per_min`).
+- **Viagem para outra cidade**: não há preço fechado por rota. O preço é calculado pela distância do endereço até onde o passageiro está (linha reta × 1,3), na tarifa da cidade de origem: bandeirada mais três faixas de valor por km (já com o tempo dentro). Hoje, no carro: até 72 km R$ 1,70 por km, de 72 a 90 km R$ 6,70 por km (descida da serra) e depois dos 90 km R$ 2,72 por km. As faixas e o valor de cada uma ficam em Preços, por cidade e veículo.
+- **Ida e volta**: preço da ida × o fator de Preços (hoje 1,5), com as horas de espera incluídas (hoje 2 horas). O que passar das horas incluídas cobra o valor de espera por minuto da tarifa.
+- **Corrida dentro da cidade longa**: depois de certa distância (hoje 4 km) o km passa a valer menos (hoje R$ 0,60 por km no carro, já com o tempo). Serve para sítios e distritos, como a Várzea dos Espinhos (uns R$ 30).
 - **Cidades** (aba Cidades): adiciona cidade (nasce desativada, com latitude e longitude do centro) e ativa ou desativa. Só ativa se a cidade já tiver tarifa cadastrada na aba Preços.
 - **Adicional noturno**: +20% das 22h às 5h59 (horário de Fortaleza), só na corrida dentro da cidade (não vale na entrega nem entre cidades). Soma com o preço dinâmico e o total nunca passa do teto de ×1,50. Os quatro valores (adicional, hora que começa, hora que termina e teto) ficam em Preços. O passageiro e o motorista **não** veem nenhum aviso: só o preço final.
-- Espera da ida e volta: usa o `per_min` da tarifa (hoje R$ 0,30 por minuto no carro).
+- Espera da ida e volta além das horas incluídas: usa o valor de espera por minuto da tarifa (hoje R$ 0,10 por minuto no carro).
 - **pricing_settings**: o preço dinâmico (aumento só quando falta carro). `locked = true` trava o fator em `locked_factor`; para ver como está agindo, olhe `city_pricing_state` (degrau atual por cidade e veículo) e `ride_pricing` (fator de cada corrida). Nenhuma dessas tabelas aparece no app.
 
 ## SOS
