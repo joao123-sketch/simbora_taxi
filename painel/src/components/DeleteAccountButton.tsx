@@ -26,10 +26,14 @@ export function DeleteAccountButton({ userId, name, onDeleted }: Props) {
       return;
     }
     // O banco devolve o caminho da foto; o arquivo sai do Storage aqui.
+    let photoError: string | null = null;
     if (typeof photoPath === 'string' && photoPath) {
-      await supabase.storage.from('passenger-photos').remove([photoPath]);
+      const { error: removeError } = await supabase.storage.from('passenger-photos').remove([photoPath]);
+      if (removeError) photoError = friendlyError(removeError);
     }
     setBusy(false);
+    // A conta já foi excluída e o cartão some ao recarregar: o aviso vai em alerta, com o caminho para apagar à mão.
+    if (photoError) window.alert(`Conta excluída, mas a foto não saiu do Storage (${photoError}). Apague o arquivo ${photoPath} no bucket passenger-photos.`);
     await onDeleted();
   }
 

@@ -11,7 +11,17 @@ import { PassengersPage } from './pages/Passengers';
 import { RegisteredPage } from './pages/Registered';
 import { ReportsPage } from './pages/Reports';
 
-type Tab = 'drivers' | 'registered' | 'passengers' | 'fees' | 'reports' | 'prices' | 'cities';
+const TABS = [
+  { id: 'drivers', label: 'Motoristas', Page: DriversPage },
+  { id: 'registered', label: 'Cadastrados', Page: RegisteredPage },
+  { id: 'passengers', label: 'Passageiros', Page: PassengersPage },
+  { id: 'fees', label: 'Mensalidades', Page: FeesPage },
+  { id: 'reports', label: 'Relatórios', Page: ReportsPage },
+  { id: 'prices', label: 'Preços', Page: PricesPage },
+  { id: 'cities', label: 'Cidades', Page: CitiesPage },
+] as const;
+
+type Tab = (typeof TABS)[number]['id'];
 
 export function App() {
   // undefined = ainda descobrindo se há alguém logado.
@@ -76,53 +86,27 @@ export function App() {
     );
   }
 
+  const ActivePage = TABS.find((t) => t.id === tab)!.Page;
+
   return (
     <>
       <header className="topbar">
         <span className="brand">Simbora Car · Painel</span>
         <nav className="tabs">
-          <button className={`tab ${tab === 'drivers' ? 'active' : ''}`} onClick={() => setTab('drivers')}>
-            Motoristas
-          </button>
-          <button className={`tab ${tab === 'registered' ? 'active' : ''}`} onClick={() => setTab('registered')}>
-            Cadastrados
-          </button>
-          <button className={`tab ${tab === 'passengers' ? 'active' : ''}`} onClick={() => setTab('passengers')}>
-            Passageiros
-          </button>
-          <button className={`tab ${tab === 'fees' ? 'active' : ''}`} onClick={() => setTab('fees')}>
-            Mensalidades
-          </button>
-          <button className={`tab ${tab === 'reports' ? 'active' : ''}`} onClick={() => setTab('reports')}>
-            Relatórios
-          </button>
-          <button className={`tab ${tab === 'prices' ? 'active' : ''}`} onClick={() => setTab('prices')}>
-            Preços
-          </button>
-          <button className={`tab ${tab === 'cities' ? 'active' : ''}`} onClick={() => setTab('cities')}>
-            Cidades
-          </button>
+          {TABS.map((t) => (
+            <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
         </nav>
         <span className="hint">{session.user.email}</span>
         <button className="btn secondary" onClick={() => supabase.auth.signOut()}>
           Sair
         </button>
       </header>
-      <main className="page">{tab === 'drivers' ? (
-          <DriversPage />
-        ) : tab === 'registered' ? (
-          <RegisteredPage />
-        ) : tab === 'passengers' ? (
-          <PassengersPage />
-        ) : tab === 'fees' ? (
-          <FeesPage />
-        ) : tab === 'reports' ? (
-          <ReportsPage />
-        ) : tab === 'cities' ? (
-          <CitiesPage />
-        ) : (
-          <PricesPage />
-        )}</main>
+      <main className="page">
+        <ActivePage />
+      </main>
     </>
   );
 }

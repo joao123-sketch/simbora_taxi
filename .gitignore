@@ -3,3 +3,6 @@
 supabase/.branches
 supabase/.temp
 expo-go-qr.png
+
+graphify-out/
+skills/
