@@ -143,20 +143,20 @@ export function DriverHomeScreen({
       await acceptRide(rideId, advance);
       onAccepted();
     } catch {
-      setError('Outro motorista pegou essa corrida.');
+      setError('Outro motorista já pegou essa viagem.');
       refresh();
     } finally {
       setAccepting(null);
     }
   }
 
-  // Aceitar uma viagem agendada: ela não vira corrida agora, fica na lista de viagens agendadas.
+  // Aceitar o valor de uma viagem agendada: vira uma opção para o passageiro escolher; só fecha quando ele escolhe.
   async function acceptScheduledTrip(rideId: number, advance: number | null) {
     setAccepting(rideId);
     setError(null);
     try {
       await acceptScheduled(rideId, advance ?? 0);
-      setNotice('Viagem agendada aceita! Ela fica na sua lista de Viagens agendadas.');
+      setNotice('Proposta enviada! Se o passageiro escolher você, a viagem fica na sua lista de Viagens agendadas.');
     } catch (e) {
       setError((e as { message?: string }).message || 'Essa viagem não está mais livre.');
     } finally {

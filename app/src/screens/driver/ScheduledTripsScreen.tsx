@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
 import { Screen } from '../../components/Screen';
+import { tripEvents, type TripSnapshot } from '../../lib/intercity';
+import { notify } from '../../lib/notify';
 import {
   advanceLabel,
   fetchMyProposals,
+  fetchRide,
   formatMoney,
   proposeExtra,
   subscribeToProposals,
@@ -45,6 +48,10 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
   const [confirmRelease, setConfirmRelease] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Como cada viagem estava da última vez, para avisar (aviso local): proposta escolhida, passageiro
+  // confirmou, viagem cancelada ou sem efeito.
+  const snaps = useRef<Record<number, TripSnapshot>>({});
+
   const load = useCallback(async () => {
     try {
       await expireScheduled();
@@ -56,6 +63,30 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
       setOpen(list);
       setMine(accepted);
       setProposals(Object.fromEntries(props.map((p) => [p.ride_id, p])));
+
+      const next: Record<number, TripSnapshot> = {};
+      for (const p of props.filter((p) => p.status === 'pending')) {
+        next[p.ride_id] = { status: 'requested', proposals: 1, confirmedAt: null, voided: false };
+      }
+      for (const ride of accepted) {
+        next[ride.id] = { status: 'accepted', proposals: 0, confirmedAt: ride.confirmed_at ?? null, voided: false };
+      }
+      const previous = snaps.current;
+      for (const id of Object.keys(next).map(Number)) {
+        for (const event of tripEvents(previous[id] ?? null, next[id], 'driver')) {
+          notify(event.title, event.body, { tag: `${event.tag}-${id}` });
+        }
+      }
+      // Viagem aceita que saiu da lista: o passageiro cancelou ou ela ficou sem efeito.
+      for (const id of Object.keys(previous).map(Number).filter((id) => !next[id] && previous[id].status === 'accepted')) {
+        const gone = await fetchRide(id).catch(() => null);
+        if (!gone || gone.status !== 'cancelled') continue;
+        const after: TripSnapshot = { ...previous[id], status: 'cancelled', voided: gone.void_reason === 'not_confirmed' };
+        for (const event of tripEvents(previous[id], after, 'driver')) {
+          notify(event.title, event.body, { tag: `${event.tag}-${id}` });
+        }
+      }
+      snaps.current = next;
     } catch {
       setError('Sem conexão com o Simbora Car. Confira a internet.');
     }
@@ -103,7 +134,7 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
   return (
     <Screen
       title="Viagens agendadas"
-      subtitle="Viagens entre cidades marcadas para outro dia. Aceite uma e ela fica na sua agenda e na do passageiro."
+      subtitle="Viagens entre cidades marcadas para outro dia. Aceite pelo valor ou proponha outro: o passageiro escolhe, e a viagem entra na sua agenda."
       error={error}
       onBack={onBack}
     >
@@ -117,6 +148,9 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
           <Text style={styles.price}>
             {formatMoney(ride.estimated_price)}
             {ride.advance_percent !== null && ride.advance_percent !== undefined ? ` · ${advanceLabel(ride.advance_percent)}` : ''}
+          </Text>
+          <Text style={styles.warning}>
+            {ride.confirmed_at ? 'Confirmada pelo passageiro.' : 'Aguardando confirmação do passageiro (ele confirma de 12 h até 2 h antes).'}
           </Text>
           {confirmRelease === ride.id ? (
             <>
