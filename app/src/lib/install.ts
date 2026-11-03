@@ -10,8 +10,9 @@ type InstallPromptEvent = Event & {
 // - 'prompt': Android/Chrome, dá para instalar com um toque.
 // - 'ios-safari': iPhone/iPad no Safari, só pelo menu Compartilhar.
 // - 'ios-other': iPhone em outro navegador, precisa abrir no Safari.
+// - 'android-menu': Android sem o botão de instalar pronto, só pelo menu do navegador.
 // - 'none': já instalado, fora da web ou navegador sem instalação.
-export type InstallMode = 'prompt' | 'ios-safari' | 'ios-other' | 'none';
+export type InstallMode = 'prompt' | 'ios-safari' | 'ios-other' | 'android-menu' | 'none';
 
 function isStandalone(): boolean {
   if (typeof window === 'undefined') return false;
@@ -22,7 +23,7 @@ function isStandalone(): boolean {
 function iosMode(): InstallMode {
   const ua = window.navigator.userAgent;
   const isIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && window.navigator.maxTouchPoints > 1);
-  if (!isIos) return 'none';
+  if (!isIos) return /Android/i.test(ua) ? 'android-menu' : 'none';
   // Chrome, Firefox, Edge e outros no iOS trazem CriOS, FxiOS, EdgiOS etc.
   return /CriOS|FxiOS|EdgiOS|OPiOS|GSA|Instagram|FBAN|FBAV/.test(ua) ? 'ios-other' : 'ios-safari';
 }

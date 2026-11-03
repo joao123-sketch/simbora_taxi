@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     opacity: 0.92,
   },
   disabled: {
-    opacity: 0.45,
+    opacity: 0.6,
   },
   row: {
     flexDirection: 'row',

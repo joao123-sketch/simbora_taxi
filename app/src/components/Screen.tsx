@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, fontSize, gradients, radius, shadows } from '../theme';
 import { BackdropMap } from './BackdropMap';
+import { PatternBackground } from './PatternBackground';
 import type { BackdropMapProps } from './BackdropMap.types';
 
 type Props = {
@@ -21,6 +22,8 @@ type Props = {
   backdrop?: BackdropMapProps;
   // Mostra a seta de voltar (no mapa, flutuando; sem mapa, no topo).
   onBack?: () => void;
+  // Fundo com a textura da marca (carrinhos, pinos e mapas). Só nas telas sem mapa.
+  texture?: boolean;
   children: ReactNode;
 };
 
@@ -50,7 +53,7 @@ function ErrorBox({ error }: { error?: string | null }) {
 // conteúdo rolando. Com mapa: o mapa ocupa tudo e o conteúdo fica num painel
 // que sobe por baixo, como nos aplicativos de corrida. Fica dentro da área
 // segura (fora da barra de status e dos botões do Android) e sobe junto com o teclado.
-export function Screen({ title, subtitle, error, footer, corner, backdrop, onBack, children }: Props) {
+export function Screen({ title, subtitle, error, footer, corner, backdrop, onBack, texture, children }: Props) {
   const [sheetHeight, setSheetHeight] = useState(0);
   const scrollRef = useRef<ScrollViewInstance>(null);
 
@@ -99,8 +102,9 @@ export function Screen({ title, subtitle, error, footer, corner, backdrop, onBac
 
   return (
     <LinearGradient colors={gradients.page} style={styles.container}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView style={styles.container} behavior="padding">
+      {texture ? <PatternBackground /> : null}
+      <SafeAreaView style={[styles.container, texture && styles.transparent]} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView style={[styles.container, texture && styles.transparent]} behavior="padding">
           <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <View style={styles.content}>
               <View style={styles.header}>
@@ -136,6 +140,7 @@ export function Screen({ title, subtitle, error, footer, corner, backdrop, onBac
 }
 
 const styles = StyleSheet.create({
+  transparent: { backgroundColor: 'transparent' },
   container: {
     flex: 1,
     backgroundColor: colors.background,

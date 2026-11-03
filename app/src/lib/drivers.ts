@@ -45,6 +45,17 @@ export async function fetchMyDriver(userId: string): Promise<Driver | null> {
   return data as Driver | null;
 }
 
+// Telefone do suporte, para quem precisa de ajuda com o cadastro (ex.: CPF já cadastrado).
+export const SUPPORT_PHONE_LABEL = '(88) 98894-1408';
+export const CPF_TAKEN_MESSAGE = `Esse CPF já tem cadastro. Fale com o suporte pelo telefone ${SUPPORT_PHONE_LABEL} para refazer o cadastro.`;
+
+// Pergunta ao banco se o CPF já é de outro motorista (só sim ou não).
+export async function cpfAlreadyRegistered(cpf: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('cpf_already_registered', { p_cpf: cpf });
+  if (error) throw error;
+  return data === true;
+}
+
 export async function registerDriver(input: DriverRegistration): Promise<void> {
   const { error } = await supabase.rpc('register_driver', {
     p_city_id: input.cityId,

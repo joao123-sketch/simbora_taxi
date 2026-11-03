@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
@@ -7,7 +7,7 @@ import { CheckCard } from '../../components/CheckCard';
 import { ChoiceCard } from '../../components/ChoiceCard';
 import { Screen } from '../../components/Screen';
 import { formatBirthDate, formatCpf, isValidCpf, onlyDigits, parseBirthDate } from '../../lib/documents';
-import { isValidPlate, MIN_VEHICLE_YEAR, normalizePlate, registerDriver } from '../../lib/drivers';
+import { CPF_TAKEN_MESSAGE, cpfAlreadyRegistered, isValidPlate, MIN_VEHICLE_YEAR, normalizePlate, registerDriver } from '../../lib/drivers';
 import { vehicleLabel, type VehicleType } from '../../lib/rides';
 import { DRIVER_TERMS, DRIVER_TERMS_VERSION } from '../../legal/driverTerms';
 import { colors, fontSize } from '../../theme';
@@ -39,13 +39,27 @@ export function DriverSignupScreen({ cityId, onRegistered, onBack }: Props) {
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cpfTaken, setCpfTaken] = useState(false);
 
   const isMoto = vehicleType === 'moto';
   const birthDate = parseBirthDate(birth);
   const yearNumber = Number(year);
   const yearOk = year.length === 4 && yearNumber >= MIN_VEHICLE_YEAR && yearNumber <= new Date().getFullYear() + 1;
 
-  const step1Ok = isValidCpf(cpf) && !!birthDate && birthDate.age >= 18;
+  // Com o CPF completo e válido, já pergunta se ele tem cadastro (falha de rede não trava).
+  useEffect(() => {
+    setCpfTaken(false);
+    if (!isValidCpf(cpf)) return;
+    let cancelled = false;
+    cpfAlreadyRegistered(cpf)
+      .then((taken) => !cancelled && setCpfTaken(taken))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [cpf]);
+
+  const step1Ok = !cpfTaken && isValidCpf(cpf) && !!birthDate && birthDate.age >= 18;
   const step2Ok = ear;
   // Os itens da moto não travam o cadastro: a equipe confere na vistoria.
   const step3Ok = model.trim().length >= 2 && color.trim().length >= 3 && isValidPlate(plate) && yearOk;
@@ -78,7 +92,8 @@ export function DriverSignupScreen({ cityId, onRegistered, onBack }: Props) {
     } catch (e) {
       setLoading(false);
       // As mensagens do banco (register_driver) já vêm em português.
-      setError((e as { message?: string }).message || 'Não conseguimos enviar. Confira os dados.');
+      const message = (e as { message?: string }).message;
+      setError(message === 'Esse CPF já tem cadastro' ? CPF_TAKEN_MESSAGE : message || 'Não conseguimos enviar. Confira os dados.');
     }
   }
 
@@ -122,6 +137,7 @@ export function DriverSignupScreen({ cityId, onRegistered, onBack }: Props) {
             onChangeText={(text) => setCpf(onlyDigits(text))}
           />
           {cpf.length === 11 && !isValidCpf(cpf) ? <Text style={styles.warning}>Esse CPF não parece certo.</Text> : null}
+          {cpfTaken ? <Text style={styles.warning}>{CPF_TAKEN_MESSAGE}</Text> : null}
 
           <Text style={styles.label}>Data de nascimento</Text>
           <BigInput

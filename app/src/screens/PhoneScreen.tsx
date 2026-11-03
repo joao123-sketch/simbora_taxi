@@ -3,6 +3,7 @@ import { Text } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { BigInput } from '../components/BigInput';
+import { InstallCard } from '../components/InstallCard';
 import { Screen } from '../components/Screen';
 import { LegalScreen } from './LegalScreen';
 import { formatPhone, isValidPhone, onlyDigits, toE164 } from '../lib/phone';
@@ -43,6 +44,7 @@ export function PhoneScreen({ notice, onCodeSent }: Props) {
       title="Qual é o seu celular?"
       subtitle="Vamos mandar um código por SMS para entrar."
       error={error ?? notice ?? null}
+      texture
     >
       <BigInput
         accessibilityLabel="Número do celular com DDD"
@@ -64,6 +66,7 @@ export function PhoneScreen({ notice, onCodeSent }: Props) {
         Ao entrar, você aceita os termos de uso e a política de privacidade.
       </Text>
       <BigButton label="Ler termos e privacidade" onPress={() => setShowLegal(true)} variant="link" />
+      <InstallCard />
     </Screen>
   );
 }

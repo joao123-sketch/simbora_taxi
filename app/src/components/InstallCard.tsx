@@ -36,6 +36,11 @@ export function InstallCard() {
           2. Toque em "Adicionar à Tela de Início".{'\n'}
           3. Toque em "Adicionar".
         </Text>
+      ) : mode === 'android-menu' ? (
+        <Text style={styles.text}>
+          1. Toque nos três pontinhos do navegador (canto de cima).{'\n'}
+          2. Toque em "Instalar app" ou "Adicionar à tela inicial".
+        </Text>
       ) : (
         <Text style={styles.text}>
           Abra este mesmo endereço no Safari. Depois toque em Compartilhar e em "Adicionar à Tela de Início".
