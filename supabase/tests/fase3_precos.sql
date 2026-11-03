@@ -71,7 +71,7 @@ begin
   insert into public.zz_fx values ('ok:fator_noturno_e_teto', '1');
 end $t$;
 
--- tarifa_sem_minimo: carro 8 + 2,20/km + 0,30/min, moto 5 + 1,40/km + 0,20/min, sem piso
+-- tarifa_sem_minimo: carro 8 + 2,20/km + 0,30/min, moto 5 + 1,40/km + 0,20/min, sem piso; depois de city_far_km o km vale city_far_per_km
 do $t$
 declare c bigint := (select id from public.cities where name = 'Guaraciaba do Norte');
         o extensions.geography := private.point(-40.7475, -4.1670);
@@ -82,12 +82,14 @@ begin
   -- Os valores esperados saem da tarifa vigente na tabela, não de números fixos.
   select * into f from public.fares where city_id = c and vehicle_type = 'car' and effective_from <= current_date order by effective_from desc limit 1;
   select * into r from private.ride_quote(c, 'car', o, d, null);
-  if r.price is distinct from round(f.base + f.per_km * r.distance_km + f.per_min * (r.distance_km / 30 * 60), 2) then
+  if r.price is distinct from round(f.base + f.per_km * least(r.distance_km, f.city_far_km) + f.per_min * (least(r.distance_km, f.city_far_km) / 30 * 60)
+      + f.city_far_per_km * greatest(0, r.distance_km - f.city_far_km), 2) then
     raise exception 'FALHOU tarifa_sem_minimo: carro % km deu %', r.distance_km, r.price;
   end if;
   select * into f from public.fares where city_id = c and vehicle_type = 'moto' and effective_from <= current_date order by effective_from desc limit 1;
   select * into r from private.ride_quote(c, 'moto', o, d, null);
-  if r.price is distinct from round(f.base + f.per_km * r.distance_km + f.per_min * (r.distance_km / 30 * 60), 2) then
+  if r.price is distinct from round(f.base + f.per_km * least(r.distance_km, f.city_far_km) + f.per_min * (least(r.distance_km, f.city_far_km) / 30 * 60)
+      + f.city_far_per_km * greatest(0, r.distance_km - f.city_far_km), 2) then
     raise exception 'FALHOU tarifa_sem_minimo: moto % km deu %', r.distance_km, r.price;
   end if;
   select * into f from public.fares where city_id = c and vehicle_type = 'car' and effective_from <= current_date order by effective_from desc limit 1;
@@ -119,7 +121,7 @@ begin
   insert into public.zz_fx values ('ok:entrega_sem_noturno', '1');
 end $t$;
 
--- preco_entre_cidades: viagem para outra cidade usa a tarifa da cidade de origem (sem tabela de rotas)
+-- preco_entre_cidades: viagem para outra cidade usa a tarifa da cidade de origem, com valor por km próprio e tempo a 100 km/h
 do $t$
 declare g bigint := (select id from public.cities where name = 'Guaraciaba do Norte');
         u bigint := (select id from public.cities where name = 'Ubajara');
@@ -129,13 +131,25 @@ declare g bigint := (select id from public.cities where name = 'Guaraciaba do No
 begin
   select * into f from public.fares where city_id = g and vehicle_type = 'car' and effective_from <= current_date order by effective_from desc limit 1;
   km := round((extensions.st_distance(o, d) / 1000 * 1.3)::numeric, 2);
-  esperado := round(f.base + f.per_km * km + f.per_min * (km / 30 * 60), 2);
+  esperado := round(f.base + f.intercity_per_km * least(km, f.intercity_t1_km)
+    + f.intercity_rate2 * greatest(0, least(km, f.intercity_t2_km) - f.intercity_t1_km)
+    + f.intercity_rate3 * greatest(0, km - f.intercity_t2_km), 2);
   select r.price into got from private.ride_quote(g, 'car', o, d, u) r;
   if got is distinct from esperado then
     raise exception 'FALHOU preco_entre_cidades: preço % (esperado %)', got, esperado;
   end if;
   if to_regclass('public.intercity_fares') is not null then
     raise exception 'FALHOU preco_entre_cidades: intercity_fares ainda existe';
+  end if;
+  -- viagem longa (Fortaleza, ~326 km): as três faixas dão pelo menos R$ 890 só de ida
+  select r.price into got from private.ride_quote(g, 'car', o, private.point(-38.5267, -3.7319), u) r;
+  if got < 890 or got > 900 then
+    raise exception 'FALHOU preco_entre_cidades: Fortaleza deu % (esperado entre 890 e 900)', got;
+  end if;
+  -- sítio dentro da cidade (Várzea dos Espinhos, ~22 km de estrada): uns R$ 30 pela regra do km mais barato
+  select r.price into got from private.ride_quote(g, 'car', o, private.point(-40.842067, -4.284433), null) r;
+  if got < 28 or got > 32 then
+    raise exception 'FALHOU preco_entre_cidades: Várzea dos Espinhos deu % (esperado uns 30)', got;
   end if;
   insert into public.zz_fx values ('ok:preco_entre_cidades', '1');
 end $t$;

@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { loadGoogleMaps } from '../lib/googleMaps';
+import { googleMapsAvailable, loadGoogleMaps } from '../lib/googleMaps';
 import { colors } from '../theme';
 import type { BackdropMapProps, BackdropMarker } from './BackdropMap.types';
+import { BackdropMapFree } from './BackdropMapFree.web';
 
 // Altura do ponto na parte do mapa que sobra acima do painel (0 = topo, 0,5 = meio).
 const POINT_HEIGHT = 0.4;
@@ -38,7 +39,12 @@ function markerIcon(kind: BackdropMarker['kind']): google.maps.Icon {
   }
 }
 
-export function BackdropMap({ center, markers = [], line = false, bottomInset = 0 }: BackdropMapProps) {
+// Sem a chave do Google (ou no servidor de teste, onde ela não vale), usa o mapa grátis.
+export function BackdropMap(props: BackdropMapProps) {
+  return googleMapsAvailable ? <GoogleBackdropMap {...props} /> : <BackdropMapFree {...props} />;
+}
+
+function GoogleBackdropMap({ center, markers = [], line = false, bottomInset = 0 }: BackdropMapProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const overlays = useRef<(google.maps.Marker | google.maps.Polyline)[]>([]);

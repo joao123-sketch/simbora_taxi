@@ -12,6 +12,14 @@ type Fare = {
   base: number;
   per_km: number;
   per_min: number;
+  intercity_per_km: number;
+  intercity_wait_per_min: number;
+  intercity_t1_km: number;
+  intercity_rate2: number;
+  intercity_t2_km: number;
+  intercity_rate3: number;
+  city_far_km: number;
+  city_far_per_km: number;
   effective_from: string;
 };
 type Settings = {
@@ -31,6 +39,8 @@ type Settings = {
   night_until: number;
   max_factor: number;
   proposal_cap: number;
+  round_trip_factor: number;
+  included_wait_minutes: number;
 };
 type DeliverySize = {
   size: 'P' | 'M' | 'G';
@@ -108,6 +118,8 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
   const [nightUntil, setNightUntil] = useState(String(settings.night_until));
   const [maxFactor, setMaxFactor] = useState(toField(settings.max_factor));
   const [proposalCap, setProposalCap] = useState(percent(settings.proposal_cap));
+  const [roundTripFactor, setRoundTripFactor] = useState(toField(settings.round_trip_factor));
+  const [includedWait, setIncludedWait] = useState(toField(settings.included_wait_minutes / 60));
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   useDismissOk(msg, setMsg);
   const [busy, setBusy] = useState(false);
@@ -133,6 +145,8 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
       night_until: parseDecimal(nightUntil),
       max_factor: parseDecimal(maxFactor),
       proposal_cap: parseDecimal(proposalCap),
+      round_trip_factor: parseDecimal(roundTripFactor),
+      included_wait_hours: parseDecimal(includedWait),
     };
     if (Object.values(numbers).some((n) => n === null)) {
       setMsg({ kind: 'error', text: 'Preencha todos os campos com números.' });
@@ -158,6 +172,8 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
         night_until: numbers.night_until,
         max_factor: numbers.max_factor,
         proposal_cap: numbers.proposal_cap! / 100,
+        round_trip_factor: numbers.round_trip_factor,
+        included_wait_minutes: Math.round(numbers.included_wait_hours! * 60),
       },
     });
     setBusy(false);
@@ -205,10 +221,14 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
       </p>
       <h2>Viagem para outra cidade</h2>
       <p className="hint">
-        O preço é calculado pela distância do endereço, na tarifa da cidade de origem. O motorista pode aceitar o
-        valor ou propor um valor maior, até o limite abaixo, e o passageiro escolhe.
+        O preço é calculado pela distância do endereço, na tarifa da cidade de origem (veja as faixas por km na tabela
+        de tarifas). Ida e volta é o preço da ida vezes o fator abaixo, já com as horas de espera incluídas; o que passar
+        disso cobra o valor de espera por minuto. O motorista pode aceitar o valor ou propor um valor maior, até o
+        limite abaixo, e o passageiro escolhe.
       </p>
       <div className="grid">
+        <Field label="Ida e volta: quantas vezes o preço da ida" value={roundTripFactor} onChange={setRoundTripFactor} />
+        <Field label="Ida e volta: horas de espera incluídas" value={includedWait} onChange={setIncludedWait} />
         <Field label="Limite da proposta do motorista (% acima do calculado)" value={proposalCap} onChange={setProposalCap} />
       </div>
       <label className="check">
@@ -340,7 +360,19 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
   const [cityId, setCityId] = useState<number>(activeCities[0]?.id ?? data.cities[0]?.id ?? 0);
   const [vehicle, setVehicle] = useState<'car' | 'moto'>('car');
   const base = current.find((f) => f.city_id === cityId && f.vehicle_type === vehicle);
-  const [fields, setFields] = useState({ base: '', per_km: '', per_min: '' });
+  const [fields, setFields] = useState({
+    base: '',
+    per_km: '',
+    per_min: '',
+    intercity_per_km: '',
+    intercity_t1_km: '',
+    intercity_rate2: '',
+    intercity_t2_km: '',
+    intercity_rate3: '',
+    intercity_wait_per_min: '',
+    city_far_km: '',
+    city_far_per_km: '',
+  });
   const [from, setFrom] = useState(today);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   useDismissOk(msg, setMsg);
@@ -352,17 +384,48 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
       base: toField(base?.base),
       per_km: toField(base?.per_km),
       per_min: toField(base?.per_min),
+      intercity_per_km: toField(base?.intercity_per_km),
+      intercity_t1_km: toField(base?.intercity_t1_km),
+      intercity_rate2: toField(base?.intercity_rate2),
+      intercity_t2_km: toField(base?.intercity_t2_km),
+      intercity_rate3: toField(base?.intercity_rate3),
+      intercity_wait_per_min: toField(base?.intercity_wait_per_min),
+      city_far_km: toField(base?.city_far_km),
+      city_far_per_km: toField(base?.city_far_per_km),
     });
-  }, [base?.city_id, base?.vehicle_type, base?.effective_from, base?.base, base?.per_km, base?.per_min]);
+  }, [
+    base?.city_id,
+    base?.vehicle_type,
+    base?.effective_from,
+    base?.base,
+    base?.per_km,
+    base?.per_min,
+    base?.intercity_per_km,
+    base?.intercity_t1_km,
+    base?.intercity_rate2,
+    base?.intercity_t2_km,
+    base?.intercity_rate3,
+    base?.intercity_wait_per_min,
+    base?.city_far_km,
+    base?.city_far_per_km,
+  ]);
 
   async function save() {
     const values = {
       base: parseDecimal(fields.base),
       per_km: parseDecimal(fields.per_km),
       per_min: parseDecimal(fields.per_min),
+      intercity_per_km: parseDecimal(fields.intercity_per_km),
+      intercity_t1_km: parseDecimal(fields.intercity_t1_km),
+      intercity_rate2: parseDecimal(fields.intercity_rate2),
+      intercity_t2_km: parseDecimal(fields.intercity_t2_km),
+      intercity_rate3: parseDecimal(fields.intercity_rate3),
+      intercity_wait_per_min: parseDecimal(fields.intercity_wait_per_min),
+      city_far_km: parseDecimal(fields.city_far_km),
+      city_far_per_km: parseDecimal(fields.city_far_per_km),
     };
     if (Object.values(values).some((v) => v === null)) {
-      setMsg({ kind: 'error', text: 'Preencha os três valores com números.' });
+      setMsg({ kind: 'error', text: 'Preencha todos os valores com números.' });
       return;
     }
     setBusy(true);
@@ -374,6 +437,14 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
       p_per_km: values.per_km,
       p_per_min: values.per_min,
       p_effective_from: from,
+      p_intercity_per_km: values.intercity_per_km,
+      p_intercity_wait_per_min: values.intercity_wait_per_min,
+      p_intercity_t1_km: values.intercity_t1_km,
+      p_intercity_rate2: values.intercity_rate2,
+      p_intercity_t2_km: values.intercity_t2_km,
+      p_intercity_rate3: values.intercity_rate3,
+      p_city_far_km: values.city_far_km,
+      p_city_far_per_km: values.city_far_per_km,
     });
     setBusy(false);
     if (error) {
@@ -392,7 +463,7 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
       <div>
         <h2>Tarifas dentro da cidade</h2>
         <p className="hint">
-          Preço = bandeirada + valor por km + valor por minuto (sem valor mínimo). Para mudar, crie uma tarifa
+          Preço dentro da cidade = bandeirada + valor por km + valor por minuto (sem valor mínimo); depois de certa distância o km passa a valer menos. Viagem para outra cidade = bandeirada + três faixas de valor por km (o tempo já está dentro). Para mudar, crie uma tarifa
           nova com a data em que passa a valer: a antiga fica no histórico.
         </p>
       </div>
@@ -405,6 +476,9 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
             <th>Bandeirada</th>
             <th>Por km</th>
             <th>Por minuto</th>
+            <th>Cidade: km mais barato</th>
+            <th>Entre cidades: faixas por km</th>
+            <th>Espera/min</th>
                         <th>Vale desde</th>
           </tr>
         </thead>
@@ -416,6 +490,14 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
               <td>{money(f.base)}</td>
               <td>{money(f.per_km)}</td>
               <td>{money(f.per_min)}</td>
+              <td>
+                depois de {f.city_far_km} km: {money(f.city_far_per_km)}/km
+              </td>
+              <td>
+                até {f.intercity_t1_km} km: {money(f.intercity_per_km)} · até {f.intercity_t2_km} km: {money(f.intercity_rate2)} ·
+                depois: {money(f.intercity_rate3)}
+              </td>
+              <td>{money(f.intercity_wait_per_min)}</td>
                             <td>{formatDate(f.effective_from)}</td>
             </tr>
           ))}
@@ -444,6 +526,14 @@ function FaresCard({ data, onSaved }: { data: Overview; onSaved: () => Promise<v
         <Field label="Bandeirada (R$)" value={fields.base} onChange={(v) => setFields({ ...fields, base: v })} />
         <Field label="Por km (R$)" value={fields.per_km} onChange={(v) => setFields({ ...fields, per_km: v })} />
         <Field label="Por minuto (R$)" value={fields.per_min} onChange={(v) => setFields({ ...fields, per_min: v })} />
+        <Field label="Cidade: depois de quantos km o km fica mais barato" value={fields.city_far_km} onChange={(v) => setFields({ ...fields, city_far_km: v })} />
+        <Field label="Cidade: valor por km depois disso (R$, já com o tempo)" value={fields.city_far_per_km} onChange={(v) => setFields({ ...fields, city_far_per_km: v })} />
+        <Field label="Entre cidades, 1ª faixa: por km (R$)" value={fields.intercity_per_km} onChange={(v) => setFields({ ...fields, intercity_per_km: v })} />
+        <Field label="1ª faixa vai até (km)" value={fields.intercity_t1_km} onChange={(v) => setFields({ ...fields, intercity_t1_km: v })} />
+        <Field label="2ª faixa: por km (R$)" value={fields.intercity_rate2} onChange={(v) => setFields({ ...fields, intercity_rate2: v })} />
+        <Field label="2ª faixa vai até (km)" value={fields.intercity_t2_km} onChange={(v) => setFields({ ...fields, intercity_t2_km: v })} />
+        <Field label="3ª faixa (depois): por km (R$)" value={fields.intercity_rate3} onChange={(v) => setFields({ ...fields, intercity_rate3: v })} />
+        <Field label="Entre cidades: espera por minuto (R$)" value={fields.intercity_wait_per_min} onChange={(v) => setFields({ ...fields, intercity_wait_per_min: v })} />
         <label className="field">
           Vale a partir de
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />

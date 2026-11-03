@@ -5,8 +5,13 @@ import { Platform } from 'react-native';
 // endereços cadastrados no console do Google e para as APIs de mapa.
 const KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY || '';
 
+// No servidor de teste (localhost) a chave do Google não vale, porque o console só libera os endereços
+// publicados: lá o mapa e a busca de endereço usam o OpenStreetMap (Leaflet e Nominatim), de graça.
+export const isLocalDev =
+  Platform.OS === 'web' && typeof location !== 'undefined' && ['localhost', '127.0.0.1'].includes(location.hostname);
+
 // Só a versão web (o app publicado) usa o Google Maps; no Expo Go ficam o fundo liso e o Nominatim.
-export const googleMapsAvailable = Platform.OS === 'web' && !!KEY;
+export const googleMapsAvailable = Platform.OS === 'web' && !!KEY && !isLocalDev;
 
 let loading: Promise<void> | null = null;
 

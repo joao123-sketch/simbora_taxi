@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { loadGoogleMaps } from '../lib/googleMaps';
+import { googleMapsAvailable, loadGoogleMaps } from '../lib/googleMaps';
 import type { LiveMapProps } from './LiveMap.types';
+import { LiveMapFree } from './LiveMapFree.web';
 
 function emojiIcon(emoji: string): google.maps.Icon {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="20" y="29" font-size="28" text-anchor="middle">${emoji}</text></svg>`;
@@ -37,7 +38,12 @@ function glideTo(glider: Glider, lat: number, lng: number) {
   glider.frame = requestAnimationFrame(step);
 }
 
-export function LiveMap({ target, driver, vehicle, passenger }: LiveMapProps) {
+// Sem a chave do Google (ou no servidor de teste, onde ela não vale), usa o mapa grátis.
+export function LiveMap(props: LiveMapProps) {
+  return googleMapsAvailable ? <GoogleLiveMap {...props} /> : <LiveMapFree {...props} />;
+}
+
+function GoogleLiveMap({ target, driver, vehicle, passenger }: LiveMapProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const targetMarker = useRef<google.maps.Marker | null>(null);
