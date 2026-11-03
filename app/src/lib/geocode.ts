@@ -23,7 +23,7 @@ const BOX = 0.25;
 // (São Benedito, Ipu, Reriutaba) na frente dos lugares da própria cidade.
 const GOOGLE_BOX = 0.1;
 
-async function nominatimSearch(city: City, rawQuery: string): Promise<PlaceResult[]> {
+async function nominatimSearch(city: City, rawQuery: string, box = BOX): Promise<PlaceResult[]> {
   const query = rawQuery.trim();
   if (query.length < 2) return [];
 
@@ -33,7 +33,7 @@ async function nominatimSearch(city: City, rawQuery: string): Promise<PlaceResul
     limit: '5',
     countrycodes: 'br',
     'accept-language': 'pt-BR',
-    viewbox: `${city.lng - BOX},${city.lat + BOX},${city.lng + BOX},${city.lat - BOX}`,
+    viewbox: `${city.lng - box},${city.lat + box},${city.lng + box},${city.lat - box}`,
     bounded: '1',
   });
   const response = await fetch(`${NOMINATIM}?${params.toString()}`, { headers: HEADERS });
@@ -98,12 +98,13 @@ export async function newSearchSession(): Promise<SearchSession> {
   return new AutocompleteSessionToken();
 }
 
-export async function suggestPlaces(city: City, input: string, session: SearchSession): Promise<PlaceSuggestion[]> {
+// `box` (em graus) alarga a busca, para procurar em mais de uma cidade (viagem para outra cidade).
+export async function suggestPlaces(city: City, input: string, session: SearchSession, box?: number): Promise<PlaceSuggestion[]> {
   const text = input.trim();
   if (text.length < 2) return [];
 
   if (!googleMapsAvailable) {
-    const rows = await nominatimSearch(city, text);
+    const rows = await nominatimSearch(city, text, box);
     return rows.map((r) => ({ id: r.id, title: r.title, subtitle: r.subtitle, result: r }));
   }
 
@@ -118,10 +119,10 @@ export async function suggestPlaces(city: City, input: string, session: SearchSe
     // origin ordena pelo mais perto do centro da cidade.
     origin: { lat: city.lat, lng: city.lng },
     locationRestriction: {
-      west: city.lng - GOOGLE_BOX,
-      east: city.lng + GOOGLE_BOX,
-      south: city.lat - GOOGLE_BOX,
-      north: city.lat + GOOGLE_BOX,
+      west: city.lng - (box ?? GOOGLE_BOX),
+      east: city.lng + (box ?? GOOGLE_BOX),
+      south: city.lat - (box ?? GOOGLE_BOX),
+      north: city.lat + (box ?? GOOGLE_BOX),
     },
   });
   return suggestions

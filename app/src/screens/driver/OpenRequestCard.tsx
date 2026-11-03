@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
@@ -6,7 +6,8 @@ import { Avatar } from '../../components/Avatar';
 import { BigInput } from '../../components/BigInput';
 import { ChoiceCard } from '../../components/ChoiceCard';
 import { isDelivery, packageLabel } from '../../lib/delivery';
-import { formatScheduled } from '../../lib/scheduling';
+import { proposalLimit } from '../../lib/intercity';
+import { fetchProposalCap, formatScheduled } from '../../lib/scheduling';
 import { formatKm } from '../../lib/geo';
 import {
   ADVANCE_OPTIONS,
@@ -52,6 +53,15 @@ export function OpenRequestCard({
   const [sending, setSending] = useState(false);
   const [advance, setAdvance] = useState<number | null>(null);
   const extra = parseMoney(extraText);
+  // O teto da proposta (do painel): quanto a mais o motorista pode pedir sobre o valor calculado.
+  const [cap, setCap] = useState(0.3);
+  useEffect(() => {
+    fetchProposalCap()
+      .then(setCap)
+      .catch(() => {});
+  }, []);
+  const limit = proposalLimit(ride.estimated_price, cap);
+  const extraOk = extra !== null && extra > 0 && extra <= limit;
   const waiting = proposal?.status === 'pending';
   // Viagem para outra cidade: o adiantamento é escolhido junto com o aceite.
   const intercity = isIntercity(ride);
@@ -145,7 +155,7 @@ export function OpenRequestCard({
         <View style={styles.place}>
           <Text style={styles.placeLabel}>Viagem agendada</Text>
           <Text style={styles.placeText}>{formatScheduled(ride.scheduled_for)}</Text>
-          <Text style={styles.warning}>Aceite pelo valor, ou proponha um acréscimo. Fica marcada na sua agenda.</Text>
+          <Text style={styles.warning}>Aceite pelo valor, ou proponha outro valor. O passageiro escolhe entre as propostas.</Text>
         </View>
       ) : null}
 
@@ -154,7 +164,7 @@ export function OpenRequestCard({
           <Text style={styles.placeLabel}>Viagem</Text>
           <Text style={styles.placeText}>{roundTripLabel(ride)}</Text>
           <Text style={styles.warning}>
-            O valor já inclui a volta e a espera. Aceite, ou proponha um acréscimo.
+            O valor já inclui a volta e a espera. Aceite, ou proponha outro valor.
           </Text>
         </View>
       ) : null}
@@ -172,13 +182,15 @@ export function OpenRequestCard({
       {waiting ? (
         <>
           <Text style={styles.waiting}>
-            Proposta de + {formatMoney(proposal.extra_amount)}
+            {proposal.extra_amount > 0
+              ? `Proposta de ${formatMoney(ride.estimated_price + proposal.extra_amount)}`
+              : `Você aceitou o valor de ${formatMoney(ride.estimated_price)}`}
             {proposal.advance_percent === 0
               ? ', sem adiantamento,'
               : proposal.advance_percent
                 ? `, adiantamento de ${proposal.advance_percent}%`
                 : ''}{' '}
-            enviada. Aguardando o passageiro.
+            enviada. Aguardando o passageiro escolher.
           </Text>
           <BigButton label="Retirar proposta" onPress={withdraw} loading={sending} variant="link" />
           {!ride.scheduled_for ? <BigButton label="Recusar pedido" onPress={decline} variant="link" /> : null}
@@ -186,6 +198,9 @@ export function OpenRequestCard({
       ) : proposing ? (
         <>
           <Text style={styles.line}>Quanto a mais você quer pedir? (em reais)</Text>
+          <Text style={styles.warning}>
+            No máximo + {formatMoney(limit)} (total {formatMoney(ride.estimated_price + limit)}).
+          </Text>
           <BigInput
             accessibilityLabel="Acréscimo em reais"
             placeholder="20,00"
@@ -193,6 +208,9 @@ export function OpenRequestCard({
             value={extraText}
             onChangeText={setExtraText}
           />
+          {extra !== null && extra > limit ? (
+            <Text style={styles.warning}>Esse valor passa do limite.</Text>
+          ) : null}
           {extra !== null ? (
             <Text style={styles.line}>Total para o passageiro: {formatMoney(ride.estimated_price + extra)}</Text>
           ) : null}
@@ -200,7 +218,7 @@ export function OpenRequestCard({
           <BigButton
             label="Enviar proposta"
             onPress={send}
-            disabled={extra === null || needsAdvance}
+            disabled={!extraOk || needsAdvance}
             loading={sending}
           />
           <BigButton label="Voltar" onPress={() => setProposing(false)} variant="link" />
@@ -214,9 +232,7 @@ export function OpenRequestCard({
             disabled={needsAdvance}
             loading={accepting}
           />
-          {ride.destination_place || ride.round_trip || ride.scheduled_for ? (
-            <BigButton label="Propor acréscimo" onPress={() => setProposing(true)} variant="link" />
-          ) : null}
+          {intercity ? <BigButton label="Propor outro valor" onPress={() => setProposing(true)} variant="link" /> : null}
           {!ride.scheduled_for ? (
             <BigButton label="Recusar pedido" onPress={decline} loading={sending} variant="link" />
           ) : null}

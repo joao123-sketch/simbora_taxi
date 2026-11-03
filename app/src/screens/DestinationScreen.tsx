@@ -5,6 +5,7 @@ import { ChoiceCard } from '../components/ChoiceCard';
 import { PlaceSearch } from '../components/PlaceSearch';
 import { Screen } from '../components/Screen';
 import { distanceKm } from '../lib/geo';
+import { nearestCity } from '../lib/intercity';
 import type { SuggestedPlace } from '../lib/favorites';
 import type { City, Place } from '../lib/rides';
 import { colors, fontSize } from '../theme';
@@ -20,7 +21,8 @@ type Props = {
   otherCities: City[];
   // Destino escolhido na busca ("Aqui na cidade").
   onPickPlace: (place: Place) => void;
-  onPickCity: (city: City) => void;
+  // Destino escolhido na busca de "Em outra cidade": já vem com a cidade mais próxima (`cityId`).
+  onPickOtherCityPlace: (place: Place) => void;
   // Pedido para outra pessoa: a pergunta muda e os lugares de sempre (do titular) não aparecem.
   forOther?: boolean;
   onBack: () => void;
@@ -29,10 +31,20 @@ type Props = {
 // Destino mais perto que isso da origem é o mesmo lugar.
 const MIN_TRIP_KM = 0.05;
 
-export function DestinationScreen({ city, origin, suggestions, onPickSuggestion, otherCities, onPickPlace, onPickCity, forOther, onBack }: Props) {
-  // "Aqui na cidade" abre a busca nesta mesma tela e "Em outra cidade" abre a lista de cidades; as duas escondem o resto.
-  const [mode, setMode] = useState<'choose' | 'search' | 'cities'>('choose');
+function otherCitiesBias(cities: City[]): { center: City; box: number } {
+  const lat = cities.reduce((sum, c) => sum + c.lat, 0) / (cities.length || 1);
+  const lng = cities.reduce((sum, c) => sum + c.lng, 0) / (cities.length || 1);
+  const spread = cities.reduce((max, c) => Math.max(max, Math.abs(c.lat - lat), Math.abs(c.lng - lng)), 0);
+  return { center: { ...(cities[0] as City), lat, lng }, box: spread + 0.1 };
+}
+
+export function DestinationScreen({ city, origin, suggestions, onPickSuggestion, otherCities, onPickPlace, onPickOtherCityPlace, forOther, onBack }: Props) {
+  // "Aqui na cidade" e "Em outra cidade" abrem a busca de endereço nesta mesma tela; as duas escondem o resto.
+  const [mode, setMode] = useState<'choose' | 'search' | 'other'>('choose');
   const [problem, setProblem] = useState<string | null>(null);
+
+  // A busca de outra cidade cobre todas as cidades atendidas (o centro delas, com folga de ~11 km).
+  const otherBias = otherCitiesBias(otherCities);
 
   function leave() {
     setMode('choose');
@@ -59,15 +71,28 @@ export function DestinationScreen({ city, origin, suggestions, onPickSuggestion,
             onPickPlace({ lat: place.lat, lng: place.lng, address: place.title });
           }}
         />
-      ) : mode === 'cities' ? (
-        otherCities.map((other) => (
-          <ChoiceCard key={other.id} label={other.name} icon="location" onPress={() => onPickCity(other)} />
-        ))
+      ) : mode === 'other' ? (
+        <PlaceSearch
+          city={otherBias.center}
+          box={otherBias.box}
+          autoFocus
+          onPick={(place) => {
+            // A cidade mais próxima entre todas as atendidas: se for a da partida, o endereço é daqui.
+            const found = nearestCity(place, [city, ...otherCities]);
+            if (!found) return;
+            if (found.id === city.id) {
+              setProblem('Esse endereço é na sua cidade. Use "Aqui na cidade".');
+              return;
+            }
+            setProblem(null);
+            onPickOtherCityPlace({ lat: place.lat, lng: place.lng, address: place.title, cityId: found.id });
+          }}
+        />
       ) : (
         <>
           <ChoiceCard label="Aqui na cidade" icon="search" onPress={() => setMode('search')} />
           {otherCities.length > 0 ? (
-            <ChoiceCard label="Em outra cidade" icon="location" onPress={() => setMode('cities')} />
+            <ChoiceCard label="Em outra cidade" icon="location" onPress={() => setMode('other')} />
           ) : null}
           {!forOther && suggestions.length > 0 ? (
             <>

@@ -30,6 +30,7 @@ type Settings = {
   night_from: number;
   night_until: number;
   max_factor: number;
+  proposal_cap: number;
 };
 type DeliverySize = {
   size: 'P' | 'M' | 'G';
@@ -106,6 +107,7 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
   const [nightFrom, setNightFrom] = useState(String(settings.night_from));
   const [nightUntil, setNightUntil] = useState(String(settings.night_until));
   const [maxFactor, setMaxFactor] = useState(toField(settings.max_factor));
+  const [proposalCap, setProposalCap] = useState(percent(settings.proposal_cap));
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   useDismissOk(msg, setMsg);
   const [busy, setBusy] = useState(false);
@@ -130,6 +132,7 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
       night_from: parseDecimal(nightFrom),
       night_until: parseDecimal(nightUntil),
       max_factor: parseDecimal(maxFactor),
+      proposal_cap: parseDecimal(proposalCap),
     };
     if (Object.values(numbers).some((n) => n === null)) {
       setMsg({ kind: 'error', text: 'Preencha todos os campos com números.' });
@@ -154,6 +157,7 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
         night_from: numbers.night_from,
         night_until: numbers.night_until,
         max_factor: numbers.max_factor,
+        proposal_cap: numbers.proposal_cap! / 100,
       },
     });
     setBusy(false);
@@ -199,6 +203,14 @@ function SettingsCard({ settings, onSaved }: { settings: Settings; onSaved: () =
       <p className="hint">
         Teto do aumento: <b>{ceiling !== null ? `${toField(Math.round(ceiling * 100) / 100)}×` : '—'}</b>
       </p>
+      <h2>Viagem para outra cidade</h2>
+      <p className="hint">
+        O preço é calculado pela distância do endereço, na tarifa da cidade de origem. O motorista pode aceitar o
+        valor ou propor um valor maior, até o limite abaixo, e o passageiro escolhe.
+      </p>
+      <div className="grid">
+        <Field label="Limite da proposta do motorista (% acima do calculado)" value={proposalCap} onChange={setProposalCap} />
+      </div>
       <label className="check">
         <input type="checkbox" checked={locked} onChange={(e) => setLocked(e.target.checked)} />
         Travar o fator (o preço fica sempre multiplicado pelo valor abaixo, sem variar)

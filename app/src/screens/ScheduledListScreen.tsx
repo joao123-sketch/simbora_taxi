@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Screen } from '../components/Screen';
 import { formatMoney, type Ride } from '../lib/rides';
+import { confirmState } from '../lib/intercity';
 import { formatScheduled } from '../lib/scheduling';
 import { colors, fontSize, cardSurface } from '../theme';
 
@@ -14,6 +15,16 @@ type Props = {
   onOpen: (ride: Ride) => void;
   onBack: () => void;
 };
+
+// Depois do nome do motorista: se já confirmou, se pode confirmar agora ou se ainda é cedo.
+function confirmNote(ride: Ride): string {
+  if (!ride.scheduled_for) return '';
+  const state = confirmState(ride.scheduled_for, ride.confirmed_at ?? null, new Date());
+  if (state === 'open') return ' · toque para confirmar a viagem';
+  if (state === 'too_early') return ' · confirmar a partir de 12 h antes';
+  if (state === 'not_needed') return ' · confirmada';
+  return '';
+}
 
 // As viagens agendadas do passageiro. Tocar abre a viagem (propostas, cancelar).
 export function ScheduledListScreen({ rides, proposalCounts, justCreated, onOpen, onBack }: Props) {
@@ -44,7 +55,7 @@ export function ScheduledListScreen({ rides, proposalCounts, justCreated, onOpen
               ? proposalCounts[ride.id] > 0
                 ? `${proposalCounts[ride.id]} proposta${proposalCounts[ride.id] > 1 ? 's' : ''} de motorista esperando você`
                 : 'Procurando motorista'
-              : `Motorista: ${ride.driver_name ?? ''}`}
+              : `Motorista: ${ride.driver_name ?? ''}${confirmNote(ride)}`}
           </Text>
           <Text style={styles.price}>{formatMoney(ride.estimated_price)}</Text>
         </Pressable>
