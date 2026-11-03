@@ -33,7 +33,7 @@ as $$
 declare
   v_ride public.rides;
   v_extra numeric := round(p_extra, 2);
-  v_cap numeric := public.proposal_cap();
+  v_cap numeric := coalesce(public.proposal_cap(), 0.30);
   v_max numeric;
 begin
   if p_advance_percent is not null and p_advance_percent not in (0, 50, 100) then
@@ -121,10 +121,9 @@ begin
   set status = case when driver_id = auth.uid() then 'accepted'::public.offer_status else 'missed'::public.offer_status end
   where ride_id = p_ride_id and status = 'pending';
 
-  -- As propostas de outro valor deixam de valer; a deste motorista (se houver) é retirada.
-  update public.ride_proposals
-  set status = case when driver_id = auth.uid() then 'withdrawn'::public.proposal_status
-                    else 'declined'::public.proposal_status end
+  -- As propostas pendentes deixam de valer (como retiradas, não recusadas: se este motorista desistir,
+  -- os outros ainda podem ofertar de novo).
+  update public.ride_proposals set status = 'withdrawn'
   where ride_id = p_ride_id and status = 'pending';
 end;
 $$;

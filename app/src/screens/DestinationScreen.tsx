@@ -77,8 +77,13 @@ export function DestinationScreen({ city, origin, suggestions, onPickSuggestion,
           box={otherBias.box}
           autoFocus
           onPick={(place) => {
-            const found = nearestCity(place, otherCities);
+            // A cidade mais próxima entre todas as atendidas: se for a da partida, o endereço é daqui.
+            const found = nearestCity(place, [city, ...otherCities]);
             if (!found) return;
+            if (found.id === city.id) {
+              setProblem('Esse endereço é na sua cidade. Use "Aqui na cidade".');
+              return;
+            }
             setProblem(null);
             onPickOtherCityPlace({ lat: place.lat, lng: place.lng, address: place.title, cityId: found.id });
           }}

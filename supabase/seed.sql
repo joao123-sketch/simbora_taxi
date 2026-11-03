@@ -18,19 +18,3 @@ cross join (values
 ) as v (vehicle_type, base, per_km, per_min)
 where c.name = 'Guaraciaba do Norte'
 on conflict (city_id, vehicle_type, effective_from) do nothing;
-
--- Preço único por par de cidades, igual nos dois sentidos (tabela B, distância de estrada medida).
-insert into public.intercity_fares (origin_city_id, destination_city_id, vehicle_type, price)
-select p.o, p.d, v.vehicle_type::public.vehicle_type, v.price
-from (values
-  ('Guaraciaba do Norte', 'São Benedito', 'car', 50.00), ('Guaraciaba do Norte', 'São Benedito', 'moto', 30.00),
-  ('Guaraciaba do Norte', 'Ubajara', 'car', 90.00), ('Guaraciaba do Norte', 'Ubajara', 'moto', 55.00),
-  ('Guaraciaba do Norte', 'Tianguá', 'car', 115.00), ('Guaraciaba do Norte', 'Tianguá', 'moto', 70.00),
-  ('São Benedito', 'Ubajara', 'car', 50.00), ('São Benedito', 'Ubajara', 'moto', 30.00),
-  ('São Benedito', 'Tianguá', 'car', 80.00), ('São Benedito', 'Tianguá', 'moto', 45.00),
-  ('Ubajara', 'Tianguá', 'car', 40.00), ('Ubajara', 'Tianguá', 'moto', 25.00)
-) as v (a, b, vehicle_type, price)
-join public.cities ca on ca.name = v.a
-join public.cities cb on cb.name = v.b
-cross join lateral (values (ca.id, cb.id), (cb.id, ca.id)) as p (o, d)
-on conflict do nothing;

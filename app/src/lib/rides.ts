@@ -91,6 +91,8 @@ export type Ride = {
   requested_at: string;
   completed_at: string | null;
   cancelled_at: string | null;
+  // Quem cancelou (ausente até o banco ter a migration).
+  cancelled_by?: string | null;
   // Viagem agendada: quando o passageiro confirmou e, se ficou sem efeito, por quê (ausentes até o banco ter a migration).
   confirmed_at?: string | null;
   void_reason?: string | null;
@@ -326,9 +328,11 @@ export async function fetchRideProposals(rideId: number): Promise<RideProposal[]
   return data as RideProposal[];
 }
 
-export async function respondProposal(proposalId: number, accept: boolean): Promise<void> {
-  const { error } = await supabase.rpc('respond_proposal', { p_proposal_id: proposalId, p_accept: accept });
+// 'unavailable': o motorista não está mais disponível e a proposta foi retirada (o passageiro escolhe outra).
+export async function respondProposal(proposalId: number, accept: boolean): Promise<'ok' | 'unavailable'> {
+  const { data, error } = await supabase.rpc('respond_proposal', { p_proposal_id: proposalId, p_accept: accept });
   if (error) throw error;
+  return data === 'unavailable' ? 'unavailable' : 'ok';
 }
 
 // Chama onChange quando uma proposta muda (o RLS só entrega as do usuário).

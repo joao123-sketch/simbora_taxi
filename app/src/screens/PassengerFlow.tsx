@@ -145,7 +145,8 @@ export function PassengerFlow({ userId, name }: Props) {
         // Viagem que saiu da lista: foi cancelada, ficou sem efeito ou venceu.
         for (const id of Object.keys(previous).map(Number).filter((id) => !next[id])) {
           const gone = await fetchRide(id).catch(() => null);
-          if (!gone || gone.status !== 'cancelled') continue;
+          // Quem cancelou a própria viagem não precisa de aviso.
+          if (!gone || gone.status !== 'cancelled' || gone.cancelled_by === userId) continue;
           const after: TripSnapshot = { ...previous[id], status: 'cancelled', voided: gone.void_reason === 'not_confirmed' };
           for (const event of tripEvents(previous[id], after, 'passenger')) {
             notify(event.title, event.body, { tag: `${event.tag}-${id}` });

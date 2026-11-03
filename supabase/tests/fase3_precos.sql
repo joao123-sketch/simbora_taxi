@@ -1,4 +1,4 @@
--- Testes da fase 3 (preços: sem mínimo, noturno com teto, pares simétricos, cidades).
+-- Testes da fase 3 (preços: sem mínimo, noturno com teto, preço entre cidades, cidades).
 -- Rode inteiro no SQL Editor do Supabase DEPOIS de aplicar a migration 20261104000000.
 -- Antes dela, falha (é o esperado). Tudo acontece numa transação que termina desfeita:
 -- o resultado aparece como um "erro" que começa com RESULTADO (é de propósito).
@@ -115,57 +115,24 @@ begin
   insert into public.zz_fx values ('ok:entrega_sem_noturno', '1');
 end $t$;
 
--- pares_simetricos: preço único por par, igual nos dois sentidos
+-- preco_entre_cidades: viagem para outra cidade usa a tarifa da cidade de origem (sem tabela de rotas)
 do $t$
 declare g bigint := (select id from public.cities where name = 'Guaraciaba do Norte');
         u bigint := (select id from public.cities where name = 'Ubajara');
-        tg bigint := (select id from public.cities where name = 'Tianguá');
-        sb bigint := (select id from public.cities where name = 'São Benedito');
-        st uuid := (select v::uuid from public.zz_fx where k = 'st');
         o extensions.geography := private.point(-40.7475, -4.1670);
         d extensions.geography := private.point(-40.9210, -3.8545);
-        a numeric; b numeric; pair record;
+        km numeric; esperado numeric; got numeric;
 begin
-  for pair in select * from (values (u, 'car', 90.00), (u, 'moto', 55.00), (tg, 'car', 115.00), (tg, 'moto', 70.00)) v (city, veh, price) loop
-    select f.price into a from public.intercity_fares f where f.origin_city_id = g and f.destination_city_id = pair.city and f.vehicle_type = pair.veh::public.vehicle_type;
-    select f.price into b from public.intercity_fares f where f.origin_city_id = pair.city and f.destination_city_id = g and f.vehicle_type = pair.veh::public.vehicle_type;
-    if a is distinct from pair.price or b is distinct from pair.price then
-      raise exception 'FALHOU pares_simetricos: par % % ida=% volta=% (esperado %)', pair.city, pair.veh, a, b, pair.price;
-    end if;
-  end loop;
-
-  -- São Benedito mantém o preço que já existia, só precisa ser igual nos dois sentidos.
-  for pair in select * from (values ('car'), ('moto')) v (veh) loop
-    select f.price into a from public.intercity_fares f where f.origin_city_id = g and f.destination_city_id = sb and f.vehicle_type = pair.veh::public.vehicle_type;
-    select f.price into b from public.intercity_fares f where f.origin_city_id = sb and f.destination_city_id = g and f.vehicle_type = pair.veh::public.vehicle_type;
-    if a is null or a is distinct from b then
-      raise exception 'FALHOU pares_simetricos: São Benedito % ida=% volta=%', pair.veh, a, b;
-    end if;
-  end loop;
-
-  perform pg_temp.as_user(st);
-  perform public.staff_set_intercity_price(g, u, 'car', 77);
-  select r.price into a from private.ride_quote(g, 'car', o, d, u) r;
-  select r.price into b from private.ride_quote(u, 'car', d, o, g) r;
-  if a is distinct from 77::numeric or b is distinct from 77::numeric then
-    raise exception 'FALHOU pares_simetricos: após salvar 77, ida=% volta=%', a, b;
+  km := round((extensions.st_distance(o, d) / 1000 * 1.3)::numeric, 2);
+  esperado := round(8.00 + 2.20 * km + 0.30 * (km / 30 * 60), 2);
+  select r.price into got from private.ride_quote(g, 'car', o, d, u) r;
+  if got is distinct from esperado then
+    raise exception 'FALHOU preco_entre_cidades: preço % (esperado %)', got, esperado;
   end if;
-  insert into public.zz_fx values ('ok:pares_simetricos', '1');
-end $t$;
-
--- par_remover: apaga os dois sentidos e os dois veículos
-do $t$
-declare g bigint := (select id from public.cities where name = 'Guaraciaba do Norte');
-        u bigint := (select id from public.cities where name = 'Ubajara');
-        st uuid := (select v::uuid from public.zz_fx where k = 'st');
-        n int;
-begin
-  perform pg_temp.as_user(st);
-  perform public.staff_delete_intercity_pair(g, u);
-  select count(*) into n from public.intercity_fares f
-  where (f.origin_city_id = g and f.destination_city_id = u) or (f.origin_city_id = u and f.destination_city_id = g);
-  if n <> 0 then raise exception 'FALHOU par_remover: sobraram % linhas', n; end if;
-  insert into public.zz_fx values ('ok:par_remover', '1');
+  if to_regclass('public.intercity_fares') is not null then
+    raise exception 'FALHOU preco_entre_cidades: intercity_fares ainda existe';
+  end if;
+  insert into public.zz_fx values ('ok:preco_entre_cidades', '1');
 end $t$;
 
 -- cidades: adicionar nasce desativada, ativar exige tarifa
@@ -215,7 +182,7 @@ begin
   insert into public.zz_fx values ('ok:painel_sem_minimo_e_com_noturno', '1');
 end $t$;
 
--- so_equipe: passageiro comum não mexe em cidade nem em rota
+-- so_equipe: passageiro comum não mexe em cidade
 do $t$
 declare ps uuid := (select v::uuid from public.zz_fx where k = 'ps');
         g bigint := (select id from public.cities where name = 'Guaraciaba do Norte');
@@ -226,14 +193,12 @@ begin
   exception when others then if sqlerrm <> 'Acesso só para a equipe' then raise exception 'FALHOU so_equipe: add_city deu %', sqlerrm; end if; end;
   begin perform public.staff_set_city_active(g, false); raise exception 'FALHOU so_equipe: set_city_active';
   exception when others then if sqlerrm <> 'Acesso só para a equipe' then raise exception 'FALHOU so_equipe: set_city_active deu %', sqlerrm; end if; end;
-  begin perform public.staff_delete_intercity_pair(g, u); raise exception 'FALHOU so_equipe: delete_pair';
-  exception when others then if sqlerrm <> 'Acesso só para a equipe' then raise exception 'FALHOU so_equipe: delete_pair deu %', sqlerrm; end if; end;
   insert into public.zz_fx values ('ok:so_equipe', '1');
 end $t$;
 
 do $t$
 begin
-  raise exception 'RESULTADO: % de 9 testes OK (esta mensagem é esperada e desfaz tudo): %',
+  raise exception 'RESULTADO: % de 8 testes OK (esta mensagem é esperada e desfaz tudo): %',
     (select count(*) from public.zz_fx where k like 'ok:%'),
     (select string_agg(substr(k, 4), ', ' order by k) from public.zz_fx where k like 'ok:%');
 end $t$;

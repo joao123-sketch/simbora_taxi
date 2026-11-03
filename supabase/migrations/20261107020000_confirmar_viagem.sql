@@ -6,12 +6,20 @@ alter table public.rides
   add column confirmed_at timestamptz,
   add column void_reason text;
 
+-- Viagens agendadas já fechadas antes desta migration valem como confirmadas (a regra antiga não pedia confirmação).
+update public.rides set confirmed_at = coalesce(accepted_at, now())
+where status = 'accepted' and scheduled_for is not null;
+
 -- ---------------------------------------------------------------------------
 -- Escolher a proposta: viagem agendada com mais de 2 horas pela frente espera a confirmação
 -- ---------------------------------------------------------------------------
 
-create or replace function public.respond_proposal(p_proposal_id bigint, p_accept boolean)
-returns void
+-- Devolve 'ok' ou 'unavailable' (o motorista não está mais disponível: a proposta é retirada e o
+-- passageiro escolhe outra). Não usa exceção nesse caso, para a retirada não ser desfeita.
+drop function public.respond_proposal(bigint, boolean);
+
+create function public.respond_proposal(p_proposal_id bigint, p_accept boolean)
+returns text
 language plpgsql
 security definer set search_path = ''
 as $$
@@ -19,11 +27,15 @@ declare
   v_prop public.ride_proposals;
   v_ride_row public.rides;
 begin
-  select * into v_prop from public.ride_proposals p where p.id = p_proposal_id for update;
+  select * into v_prop from public.ride_proposals p where p.id = p_proposal_id;
 
   if not found or not private.is_ride_passenger(v_prop.ride_id) then
     raise exception 'Proposta não encontrada';
   end if;
+
+  -- Trava a corrida antes da proposta (mesma ordem de accept_ride), para não travar um no outro.
+  select * into v_ride_row from public.rides r where r.id = v_prop.ride_id for update;
+  select * into v_prop from public.ride_proposals p where p.id = p_proposal_id for update;
 
   if v_prop.status <> 'pending' then
     raise exception 'Essa proposta não está mais valendo';
@@ -31,16 +43,14 @@ begin
 
   if not p_accept then
     update public.ride_proposals set status = 'declined' where id = p_proposal_id;
-    return;
+    return 'ok';
   end if;
-
-  select * into v_ride_row from public.rides r where r.id = v_prop.ride_id;
 
   -- Viagem agendada: o motorista não precisa estar online, só poder fazer a viagem.
   if v_ride_row.scheduled_for is not null then
     if not private.can_take_scheduled(v_ride_row, v_prop.driver_id) then
       update public.ride_proposals set status = 'withdrawn' where id = p_proposal_id;
-      raise exception 'O motorista não está mais disponível';
+      return 'unavailable';
     end if;
   elsif not exists (
     select 1 from public.drivers d
@@ -52,7 +62,7 @@ begin
       )
   ) then
     update public.ride_proposals set status = 'withdrawn' where id = p_proposal_id;
-    raise exception 'O motorista não está mais disponível';
+    return 'unavailable';
   end if;
 
   update public.rides
@@ -71,13 +81,16 @@ begin
     raise exception 'Esse pedido não está mais aberto';
   end if;
 
+  -- As outras propostas pendentes saem como retiradas (se o escolhido desistir, elas podem voltar).
   update public.ride_proposals
-  set status = case when id = p_proposal_id then 'accepted'::public.proposal_status else 'declined'::public.proposal_status end
+  set status = case when id = p_proposal_id then 'accepted'::public.proposal_status else 'withdrawn'::public.proposal_status end
   where ride_id = v_prop.ride_id and status = 'pending';
 
   update public.ride_offers
   set status = case when driver_id = v_prop.driver_id then 'accepted'::public.offer_status else 'missed'::public.offer_status end
   where ride_id = v_prop.ride_id and status = 'pending';
+
+  return 'ok';
 end;
 $$;
 
@@ -171,6 +184,7 @@ begin
   where status = 'accepted'
     and scheduled_for is not null
     and confirmed_at is null
+    and advance_received_at is null
     and scheduled_for <= now() + interval '2 hours';
 
   get diagnostics v_count = row_count;
@@ -262,6 +276,7 @@ select
   r.requested_at,
   r.completed_at,
   r.cancelled_at,
+  r.cancelled_by,
   r.confirmed_at,
   r.void_reason,
   private.my_rating(r.id) as my_rating,

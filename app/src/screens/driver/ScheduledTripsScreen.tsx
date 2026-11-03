@@ -80,7 +80,8 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
       // Viagem aceita que saiu da lista: o passageiro cancelou ou ela ficou sem efeito.
       for (const id of Object.keys(previous).map(Number).filter((id) => !next[id] && previous[id].status === 'accepted')) {
         const gone = await fetchRide(id).catch(() => null);
-        if (!gone || gone.status !== 'cancelled') continue;
+        // Quem cancelou (ou desistiu) não precisa de aviso.
+        if (!gone || gone.status !== 'cancelled' || gone.cancelled_by === userId) continue;
         const after: TripSnapshot = { ...previous[id], status: 'cancelled', voided: gone.void_reason === 'not_confirmed' };
         for (const event of tripEvents(previous[id], after, 'driver')) {
           notify(event.title, event.body, { tag: `${event.tag}-${id}` });

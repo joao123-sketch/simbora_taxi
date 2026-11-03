@@ -187,7 +187,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
     setAnswering(proposal.proposal_id);
     setError(null);
     try {
-      await respondProposal(proposal.proposal_id, accept);
+      const result = await respondProposal(proposal.proposal_id, accept);
+      if (result === 'unavailable') setError('Esse motorista não está mais disponível. Escolha outra proposta.');
       // Aceitar fecha a corrida com o motorista; recusar só tira a proposta da lista.
       setRide(await fetchRide(initialRide.id));
       loadProposals();
