@@ -206,7 +206,7 @@ Nada fecha sozinho: o passageiro vê **todas as respostas** e escolhe. Depois de
 ### Conta
 - **Uma conta, um celular:** quem entra num celular novo "toma" a conta; o antigo sai sozinho com aviso.
 - **Excluir conta:** apaga nome, telefone, foto e login. O histórico fica para a outra pessoa sem o nome. Do motorista guarda só o hash do CPF, para ele não repetir o mês grátis.
-- **Avisos:** são **locais** (aparecem com o app aberto ou em segundo plano). Ainda **não há push do servidor**. No iPhone só funcionam com o app instalado na tela inicial (iOS 16.4 ou mais).
+- **Avisos:** locais (app aberto ou em segundo plano) **e push do servidor** (Web Push/VAPID), que chega com o app fechado: pedido novo para o motorista, corrida aceita/chegou/iniciada/concluída, proposta de viagem entre cidades, chat e confirmação de viagem agendada. A Edge Function `push` envia; gatilhos do banco a chamam (migration `20261110000000_web_push.sql`). Exige configuração única (chaves VAPID, segredos, função, migration): veja "Avisos com o app fechado" em `docs/EQUIPE.md`. No iPhone só funcionam com o app instalado na tela inicial (iOS 16.4 ou mais).
 
 ---
 
@@ -292,7 +292,7 @@ select id from auth.users where email = 'equipe@exemplo.com';
 
 O app e o painel são sites estáticos. Em cada Worker, ligado a este repositório:
 
-- **App** (Worker `simbora-app`): **Root directory** `app`, **Build command** `npm install && npm run build:web`, **Deploy command** `npx wrangler deploy` (configuração em `app/wrangler.jsonc`). Variáveis de build: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_KEY`, `EXPO_PUBLIC_SOS_WHATSAPP`, `EXPO_PUBLIC_SHARE_BASE_URL`, `EXPO_PUBLIC_GOOGLE_MAPS_KEY` e `NODE_VERSION` = `22`. A chave do Google só vale para os endereços cadastrados no console do Google.
+- **App** (Worker `simbora-app`): **Root directory** `app`, **Build command** `npm install && npm run build:web`, **Deploy command** `npx wrangler deploy` (configuração em `app/wrangler.jsonc`). Variáveis de build: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_KEY`, `EXPO_PUBLIC_SOS_WHATSAPP`, `EXPO_PUBLIC_SHARE_BASE_URL`, `EXPO_PUBLIC_GOOGLE_MAPS_KEY`, `EXPO_PUBLIC_VAPID_PUBLIC_KEY` (chave pública do push) e `NODE_VERSION` = `22`. A chave do Google só vale para os endereços cadastrados no console do Google.
 - **Painel:** **Root directory** `painel`, **Build command** `npm run build`, **Deploy command** `npx wrangler deploy` (`painel/wrangler.jsonc`). Variáveis: `VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY`, `VITE_DOWNLOAD_URL`, `NODE_VERSION` = `22`. As variáveis `VITE_*` e `EXPO_PUBLIC_*` são lidas **na hora de compilar**: depois de mudar uma, faça **Retry build**.
 
 O app precisa de **HTTPS** (GPS, câmera e instalação exigem).

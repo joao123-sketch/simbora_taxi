@@ -118,3 +118,41 @@ O código que a pessoa recebe ao entrar é enviado pela **Comtele**, por uma fun
 - **Segredos:** ficam em Edge Functions > Secrets: `COMTELE_API_KEY`, `COMTELE_ROUTE` (17) e `SEND_SMS_HOOK_SECRET` (gerado ao ativar o hook). A função fica com "Verify JWT" desligado de propósito, porque ela confere a assinatura do hook por conta própria.
 - **Se o código não chega:** veja Edge Functions > send-sms > Logs (o código do SMS nunca aparece no log, só o final do telefone) e o relatório de entregas no painel da Comtele.
 - **Limite de envios:** ajuste em Authentication > Rate Limits, para ninguém gastar o saldo pedindo código em excesso.
+
+## Avisos com o app fechado (Web Push)
+
+Sem isto, o aviso só chega com o app aberto ou logo depois de ir para o segundo plano. No iPhone o app é "congelado" em segundo plano, então **sem o push do servidor nenhum aviso chega**. Com o push, o motorista recebe o pedido de corrida e o passageiro recebe "motorista a caminho", "chegou", "iniciada" e "concluída", propostas de viagem entre cidades, mensagens do chat e o lembrete de confirmar a viagem agendada. Tocar no aviso abre o app.
+
+No iPhone só funciona com **iOS 16.4 ou mais** e com o app **instalado na tela inicial** (Compartilhar > Adicionar à Tela de Início), com os avisos ligados dentro do app. Você faz isto uma vez só, sem terminal:
+
+1. **Gerar as chaves.** Abra qualquer página do navegador no computador, aperte **F12**, vá na aba **Console**, cole o código abaixo e dê Enter. Ele roda só no seu computador e mostra duas linhas: PUBLICA e PRIVADA. A **PRIVADA é secreta**: não mande para ninguém, nem para o chat, nem escreva em arquivo do projeto. Guarde as duas num lugar seguro (gerenciador de senhas). Se perder, gere outro par (todo mundo precisa ligar os avisos de novo).
+
+   ```js
+   const k = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
+   const b = (u) => btoa(String.fromCharCode(...new Uint8Array(u))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+   console.log('PUBLICA:', b(await crypto.subtle.exportKey('raw', k.publicKey)));
+   console.log('PRIVADA:', (await crypto.subtle.exportKey('jwk', k.privateKey)).d);
+   ```
+
+2. **Criar a senha entre o banco e a função.** Invente uma senha longa (30 letras e números) e guarde: é o `PUSH_SECRET`.
+3. **Publicar a função.** No Supabase: **Edge Functions > Deploy a new function > Via Editor**, nome `push`, cole o conteúdo de `supabase/functions/push/index.ts` e publique. Depois, nas configurações da função, **desligue "Verify JWT"** (quem chama é o banco, que prova quem é pelo `PUSH_SECRET`).
+4. **Colar os segredos.** Em **Edge Functions > Secrets**, crie:
+   - `VAPID_PUBLIC_KEY`: a chave PUBLICA do passo 1
+   - `VAPID_PRIVATE_KEY`: a chave PRIVADA do passo 1
+   - `VAPID_SUBJECT`: `mailto:` e um e-mail da equipe (ex.: `mailto:equipe@seudominio.com.br`)
+   - `PUSH_SECRET`: a senha do passo 2
+5. **Aplicar a migration.** No **SQL Editor**, cole o conteúdo de `supabase/migrations/20261110000000_web_push.sql` e rode. Se aparecer aviso sobre `pg_net`, ative em **Database > Extensions** (procure `pg_net`) e rode de novo.
+6. **Ligar o banco à função.** No SQL Editor, rode (troque o endereço do seu projeto e a senha do passo 2):
+
+   ```sql
+   insert into private.push_config (id, url, secret)
+   values (1, 'https://SEU-PROJETO.supabase.co/functions/v1/push', 'A-SENHA-DO-PASSO-2')
+   on conflict (id) do update set url = excluded.url, secret = excluded.secret;
+   ```
+
+7. **Chave pública no app.** No Cloudflare, no Worker `simbora-app`, crie a variável de build `EXPO_PUBLIC_VAPID_PUBLIC_KEY` com a chave PUBLICA e faça **Retry build** (variáveis `EXPO_PUBLIC_*` só valem depois de recompilar).
+8. **Testar.** No iPhone, abra o app instalado, toque em **Ligar avisos** e permita. Feche o app. Faça outro celular pedir uma corrida: o aparelho do motorista deve tocar.
+
+**Se não chegar:** veja **Edge Functions > push > Logs** (o log mostra o erro do envio, nunca o endereço do aparelho). Confira também se `private.push_config` tem a linha (`select id, url from private.push_config;`), se o motorista está online e se o aparelho tem a permissão ligada em Ajustes do iPhone > Notificações > Simbora Car. A inscrição de quem sai da conta, exclui a conta ou desinstala o app é apagada sozinha. Para conferir os testes do banco, rode `supabase/tests/web_push.sql` no SQL Editor: cada linha deve terminar em `ok`.
+
+**Limites:** o pedido de corrida chega ao motorista na vez dele na fila (a cada 15 s por motorista), mas a função espera no máximo 100 s; quem estiver muito atrás na fila recebe o aviso mais cedo que a vez dele, só se o pedido ainda estiver aberto. O lembrete de confirmar a viagem agendada depende da rotina do banco (`pg_cron`); se o projeto não permitir, só o aviso local do app lembra.

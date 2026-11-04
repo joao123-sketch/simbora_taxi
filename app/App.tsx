@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { enablePush } from './src/lib/push';
 import { checkSession, ensureSession, forgetClaimedSession, KICKED_MESSAGE, sessionIdOf } from './src/lib/sessionGuard';
 import { supabase } from './src/lib/supabase';
 import { CodeScreen } from './src/screens/CodeScreen';
@@ -62,6 +63,11 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, loginId]);
+
+  // Aparelho que já deu permissão: renova a inscrição de push a cada entrada (o navegador pode trocá-la).
+  useEffect(() => {
+    if (userId) enablePush();
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) {

@@ -1,9 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Avisos do sistema (notificações do navegador). São avisos locais: aparecem enquanto o app está
-// aberto ou em segundo plano no aparelho. Com o app fechado por completo eles não chegam (isso pediria
-// push pelo servidor). No iPhone só existem com o app instalado na tela inicial (iOS 16.4 ou mais).
+import { enablePush } from './push';
+
+// Avisos do sistema (notificações do navegador). Os locais (notify) aparecem enquanto o app está
+// aberto ou em segundo plano no aparelho. Com o app fechado (ou suspenso, como no iPhone) quem avisa é
+// o push do servidor (push.ts + Edge Function push). No iPhone só existem com o app instalado na tela
+// inicial (iOS 16.4 ou mais).
 
 export type NotifyPermission = 'granted' | 'denied' | 'default' | 'unsupported';
 
@@ -16,7 +19,10 @@ export function notifyPermission(): NotifyPermission {
 export async function askNotifyPermission(): Promise<NotifyPermission> {
   if (notifyPermission() === 'unsupported') return 'unsupported';
   try {
-    return await Notification.requestPermission();
+    const result = await Notification.requestPermission();
+    // Com a permissão dada, inscreve o aparelho no push do servidor (avisa com o app fechado).
+    if (result === 'granted') await enablePush();
+    return result;
   } catch {
     return notifyPermission();
   }

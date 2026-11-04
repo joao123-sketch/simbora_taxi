@@ -1,7 +1,7 @@
 import { BigButton } from '../components/BigButton';
 import { InstallCard } from '../components/InstallCard';
 import { Screen } from '../components/Screen';
-import { supabase } from '../lib/supabase';
+import { signOutAndDisablePush } from '../lib/push';
 
 type Props = {
   onOpenHistory: () => void;
@@ -21,7 +21,7 @@ export function SettingsScreen({ onOpenHistory, onOpenFavorites, onOpenPhoto, on
       <BigButton label="Minha foto" icon="camera" onPress={onOpenPhoto} variant="secondary" />
       <BigButton label="Termos e privacidade" icon="document-text" onPress={onOpenLegal} variant="secondary" />
       <BigButton label="Excluir minha conta" icon="trash" onPress={onDeleteAccount} variant="secondary" />
-      <BigButton label="Sair" icon="log-out" onPress={() => supabase.auth.signOut()} variant="secondary" />
+      <BigButton label="Sair" icon="log-out" onPress={() => signOutAndDisablePush()} variant="secondary" />
     </Screen>
   );
 }
