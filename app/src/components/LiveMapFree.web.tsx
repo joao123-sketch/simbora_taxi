@@ -105,11 +105,11 @@ export function LiveMapFree({ target, driver, vehicle, passenger, destination, r
       );
 
     // Enquadra tudo na primeira vez e quando aparece uma rota ou o destino muda; depois só os marcadores andam.
-    const key = frameKey(destination, routes);
-    if (driver && fitted.current !== key) {
+    const key = `${frameKey(destination, routes)}|${driver ? 'd' : ''}`;
+    if ((driver || destination) && fitted.current !== key) {
       const points = [
         [target.lat, target.lng],
-        [driver.lat, driver.lng],
+        ...(driver ? [[driver.lat, driver.lng]] : []),
         ...(passenger ? [[passenger.lat, passenger.lng]] : []),
         ...(destination ? [[destination.lat, destination.lng]] : []),
         ...(routes ?? []).flatMap((r) => r.points.map((p) => [p.lat, p.lng])),

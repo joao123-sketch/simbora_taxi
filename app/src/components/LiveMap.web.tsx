@@ -169,11 +169,11 @@ function GoogleLiveMap({ target, driver, vehicle, passenger, destination, routes
 
     // Enquadra tudo na primeira vez e quando aparece uma rota ou o destino muda; depois só os marcadores
     // andam, sem mexer na tela da pessoa.
-    const key = frameKey(destination, routes);
-    if (driver && fitted.current !== key) {
+    const key = `${frameKey(destination, routes)}|${driver ? 'd' : ''}`;
+    if ((driver || destination) && fitted.current !== key) {
       const bounds = new google.maps.LatLngBounds();
       bounds.extend(target);
-      bounds.extend(driver);
+      if (driver) bounds.extend(driver);
       if (passenger) bounds.extend(passenger);
       if (destination) bounds.extend(destination);
       (routes ?? []).forEach((r) => r.points.forEach((p) => bounds.extend(p)));

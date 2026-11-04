@@ -201,9 +201,9 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
 
   return (
     <Screen title={(delivery ? deliveryTitles : titles)[ride.status] ?? ''} error={error}>
-      {position && inRide ? (
+      {inRide ? (
         <View style={styles.mapBox}>
-          {mapText ? <Text style={styles.mapText}>{mapText}</Text> : null}
+          {mapText ? <Text style={styles.mapText}>{mapText}</Text> : <Text style={styles.legend}>Procurando a sua localização... Libere a localização do aparelho para ver o caminho até o passageiro.</Text>}
           <LiveMap
             target={target}
             driver={position}

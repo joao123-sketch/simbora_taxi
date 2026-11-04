@@ -18,8 +18,10 @@ export function useDriverLocation(enabled: boolean) {
     let cancelled = false;
 
     (async () => {
-      const { granted } = await Location.requestForegroundPermissionsAsync();
-      if (!granted) {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      // No navegador, "granted" vem falso também quando o GPS só demorou ou falhou na primeira leitura;
+      // só desiste se a pessoa recusou de verdade.
+      if (!permission.granted && permission.status !== Location.PermissionStatus.GRANTED) {
         setDenied(true);
         return;
       }
