@@ -18,6 +18,7 @@ import { ScheduledTripsScreen } from './ScheduledTripsScreen';
 import { PaymentSettingsScreen } from './PaymentSettingsScreen';
 import { DriverRideScreen } from './DriverRideScreen';
 import { BlockedPassengersScreen } from './BlockedPassengersScreen';
+import { DriverProfileScreen } from './DriverProfileScreen';
 import { DriverSettingsScreen } from './DriverSettingsScreen';
 import { DriverSignupScreen } from './DriverSignupScreen';
 import { FeeScreen } from './FeeScreen';
@@ -38,6 +39,7 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   const [showQr, setShowQr] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showBlocked, setShowBlocked] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [showScheduled, setShowScheduled] = useState(false);
   const [fee, setFee] = useState<FeeStatus | null>(null);
   const [showFee, setShowFee] = useState(false);
@@ -59,7 +61,9 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     }, 5 * 60 * 1000);
     return () => clearInterval(timer);
   }, [feeLate]);
-  const { position, denied } = useDriverLocation(online);
+  // Com corrida em andamento a posição segue ligada mesmo offline (ex.: viagem agendada), para o mapa e o passageiro.
+  const onRide = !!ride && ['accepted', 'arrived', 'in_progress'].includes(ride.status);
+  const { position, denied } = useDriverLocation(online || onRide);
 
   const load = useCallback(async () => {
     setError(null);
@@ -178,9 +182,14 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     return <BlockedPassengersScreen onBack={() => setShowBlocked(false)} />;
   }
 
+  if (showProfile) {
+    return <DriverProfileScreen userId={userId} onBack={() => setShowProfile(false)} />;
+  }
+
   if (showSettings) {
     return (
       <DriverSettingsScreen
+        onOpenProfile={() => setShowProfile(true)}
         onOpenPayments={() => setEditingPayments(true)}
         onOpenHistory={() => setShowHistory(true)}
         onOpenFee={() => setShowFee(true)}

@@ -3,7 +3,8 @@ import { Platform } from 'react-native';
 
 // A chave é pública (um app web não esconde chave), mas só vale para os
 // endereços cadastrados no console do Google e para as APIs de mapa.
-const KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY || '';
+export const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY || '';
+const KEY = GOOGLE_MAPS_KEY;
 
 // No servidor de teste (localhost) a chave do Google não vale, porque o console só libera os endereços
 // publicados: lá o mapa e a busca de endereço usam o OpenStreetMap (Leaflet e Nominatim), de graça.

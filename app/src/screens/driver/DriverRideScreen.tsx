@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { DriverAdvanceCard } from '../../components/AdvancePayment';
@@ -6,10 +6,12 @@ import { Avatar } from '../../components/Avatar';
 import { BigButton } from '../../components/BigButton';
 import { BigInput } from '../../components/BigInput';
 import { LiveMap } from '../../components/LiveMap';
+import type { MapRoute } from '../../components/LiveMap.types';
 import type { Coord } from '../../components/PinMap.types';
 import { RatingPrompt } from '../../components/RatingPrompt';
 import { SosButton } from '../../components/SosButton';
 import { useChat } from '../../hooks/useChat';
+import { useRoute } from '../../hooks/useRoute';
 import { usePassengerPosition } from '../../hooks/usePassengerPosition';
 import { Screen } from '../../components/Screen';
 import { completeDelivery, isDelivery, packageLabel } from '../../lib/delivery';
@@ -77,6 +79,27 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
   // Até o embarque o motorista vê o passageiro se aproximando no mapa.
   const waitingForPassenger = ride.status === 'accepted' || ride.status === 'arrived';
   const passengerPosition = usePassengerPosition(ride.id, waitingForPassenger);
+
+  // Rotas no mapa: até o embarque, do motorista até quem ele vai buscar (vermelho) e o trajeto da corrida
+  // (escuro); depois do embarque, do motorista até o destino.
+  const origin = useMemo(() => ({ lat: ride.origin_lat, lng: ride.origin_lng }), [ride.origin_lat, ride.origin_lng]);
+  const destination = useMemo(
+    () => ({ lat: ride.destination_lat, lng: ride.destination_lng }),
+    [ride.destination_lat, ride.destination_lng],
+  );
+  const pickupRoute = useRoute(position, origin, waitingForPassenger);
+  const tripRoute = useRoute(origin, destination, waitingForPassenger);
+  const toDestinationRoute = useRoute(position, destination, ride.status === 'in_progress');
+  const routes = useMemo<MapRoute[]>(() => {
+    const list: MapRoute[] = [];
+    if (waitingForPassenger) {
+      if (tripRoute) list.push({ kind: 'trip', points: tripRoute.points });
+      if (pickupRoute) list.push({ kind: 'pickup', points: pickupRoute.points });
+    } else if (toDestinationRoute) {
+      list.push({ kind: 'trip', points: toDestinationRoute.points });
+    }
+    return list;
+  }, [waitingForPassenger, pickupRoute, tripRoute, toDestinationRoute]);
 
   // Quando a corrida acaba o chat fecha sozinho, para a avaliação aparecer.
   useEffect(() => {
@@ -154,11 +177,13 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
   let mapText: string | null = null;
   if (position && inRide) {
     const km = distanceKm(position, target);
+    const leg = goingToDestination ? toDestinationRoute : pickupRoute;
+    const far = leg ? `${formatKm(leg.km)} · ${leg.minutes} min` : formatKm(km * 1.3);
     mapText = goingToDestination
-      ? `Destino a ${formatKm(km * 1.3)}`
+      ? `Destino a ${far}`
       : km < 0.1
         ? 'Você chegou ao ponto de encontro'
-        : `Passageiro a ${formatKm(km * 1.3)} de você`;
+        : `${delivery ? 'Coleta' : 'Passageiro'} a ${far} de você`;
   }
 
   if (chatOpen) {
@@ -176,6 +201,27 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
 
   return (
     <Screen title={(delivery ? deliveryTitles : titles)[ride.status] ?? ''} error={error}>
+      {position && inRide ? (
+        <View style={styles.mapBox}>
+          {mapText ? <Text style={styles.mapText}>{mapText}</Text> : null}
+          <LiveMap
+            target={target}
+            driver={position}
+            passenger={passengerPosition}
+            vehicle="car"
+            destination={waitingForPassenger ? destination : null}
+            routes={routes}
+            height={340}
+          />
+          {waitingForPassenger && routes.length > 0 ? (
+            <Text style={styles.legend}>
+              Vermelho: até {delivery ? 'a coleta' : 'o passageiro'}. Escuro: {delivery ? 'trajeto da entrega' : 'trajeto da corrida'} até o destino.
+            </Text>
+          ) : null}
+          {passengerPosition ? <Text style={styles.line}>O passageiro está vindo até você.</Text> : null}
+        </View>
+      ) : null}
+
       <View style={styles.details}>
         <View style={styles.who}>
           <Avatar path={ride.passenger_photo_path} size={64} />
@@ -203,13 +249,6 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
         ) : null}
       </View>
 
-      {position && inRide ? (
-        <View style={styles.mapBox}>
-          {mapText ? <Text style={styles.mapText}>{mapText}</Text> : null}
-          <LiveMap target={target} driver={position} passenger={passengerPosition} vehicle="car" />
-          {passengerPosition ? <Text style={styles.line}>O passageiro está vindo até você.</Text> : null}
-        </View>
-      ) : null}
 
       {finished ? (
         <>
@@ -268,6 +307,10 @@ const styles = StyleSheet.create({
   },
   mapBox: {
     gap: 8,
+  },
+  legend: {
+    fontSize: fontSize.body - 2,
+    color: colors.textMuted,
   },
   mapText: {
     fontSize: fontSize.body + 2,

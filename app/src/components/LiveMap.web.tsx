@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { googleMapsAvailable, loadGoogleMaps } from '../lib/googleMaps';
-import type { LiveMapProps } from './LiveMap.types';
+import { frameKey, ROUTE_COLORS, type LiveMapProps } from './LiveMap.types';
 import { LiveMapFree } from './LiveMapFree.web';
 
 function emojiIcon(emoji: string): google.maps.Icon {
@@ -43,13 +43,15 @@ export function LiveMap(props: LiveMapProps) {
   return googleMapsAvailable ? <GoogleLiveMap {...props} /> : <LiveMapFree {...props} />;
 }
 
-function GoogleLiveMap({ target, driver, vehicle, passenger }: LiveMapProps) {
+function GoogleLiveMap({ target, driver, vehicle, passenger, destination, routes, height }: LiveMapProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const targetMarker = useRef<google.maps.Marker | null>(null);
   const driverGlider = useRef<Glider | null>(null);
   const passengerGlider = useRef<Glider | null>(null);
-  const fitted = useRef(false);
+  const destinationMarker = useRef<google.maps.Marker | null>(null);
+  const lines = useRef<google.maps.Polyline[]>([]);
+  const fitted = useRef('');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -79,11 +81,15 @@ function GoogleLiveMap({ target, driver, vehicle, passenger }: LiveMapProps) {
         g?.marker.setMap(null);
       });
       targetMarker.current?.setMap(null);
+      destinationMarker.current?.setMap(null);
+      lines.current.forEach((l) => l.setMap(null));
+      lines.current = [];
+      destinationMarker.current = null;
       mapRef.current = null;
       targetMarker.current = null;
       driverGlider.current = null;
       passengerGlider.current = null;
-      fitted.current = false;
+      fitted.current = '';
     };
     // O mapa nasce uma vez; as posições entram pelo efeito abaixo.
   }, []);
@@ -127,22 +133,60 @@ function GoogleLiveMap({ target, driver, vehicle, passenger }: LiveMapProps) {
       passengerGlider.current = null;
     }
 
-    // Enquadra todos na primeira vez; depois só os marcadores andam, sem mexer na tela da pessoa.
-    if (!fitted.current && driver) {
+    // Marcador do destino da corrida (enquanto o ponto principal ainda é o de embarque).
+    if (destination) {
+      if (!destinationMarker.current) {
+        destinationMarker.current = new google.maps.Marker({
+          map,
+          position: destination,
+          icon: emojiIcon('🏁'),
+          zIndex: 500,
+          clickable: false,
+        });
+      } else {
+        destinationMarker.current.setPosition(destination);
+      }
+    } else if (destinationMarker.current) {
+      destinationMarker.current.setMap(null);
+      destinationMarker.current = null;
+    }
+
+    // Traços das rotas: redesenha quando chega uma rota nova.
+    lines.current.forEach((l) => l.setMap(null));
+    lines.current = (routes ?? [])
+      .filter((r) => r.points.length > 1)
+      .map(
+        (r) =>
+          new google.maps.Polyline({
+            map,
+            path: r.points,
+            strokeColor: ROUTE_COLORS[r.kind],
+            strokeOpacity: 0.85,
+            strokeWeight: 5,
+            clickable: false,
+          }),
+      );
+
+    // Enquadra tudo na primeira vez e quando aparece uma rota ou o destino muda; depois só os marcadores
+    // andam, sem mexer na tela da pessoa.
+    const key = frameKey(destination, routes);
+    if (driver && fitted.current !== key) {
       const bounds = new google.maps.LatLngBounds();
       bounds.extend(target);
       bounds.extend(driver);
       if (passenger) bounds.extend(passenger);
+      if (destination) bounds.extend(destination);
+      (routes ?? []).forEach((r) => r.points.forEach((p) => bounds.extend(p)));
       map.fitBounds(bounds, 40);
       google.maps.event.addListenerOnce(map, 'idle', () => {
         if ((map.getZoom() ?? 0) > 17) map.setZoom(17);
       });
-      fitted.current = true;
+      fitted.current = key;
     }
-  }, [ready, target.lat, target.lng, driver?.lat, driver?.lng, passenger?.lat, passenger?.lng, vehicle]);
+  }, [ready, target.lat, target.lng, driver?.lat, driver?.lng, passenger?.lat, passenger?.lng, vehicle, destination?.lat, destination?.lng, routes]);
 
   return (
-    <View style={styles.box}>
+    <View style={[styles.box, height ? { height } : null]}>
       <div ref={divRef} style={{ position: 'absolute', inset: 0 }} />
     </View>
   );

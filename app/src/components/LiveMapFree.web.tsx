@@ -3,16 +3,18 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { emojiDivIcon, loadLeaflet, TILE_URL, type Leaflet } from '../lib/leaflet';
-import type { LiveMapProps } from './LiveMap.types';
+import { frameKey, ROUTE_COLORS, type LiveMapProps } from './LiveMap.types';
 
-export function LiveMapFree({ target, driver, vehicle, passenger }: LiveMapProps) {
+export function LiveMapFree({ target, driver, vehicle, passenger, destination, routes, height }: LiveMapProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Leaflet>(null);
   const leafletRef = useRef<Leaflet>(null);
   const targetMarker = useRef<Leaflet>(null);
   const driverMarker = useRef<Leaflet>(null);
   const passengerMarker = useRef<Leaflet>(null);
-  const fitted = useRef(false);
+  const destinationMarker = useRef<Leaflet>(null);
+  const lines = useRef<Leaflet[]>([]);
+  const fitted = useRef('');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -37,7 +39,9 @@ export function LiveMapFree({ target, driver, vehicle, passenger }: LiveMapProps
       targetMarker.current = null;
       driverMarker.current = null;
       passengerMarker.current = null;
-      fitted.current = false;
+      destinationMarker.current = null;
+      lines.current = [];
+      fitted.current = '';
     };
     // O mapa nasce uma vez; as posições entram pelo efeito abaixo.
   }, []);
@@ -75,16 +79,48 @@ export function LiveMapFree({ target, driver, vehicle, passenger }: LiveMapProps
       passengerMarker.current = null;
     }
 
-    // Enquadra todos na primeira vez; depois só os marcadores andam.
-    if (!fitted.current && driver) {
-      const points = [[target.lat, target.lng], [driver.lat, driver.lng], ...(passenger ? [[passenger.lat, passenger.lng]] : [])];
-      map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 17, animate: false });
-      fitted.current = true;
+    if (destination) {
+      if (!destinationMarker.current) {
+        destinationMarker.current = L.marker([destination.lat, destination.lng], {
+          icon: emojiDivIcon(L, '🏁'),
+          interactive: false,
+          zIndexOffset: 500,
+        }).addTo(map);
+      } else {
+        destinationMarker.current.setLatLng([destination.lat, destination.lng]);
+      }
+    } else if (destinationMarker.current) {
+      destinationMarker.current.remove();
+      destinationMarker.current = null;
     }
-  }, [ready, target.lat, target.lng, driver?.lat, driver?.lng, passenger?.lat, passenger?.lng, vehicle]);
+
+    lines.current.forEach((l) => l.remove());
+    lines.current = (routes ?? [])
+      .filter((r) => r.points.length > 1)
+      .map((r) =>
+        L.polyline(
+          r.points.map((p) => [p.lat, p.lng]),
+          { color: ROUTE_COLORS[r.kind], weight: 5, opacity: 0.85, interactive: false },
+        ).addTo(map),
+      );
+
+    // Enquadra tudo na primeira vez e quando aparece uma rota ou o destino muda; depois só os marcadores andam.
+    const key = frameKey(destination, routes);
+    if (driver && fitted.current !== key) {
+      const points = [
+        [target.lat, target.lng],
+        [driver.lat, driver.lng],
+        ...(passenger ? [[passenger.lat, passenger.lng]] : []),
+        ...(destination ? [[destination.lat, destination.lng]] : []),
+        ...(routes ?? []).flatMap((r) => r.points.map((p) => [p.lat, p.lng])),
+      ];
+      map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 17, animate: false });
+      fitted.current = key;
+    }
+  }, [ready, target.lat, target.lng, driver?.lat, driver?.lng, passenger?.lat, passenger?.lng, vehicle, destination?.lat, destination?.lng, routes]);
 
   return (
-    <View style={styles.box}>
+    <View style={[styles.box, height ? { height } : null]}>
       <div ref={divRef} style={{ position: 'absolute', inset: 0 }} />
     </View>
   );
