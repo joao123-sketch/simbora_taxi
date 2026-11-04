@@ -1,89 +1,277 @@
 # Simbora Car
 
-App de corridas (carro e moto) de Guaraciaba do Norte (CE). Um único app com modo passageiro e modo motorista; a equipe administra pelo painel do Supabase.
+App de corridas de carro e moto, de entrega e de viagem entre cidades, feito para **Guaraciaba do Norte (CE)** e as cidades vizinhas da Serra da Ibiapaba. Um único app, com modo **passageiro** e modo **motorista**, mais um **painel da equipe** para administrar.
 
-## Estrutura
+> Este documento descreve **como o sistema funciona** (produto, telas, regras e parte técnica). A seção [Identidade visual atual](#identidade-visual-atual) é o ponto de partida para quem vai criar ou redesenhar a identidade do app.
+
+## Sumário
+
+1. [Visão do produto](#visão-do-produto)
+2. [Quem usa](#quem-usa)
+3. [Identidade visual atual](#identidade-visual-atual)
+4. [Telas e fluxos](#telas-e-fluxos)
+5. [Como o preço funciona](#como-o-preço-funciona)
+6. [Regras de funcionamento](#regras-de-funcionamento)
+7. [Painel da equipe](#painel-da-equipe)
+8. [Páginas públicas](#páginas-públicas)
+9. [Parte técnica](#parte-técnica)
+
+---
+
+## Visão do produto
+
+- **O que é:** um app para pedir corrida (carro ou moto) dentro da cidade, pedir entrega de pacotes e combinar viagens para outras cidades, com preço claro antes de chamar.
+- **Onde:** começa em Guaraciaba do Norte (CE, cerca de 42 mil habitantes, turismo na serra) e se expande para Ubajara, Tianguá, São Benedito, Ibiapina e outras cidades próximas.
+- **Quem faz:** dois desenvolvedores locais. O app é independente de grandes plataformas e concorre com um app local (o "Me Ache Car").
+- **Como o dinheiro anda:** o passageiro paga **direto ao motorista** (Pix, dinheiro ou maquininha). O app **não cobra comissão por corrida**: a receita é uma **mensalidade fixa do motorista** (primeiro mês grátis, depois R$ 200 e a partir do terceiro mês R$ 300).
+- **Como se instala:** é um **PWA**, isto é, um site que a pessoa instala na tela inicial do celular. Não está na Google Play nem na App Store. No Android, o Chrome oferece "Instalar app". No iPhone, só pelo Safari, em Compartilhar e "Adicionar à Tela de Início". O app também roda no Expo Go para testes.
+- **Princípio de design:** tem que ser usável por **uma pessoa de 90 anos sozinha**. Letras grandes, um botão principal por tela, poucas decisões, textos curtos e acolhedores, em português do Brasil, tom simples e próximo ("Oi, João!", "Pra onde você vai?", "Simbora").
+- **Idioma:** só português do Brasil. Moeda em reais (R$). Fuso de Fortaleza.
+
+## Quem usa
+
+| Papel | O que faz | Onde |
+|---|---|---|
+| **Passageiro** | Pede corrida, entrega ou viagem entre cidades, acompanha o carro no mapa, conversa por chat, avalia, mantém motoristas favoritos | App (modo passageiro) |
+| **Motorista** | Cadastra-se, fica online, aceita chamados (ou propõe valor em viagem entre cidades), faz a corrida, recebe do passageiro direto, paga a mensalidade | App (modo motorista, na mesma conta do passageiro) |
+| **Equipe** | Aprova motoristas depois de uma reunião presencial, edita preços e cidades, vê relatórios, trava contas, acompanha cobranças | Painel web (`painel/`) |
+| **Visitante** | Abre o link de um trajeto compartilhado por um passageiro, ou o convite de um motorista | Páginas públicas |
+
+Uma mesma pessoa pode ser passageira e motorista na mesma conta (botão "Quero ser motorista" / "Sou motorista" na tela inicial). Cada conta funciona em **um celular por vez**.
+
+---
+
+## Identidade visual atual
+
+Tudo abaixo está no código (`app/src/theme.ts`) e nos arquivos de `app/assets/`. É o que existe hoje, pronto para ser mantido ou substituído.
+
+### Nome e marca
+
+- **Nome:** Simbora Car (curto: "Simbora"). "Simbora" é como se diz "vamos embora" no Nordeste: convite, alegria, informalidade.
+- **Logo atual:** um **Fusca vermelho de frente**, em estilo cartum, com contorno marrom-escuro grosso, faróis amarelos brilhantes, para-choque cromado cinza, espelhos e brilho no capô, sobre fundo rosa muito claro. Arquivos: `app/assets/logo-fusca.png` (logo sem fundo), `app/assets/icon.png` (ícone quadrado 1024 px), `app/assets/splash-icon.png`, `app/assets/android-icon-*.png` (Android adaptativo), `app/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` e `favicon-48.png` (PWA). A foto de referência original está em `docs/marca/fusca-original.jpg`.
+- **Personalidade pedida:** vermelho **acolhedor e amigável**, não agressivo. Nada frio ou corporativo. Fácil de reconhecer de longe, num celular simples.
+
+### Cores
+
+| Token | Cor | Uso |
+|---|---|---|
+| `primary` | `#D62828` (vermelho) | Botão principal, aba ativa, destaques, cor do tema do PWA |
+| `primaryDark` | `#A61E1E` | Avisos em vermelho, sombra do botão |
+| `onPrimary` | `#FFFFFF` | Texto sobre o vermelho (contraste 4,8:1 ou mais) |
+| `background` / `surface` | `#FFFFFF` | Fundo das telas e dos cartões |
+| `surfaceTint` | `#FFF4F1` (rosado) | Cartões de destaque, fundo do ícone |
+| `surfaceMuted` | `#F3F1F0` (cinza quente) | Campos, botões secundários, atalhos |
+| `text` / `ink` | `#1B1B1F` | Texto principal e ícones (contraste acima de 15:1) |
+| `textMuted` | `#5B5559` | Texto de apoio (contraste acima de 7:1) |
+| `border` / `borderStrong` | `#E9DEDB` / `#CBBBB7` | Bordas de cartões e campos |
+| `dangerBg` | `#FDECEC` | Fundo de avisos de erro |
+| `success` / `successBg` | `#1B6E2D` / `#E8F5EA` | Confirmações |
+
+No mapa, o ponto da pessoa é **azul** (`#2B6CF6`), a origem é um círculo escuro, o destino é um quadrado vermelho e o motorista é um carrinho ou moto em emoji.
+
+### Forma, tamanho e sensação
+
+- **Letras:** corpo **20 px** no mínimo, títulos **32 px**, botões **20 px**, mais grossas (negrito) nos títulos e botões. Hoje usa a **fonte padrão do sistema** (ainda não há fonte própria).
+- **Cantos:** arredondados (`radius`: 10, 14, 24 e "pílula"). Cartões e botões com cantos de 14 px.
+- **Toque:** botões de **56 a 72 px** de altura (mínimo **60 px** nos principais). Um botão grande por tela.
+- **Sombras:** suaves, para cartões; mais forte no painel que sobe sobre o mapa e nos botões que flutuam.
+- **Ícones:** Ionicons (família de ícones de contorno e cheios), com texto sempre ao lado. Aba ativa fica **vermelha e em negrito** (não depende só da cor).
+- **Textura de fundo** (`PatternBackground.tsx`): estilo do WhatsApp, com **carrinhos, pinos de localização, folhas de mapa e trajetos** em linha fina, vermelho bem claro, repetidos. Aparece só nas telas de entrada (login) e fica atrás do conteúdo.
+- **Mapa:** os painéis (planilhas inferiores) sobem sobre o mapa com cantos de 24 px. Na web o mapa é do Google Maps; no servidor de teste, OpenStreetMap.
+
+### Regras de acessibilidade (obrigatórias)
+
+- Letras de **no mínimo 18 px** (corpo 20).
+- Contraste de **pelo menos 4,5:1** em todo texto (as cores acima já passam).
+- Alvos de toque de **56 a 72 px**.
+- **Um botão principal por tela.** Botão de voltar sempre visível em listas longas.
+- Nunca usar só cor para indicar estado; sempre texto ou ícone junto.
+- Telas pensadas para uma mão, em pé, ao sol, por pessoa com pouca prática em celular.
+
+### O que o app precisa de uma identidade nova
+
+Ao propor uma nova identidade, entregue: logo (principal, só símbolo, versão em uma cor), paleta com os tokens acima (ou substitutos que passem no contraste), tipografia (com versão que carregue rápido na web), estilo de ícones, o ícone do app e a tela de abertura (splash), a textura do login, estilo dos marcadores do mapa (passageiro, origem, destino, carro, moto) e regras de uso. Os nomes dos tokens acima podem ser mantidos para a troca ser simples no código.
+
+---
+
+## Telas e fluxos
+
+### Entrada
+
+1. **Celular** — "Qual é o seu celular?": campo de telefone e botão "Receber código", com a textura de fundo, cartão de instalação do app e link para termos e privacidade. Login por **código SMS**, sem senha.
+2. **Código** — digita o código de 6 dígitos recebido.
+3. **Nome** — pergunta o nome na primeira vez.
+4. **Foto** — selfie obrigatória pela câmera (sem galeria) para poder pedir corrida; o motorista vê a foto antes de aceitar.
+
+### Passageiro
+
+**Início:** mapa de fundo com a posição da pessoa (ponto azul), saudação "Oi, {nome}!", campo grande "Para onde vamos?", quatro atalhos (**Corrida**, **Para outra pessoa**, **Entrega**, **Meus motoristas**), aviso de viagem agendada ou proposta esperando, lembrete de mensalidade (para quem também é motorista), convite para ativar avisos e para instalar o app. No canto, o botão "Quero ser motorista" ou "Sou motorista". Barra de abas embaixo: **Início**, **Atividade** (histórico) e **Conta**.
+
+**Pedir corrida na cidade:**
+1. "Pra onde você vai?": destino por busca com sugestões e lugares frequentes.
+2. "Como será a viagem?" (só entre cidades, veja abaixo).
+3. **Escolha uma viagem:** lista de carro e moto com o preço de cada, formas de pagamento (só as que algum motorista online aceita; cartão custa 5% a mais).
+4. **Acompanhamento:** "Procurando motorista", depois motorista a caminho (carro andando no mapa, tempo estimado, placa, modelo, cor, foto e nota), "Chegou", em corrida e "Corrida concluída" com avaliação de 1 a 5 estrelas. Chat com o motorista, botão **SOS** discreto e compartilhar trajeto.
+
+**Viagem para outra cidade:** em "Pra onde você vai?" escolhe "Em outra cidade" e digita o **endereço** (qualquer endereço nas cidades vizinhas). Depois escolhe **só ida** ou **ida e volta** (com tempo de espera de 30 min a 4 h) e **quando**: agora ou outro dia (de 1 hora a 7 dias à frente). O app mostra o valor calculado. Os motoristas **aceitam esse valor** ou **propõem um valor maior** (até um limite). O passageiro vê **todas as respostas** e **escolhe**. Se for agendada, ele precisa tocar em **Confirmar viagem** no dia (veja regras).
+
+**Entrega:** tamanhos P, M e G (com exemplos de pacote), preço da tabela com desconto, quem pede paga ao motorista, o motorista finaliza com um **código de 4 dígitos** de quem recebe. O passageiro copia uma mensagem pronta para o destinatário.
+
+**Para outra pessoa:** pede a corrida em nome de um parente; o motorista vê o nome de quem vai andar.
+
+**Conta/Configurações:** Minhas corridas (com painel de gastos), Meus motoristas (QR e código), Minha foto, Termos e privacidade, Excluir minha conta, Sair.
+
+### Motorista
+
+- **Cadastro:** dados pessoais (CPF, nascimento, CNH), veículo (modelo, cor, placa, ano 2010 ou mais, carro ou moto), documentos; depois **aguarda aprovação** da equipe, que acontece depois de uma reunião presencial. O app avisa na hora se o CPF já tem cadastro, com o telefone do suporte.
+- **Início do motorista:** título "Você está online" ou "Você está offline", botão grande **Ficar online/offline**, lista de **chamados** (cartão com origem, destino, distância, valor, foto e nome do passageiro e formas de pagamento), avisos de mensalidade, atalhos para **Meu QR para clientes**, **Viagens agendadas**, **Configurações** e **Voltar ao início**.
+- **Chamado:** o motorista **aceita** (ou recusa). Em viagem entre cidades pode **aceitar o valor calculado** ou **propor outro valor** (até o limite) e escolher o **adiantamento** (0%, 50% ou 100%).
+- **Corrida:** mapa próprio com o passageiro se aproximando, botões "Cheguei", "Iniciar", "Finalizar", chat e SOS.
+- **Configurações do motorista:** modos de pagamento aceitos, Minhas corridas (faturamento, quilômetros, horas online), Minha mensalidade (QR do Pix ou cartão), Passageiros bloqueados.
+- **Mensalidade:** vencida, o app mostra uma tela de cobrança sozinho; em atraso longo o motorista fica impedido de receber chamados.
+
+### Painel da equipe (web, em desktop)
+
+Abas: **Motoristas** (aprovação com checklist), **Cadastrados** (todos, com busca, travar e destravar), **Passageiros**, **Preços**, **Cidades**, **Mensalidades**, **Relatórios**. Tela de login com e-mail e senha. Visual simples, de ferramenta interna (também pode ganhar a nova identidade).
+
+---
+
+## Como o preço funciona
+
+Todos os valores abaixo vêm do banco e são editáveis no painel (aba **Preços**), por cidade e por veículo. Os números são os de hoje (**carro** primeiro, **moto** entre parênteses). Os passageiros e motoristas só veem o **preço final**, nunca a conta.
+
+**Distância usada:** linha reta entre os dois pontos × 1,3 (para aproximar a estrada).
+
+### Corrida dentro da cidade
+- **Bandeirada** R$ 8,00 (moto R$ 5,00), mais **R$ 2,20 por km** (R$ 1,40) e **R$ 0,30 por minuto** (R$ 0,20), com o tempo contado a 30 km/h. Sem valor mínimo.
+- **Km mais barato depois dos 4 primeiros km:** cada km a mais custa **R$ 0,60** (R$ 0,40), já com o tempo. Serve para sítios e distritos (ex.: Várzea dos Espinhos, uns R$ 30).
+- **Preço dinâmico:** só sobe, nunca desconta. Quando faltam carros (pedidos esperando mais de 60 s sem motorista), o fator sobe em degraus de 10% (teto ×1,30), separado para carro e moto. É interno: ninguém vê aviso.
+- **Adicional noturno:** +20% das 22h às 5h59, junto com o dinâmico, com teto total de ×1,50.
+- **Cartão:** +5%.
+
+### Viagem entre cidades
+Bandeirada mais **três faixas de valor por km**, já com o tempo dentro:
+
+| Faixa | Carro | Moto |
+|---|---|---|
+| Até 72 km | R$ 1,70 por km | R$ 1,20 |
+| De 72 a 90 km (descida da serra) | R$ 6,70 por km | R$ 4,70 |
+| Depois dos 90 km | R$ 2,72 por km | R$ 1,90 |
+
+Exemplos (carro, só ida): Reriutaba R$ 47, São Benedito R$ 49, Ibiapina R$ 77, Ubajara R$ 95, Tianguá R$ 130, Sobral R$ 249, Fortaleza R$ 895. Não há fator dinâmico nem adicional noturno nesse tipo de viagem.
+
+**Ida e volta:** preço da ida × **1,5**, com **2 horas de espera incluídas**. O que passar disso custa **R$ 0,10 por minuto de espera** (moto R$ 0,07). Exemplo, Ubajara carro: ida R$ 95, ida e volta R$ 143.
+
+### Proposta do motorista
+O motorista pode propor um valor **acima do calculado**, até **30%** (editável no painel). O total é o valor calculado mais o acréscimo.
+
+### Entrega
+Preço da tabela do veículo com **desconto de entrega** (editável).
+
+### Mensalidade do motorista
+Mês 1 grátis (um por CPF), mês 2 R$ 200, a partir do mês 3 R$ 300. Quem volta sem nunca ter pago paga R$ 200 e depois R$ 300.
+
+---
+
+## Regras de funcionamento
+
+### Como o motorista é chamado (corrida de agora)
+- O pedido vira uma **fila de motoristas**, do mais próximo ao mais longe, só entre motoristas **online, livres, do veículo pedido e que aceitam a forma de pagamento**. O primeiro vê na hora e cada próximo 15 segundos depois. Recusar libera o próximo na hora. O app pergunta ao servidor a cada 5 segundos.
+- **Motorista favorito:** cada motorista tem um **código de 8 caracteres** e um QR. O passageiro que o adiciona faz com que o favorito seja chamado **primeiro**, sem mudar o preço.
+- **Bloqueio:** o motorista pode escolher "Não atender este passageiro", sem avisar o passageiro.
+
+### Viagem entre cidades de agora
+O primeiro motorista que **aceita o valor calculado** fecha a viagem na hora, como numa corrida normal. Propostas de outro valor **esperam o passageiro escolher**. Se o passageiro escolher uma proposta, as outras caem; se o motorista escolhido desistir, as outras voltam.
+
+### Viagem entre cidades agendada
+Nada fecha sozinho: o passageiro vê **todas as respostas** e escolhe. Depois de fechada, precisa de **Confirmar viagem**:
+- O botão libera **12 horas antes** e o prazo vai até **2 horas antes**.
+- Fechada com menos de 2 horas, **já nasce confirmada**.
+- **Sem confirmar, a viagem fica sem efeito**, o horário do motorista é liberado e ele é avisado.
+- Se o motorista já recebeu **adiantamento**, a viagem não é anulada por falta de confirmação.
+- Duas viagens do mesmo motorista a menos de 2 horas uma da outra são recusadas.
+- Viagem agendada para daqui a mais de 1 hora **não trava ninguém**: o motorista e o passageiro podem fazer outras corridas.
+
+### Pagamento
+- O passageiro **paga direto ao motorista**. Cada motorista marca o que aceita (Pix, dinheiro, maquininha).
+- **Adiantamento** (só viagem entre cidades): o motorista escolhe 0%, 50% ou 100%. Com 50% ou 100%, a corrida só inicia depois de o motorista tocar em "Recebi".
+
+### Avaliação, chat e segurança
+- Ao fim da corrida, **passageiro e motorista dão de 1 a 5 estrelas**. Cada um vê só a nota que ele mesmo deu.
+- **Chat** só entre passageiro e motorista, enquanto a corrida está em andamento. **O telefone não aparece para ninguém**; números parecidos com telefone digitados no chat são trocados por "(número escondido)".
+- **SOS:** segurar 5 segundos e confirmar abre o WhatsApp do plantão com a mensagem pronta (corrida, motorista, placa, localização).
+- **Trajeto compartilhado:** link `/t/CODIGO` com posição ao vivo, primeiro nome do motorista, placa e status, que vence quando a corrida termina.
+- **Posição:** o passageiro vê o carro andando e o motorista vê o passageiro se aproximando. A posição do motorista só atualiza com o app aberto e a tela ligada (limite da web).
+
+### Conta
+- **Uma conta, um celular:** quem entra num celular novo "toma" a conta; o antigo sai sozinho com aviso.
+- **Excluir conta:** apaga nome, telefone, foto e login. O histórico fica para a outra pessoa sem o nome. Do motorista guarda só o hash do CPF, para ele não repetir o mês grátis.
+- **Avisos:** são **locais** (aparecem com o app aberto ou em segundo plano). Ainda **não há push do servidor**. No iPhone só funcionam com o app instalado na tela inicial (iOS 16.4 ou mais).
+
+---
+
+## Painel da equipe
+
+Página web (`painel/`, Vite + React + TypeScript). Entra com e-mail e senha; só quem está em `public.staff` usa as funções `staff_*`.
+
+- **Motoristas:** aprovação com checklist depois da reunião presencial; o banco recusa aprovar se faltar algo.
+- **Cadastrados:** todos os motoristas com telefone, veículo, cidade, corridas, nota, última posição e mensalidade; **travar** (com motivo que só a equipe vê) e **destravar**.
+- **Passageiros:** lista com foto (cada visualização fica registrada).
+- **Preços:** taxa do cartão, desconto da entrega, preço dinâmico, adicional noturno e teto, **ida e volta** (fator e horas de espera incluídas), limite da proposta do motorista, tamanhos de pacote, e a tabela de **tarifas por cidade e veículo** (bandeirada, por km, por minuto, faixas entre cidades, km mais barato na cidade, espera). Uma tarifa nova tem **data em que passa a valer**; a antiga fica de histórico.
+- **Cidades:** adiciona cidade (nasce desativada, com latitude e longitude do centro) e ativa; só ativa se já tiver tarifa.
+- **Mensalidades:** quem deve, id da cobrança, confirmar pagamento recebido por fora.
+- **Relatórios:** alerta do mês 3 em diante (menos de 10 corridas), fuga (queda de corridas, muitas horas online com poucas corridas, duplas que pararam de andar juntas) e reavaliação semestral.
+
+## Páginas públicas
+
+- `/t/CODIGO` — trajeto compartilhado (sem login).
+- `/m/CODIGO` — convite do motorista: explica como baixar o app e usar o código. Abrir o app por esse link favorita o motorista sozinho.
+- Os **termos de uso e a política de privacidade** ficam dentro do app (tela de login e Configurações), com texto provisório à espera do advogado. Ainda não há páginas públicas `/termos` e `/privacidade`.
+
+---
+
+## Parte técnica
+
+### Estrutura
 
 ```
-app/        App Expo (React Native + TypeScript) para Android e iOS
-supabase/   Banco: migrations (schema, RLS, funções) e seed de desenvolvimento
-painel/     Painel da equipe (Vite + React): página estática que fala com o Supabase
+app/         App Expo (React Native + TypeScript): Android, iOS e web (PWA)
+supabase/    Banco: migrations (schema, RLS, funções), seed e testes de SQL
+painel/      Painel da equipe (Vite + React)
+pagamentos/  Função de cobrança do Asaas (Edge Function do Supabase)
+docs/        Guia da equipe (EQUIPE.md), marca e planos
 ```
 
-## Rodar o app
+### Tecnologia
+Expo SDK 58, React Native, TypeScript, Supabase (Postgres, Auth por telefone, Storage, Edge Functions), Google Maps JavaScript API e Places na web (no servidor de teste usa OpenStreetMap com Leaflet e Nominatim, de graça), Cloudflare Workers para hospedar app e painel, Asaas para a mensalidade (Pix e cartão), Vonage como provedor de SMS.
+
+### Rodar o app
 
 ```bash
 cd app
 cp .env.example .env.local   # preencha com a URL e a chave do projeto Supabase
 npm install
-npx expo start
+npm run web                  # http://localhost:8081
 ```
 
-Abra no celular com o app Expo Go, ou rode `npm run android` com um emulador.
+No celular com o Expo Go: `npx expo start` dentro de `app/` (o iPhone exige conta Expo logada). Contas de teste com código `123456`: `+5588900000001` a `04`. No servidor de teste (`localhost`) o app usa OpenStreetMap, sem precisar liberar o endereço na chave do Google.
 
-## Banco (Supabase)
+Testes de lógica: `npm --prefix app test`. Tipos: `npx tsc --noEmit` em `app/` e `painel/`.
 
-1. Crie o projeto em supabase.com (o nosso está numa região dos EUA; a de São Paulo não estava disponível).
-2. Aplique o schema: `npx supabase link --project-ref <ref>` e depois `npx supabase db push`.
-3. Em desenvolvimento, rode `supabase/seed.sql` no SQL Editor (as tarifas da cidade são as decididas; os preços entre cidades são exemplos).
+### Banco (Supabase)
+
+1. Crie o projeto no supabase.com (o nosso fica numa região dos EUA).
+2. Aplique as migrations: `npx supabase link --project-ref <ref>` e `npx supabase db push` (ou cole no SQL Editor; nesse caso marque como aplicada com `npx supabase migration repair --status applied <versão>`).
+3. Em desenvolvimento, rode `supabase/seed.sql` no SQL Editor (cidades e tarifas).
 4. Ative o login por telefone em Authentication > Providers > Phone, com um provedor de SMS.
 
-## Regras de negócio no banco
+**Regra de ouro:** o app **nunca altera tabelas diretamente**; usa funções do banco (`request_ride`, `accept_ride`, `propose_extra`, `respond_proposal`, `confirm_scheduled_ride`, `advance_ride`, `cancel_ride`, `quote_ride`, entre outras), protegidas por RLS.
 
-- Motorista se cadastra pelo app (função `register_driver`) como `pending`. CPF, nascimento e CNH ficam em `driver_private`, que só o próprio motorista lê. A equipe confere o `driver_checklist` e muda para `approved` depois da reunião presencial; o banco recusa a aprovação se faltar algo.
-- Mensalidade: mês grátis a partir da aprovação (um por CPF), depois R$ 200 e R$ 300 (`fee_schedule`, `driver_fee_periods`). Quem volta sem nunca ter pago paga R$ 200 e depois R$ 300; quem já pagou volta pagando R$ 300. O contrato começa no mês 2 (`continue_contract`) e faz aniversário em 12 meses.
-- Veículos 2010 ou mais novos (`drivers.vehicle_year`).
-- O app nunca altera `rides` direto: usa as funções `accept_ride`, `advance_ride`, `cancel_ride` e `set_driver_online`.
-- Receita: mensalidade fixa do motorista (mês 1 grátis, mês 2 R$ 200, a partir do mês 3 R$ 300), sem comissão por corrida. A cobrança entra na Etapa 10 do checklist.
-- Tarifas em `fares`, com data de vigência (`effective_from`); a mais recente que já começou vale.
-- Dentro da cidade o destino é livre (inclusive de e para sítios e distritos). Em viagem para outra cidade, o passageiro pode pedir um lugar combinado (`rides.destination_place`) e/ou ida e volta (`rides.round_trip`, `wait_minutes`): o motorista vê o pedido e aceita pelo valor ou propõe um acréscimo (`propose_extra`), e o passageiro aceita ou recusa.
-- Pagamento direto ao motorista. Cada motorista marca o que aceita (`drivers.accepted_payments`: Pix, dinheiro, maquininha); o passageiro só vê as formas que algum motorista online aceita, e o pedido só chega a quem aceita a escolhida. Cartão custa 5% a mais, calculado no banco.
-- Preço dinâmico: `quote_ride` grava uma cotação por veículo (vale 2 minutos) e o `request_ride` só aceita essa cotação. Nunca há desconto: o fator só sobe quando falta carro. Calculado separado para carro e moto. Falta de carro = pedidos (do mesmo veículo) dos últimos 15 min que passaram de 60 s sem motorista aceitar (ou cancelados depois de esperar isso), só com pelo menos 3 pedidos; a cada 25% de pedidos lentos sobe um degrau de 10% (teto 1,30×), um degrau por vez e no máximo a cada 5 min. Tudo isso fica em `pricing_settings` (e o degrau atual em `city_pricing_state`). Viagem entre cidades não tem fator. O fator é interno: passageiro e motorista só veem o preço final, sem nenhum aviso (o fator de cada corrida fica em `ride_pricing`, só a equipe lê). O acréscimo inteiro fica com o motorista. Liga sozinho; para travar: `update pricing_settings set locked = true, locked_factor = 1.00;` e para destravar `locked = false`.
-- Despacho em ondas: cada pedido vira uma fila (`ride_offers`) do motorista mais próximo ao mais longe, só entre motoristas online, livres, do veículo pedido e que aceitam a forma de pagamento. O primeiro vê o pedido na hora e cada próximo 15 segundos depois (`private.wave_seconds`); recusar libera o próximo na hora. O app pergunta a cada 5 segundos.
-- Avaliação: ao fim da corrida passageiro e motorista dão de 1 a 5 estrelas (`rate_ride`). A nota de prioridade do motorista (`driver_stats`) é calculada com nota ajustada, taxa de aceite e de cancelamento, mas ainda não é usada no despacho: no início o mais próximo chama primeiro.
-- As notas ficam em `ride_ratings`, que o app não consegue ler: cada um só vê a nota que ele mesmo deu (no histórico). Quem recebe a nota não vê a que o outro deu.
-- Chat: `ride_messages`, só entre o passageiro e o motorista da corrida e só enquanto ela está em andamento (`send_message`). No lugar do telefone.
-- Posição: o passageiro vê o carro andando no mapa e o tempo estimado (`driver_positions`); só vale para o motorista da corrida em andamento. Notificações push e localização em segundo plano ainda não existem: dependem do build de desenvolvimento (Etapa 3).
-- Telefone não aparece para passageiro nem motorista: o perfil só libera `id`, `full_name` e `created_at`.
+Tabelas e funções principais: `rides`, `fares` (com `effective_from`), `pricing_settings`, `ride_proposals`, `ride_offers` (fila de motoristas), `price_quotes` (cotação vale 2 minutos), `drivers`, `driver_private` (CPF, nascimento e CNH, só o próprio motorista lê), `fee_schedule`, `driver_fee_periods`, `ride_messages`, `ride_ratings`, `profiles`.
 
-- SOS: botão discreto na corrida (passageiro e motorista), segurar 5 segundos e confirmar; abre o WhatsApp do plantão com a mensagem pronta (corrida, motorista, placa e localização). O número vem de `EXPO_PUBLIC_SOS_WHATSAPP` em `app/.env.local` (fora do Git); quando o painel existir, passa para o banco.
-- Pagamento adiantado (só viagem entre cidades): o motorista escolhe 0% (sem adiantamento), 50% ou 100% já ao aceitar ou propor (`accept_ride`, `propose_extra`, `rides.advance_percent`). O passageiro paga direto a ele, e com 50% ou 100% o `advance_ride` só deixa iniciar depois de `confirm_advance_received` ("recebi"). `set_advance_percent` troca a porcentagem até o "recebi".
-- Ida e volta: o preço sugerido é a ida dobrada mais a espera (30 min a 4 h) pelo valor por minuto da tarifa; fica gravado na cotação (`price_quotes.round_trip`, `wait_minutes`).
-- O motorista vê o passageiro se aproximando até o embarque: o passageiro manda a posição (`update_passenger_location`) e o motorista da corrida lê (`get_passenger_position`), só com a corrida aceita ou com o motorista no local e só posição de até 5 minutos.
-- Chat: número parecido com telefone (8 dígitos ou mais) é trocado por "(número escondido)" antes de salvar (`private.mask_phones`).
-- Busca de endereço no destino: `app/src/lib/geocode.ts` usa o Nominatim (grátis, só ao tocar em Buscar). Antes de publicar, trocar pelo Google Geocoding e Places mexendo só nesse arquivo. A origem já vem na localização do celular.
-- Destinos sugeridos (`app/src/lib/favorites.ts`): o lugar para onde o passageiro já foi 3 vezes (destinos a menos de 100 m contam como o mesmo) aparece na tela de destino. Calculado no app, só com o histórico da própria pessoa.
-- Motorista favorito (`app/src/lib/favoriteDrivers.ts`): cada motorista tem um código de 8 caracteres (`drivers.share_code`), mostrado como QR e link em "Meu QR para clientes". O passageiro lê o QR (câmera) ou digita o código em "Meus motoristas" e o favorito chama primeiro nos pedidos dele (`private.dispatch_ride`); o preço não muda. Abrir o app por um link `/m/CODIGO` (ou `simboracar://motorista/CODIGO` no Expo Go) favorita o motorista sozinho (`app/src/lib/deeplink.ts`).
-- Dashboard de Minhas corridas (`app/src/lib/stats.ts`): faturamento ou gasto, corridas, quilômetros e média por hoje, 7 e 30 dias, calculados no app; o motorista também vê o tempo online (`driver_online_seconds`, sessões em `driver_online_sessions`).
-- Foto do passageiro (`profiles.photo_path`, bucket privado `passenger-photos`, `{id}/avatar.jpg`): selfie obrigatória, só por câmera, reduzida para 640 px no aparelho. O banco recusa pedido de corrida de quem não tem foto (gatilho `rides_require_photo`). O motorista vê foto e nome completo antes de aceitar, só de quem tem pedido visível para ele ou corrida com ele (`private.driver_can_see_photo`, também usada na política do Storage e na leitura do perfil). Em corrida para outra pessoa ele vê a foto de quem pediu e apenas o nome de quem vai andar. A equipe vê a foto na aba Passageiros do painel e cada visualização fica em `photo_views`. Excluir a conta apaga a foto pelo app (o Supabase não deixa apagar por SQL).
-- Bloqueio de passageiro (`driver_blocked_passengers`, `block_passenger`, `unblock_passenger`, `my_blocked_passengers`): o motorista escolhe "Não atender este passageiro" no cartão do pedido e o despacho, os pedidos visíveis e as viagens agendadas passam a pular aquele passageiro para ele. O passageiro não é avisado. Testes do banco: `supabase/tests/fase1_foto_bloqueio.sql` (rodar no SQL Editor; termina em ROLLBACK).
-- Excluir conta (`delete_my_account`): apaga nome, telefone e login; o histórico fica para a outra pessoa sem o nome. Do motorista guarda só o hash do CPF (`deleted_driver_cpfs`), para não repetir o mês grátis.
-- Termos e privacidade: texto provisório em `app/src/legal/general.ts` (e `driverTerms.ts`), à espera do advogado.
+Testes do banco (rodar no SQL Editor, terminam em ROLLBACK): `supabase/tests/fase1_foto_bloqueio.sql`, `fase2_asaas.sql`, `fase3_precos.sql`, `fase5_excluir_conta_painel.sql`.
 
-## Acessibilidade
-
-O app é pensado para um idoso usar sozinho: letras de no mínimo 18 (corpo 20), contraste de pelo menos 4,5:1 (as cores do tema passam), alvos de toque de 56 a 72 px, um botão principal por tela e botão de voltar sempre visível em listas longas (`footer` do `Screen`).
-
-## Publicação como PWA (sem Google Play nem App Store)
-
-O app roda no navegador do celular e é instalado pela própria pessoa: no Android, o Chrome oferece "Instalar o app" (botão no início e em Configurações); no iPhone, só pelo Safari: Compartilhar, "Adicionar à Tela de Início". O cartão `InstallCard` mostra o passo a passo certo para cada caso.
-
-```bash
-cd app
-npm run build:web
-```
-
-Isso gera `app/dist` (`expo export -p web` mais `scripts/pwa-build.mjs`, que liga `manifest.webmanifest`, ícones e `sw.js` ao `index.html`). Hospedagem: Cloudflare, como o painel (HTTPS é obrigatório para GPS, câmera e instalação). Crie um Worker `simbora-app` ligado a este repositório: **Root directory** `app`, **Build command** `npm install && npm run build:web`, **Deploy command** `npx wrangler deploy` (configuração em `app/wrangler.jsonc`, que já manda qualquer rota, como `/m/CODIGO`, para o `index.html` e liga o domínio `app.simboracar.com.br`). Em **Build variables** coloque `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_KEY`, `EXPO_PUBLIC_SOS_WHATSAPP`, `EXPO_PUBLIC_SHARE_BASE_URL` e `NODE_VERSION` = `22` (as `EXPO_PUBLIC_*` são lidas na hora de compilar). Depois ponha `https://app.simboracar.com.br` em `VITE_DOWNLOAD_URL` no painel.
-
-Limites da web: o GPS do motorista só atualiza com o app aberto e a tela ligada (o app pede a tela sempre ligada enquanto ele está online, `app/src/hooks/useWakeLock.ts`); notificações push no iPhone exigem iOS 16.4 ou mais e o app na tela inicial.
-
-## Testes com Expo Go
-
-Rode `npx expo start` dentro da pasta `app`. No iPhone, o Expo Go exige estar logado numa conta Expo (a mesma em `npx expo login` no computador). Contas de teste (código `123456`): `+5588900000001` a `04`.
-
-## Painel da equipe (`painel/`)
-
-Página estática (Vite + React + TypeScript): `npm run build` gera a pasta `dist`, que qualquer hospedagem entrega como está (Cloudflare Pages, Netlify, Vercel). Entra com e-mail e senha do Supabase; o banco só deixa quem está em `public.staff` usar as funções `staff_*` (aprovar motoristas, marcar o checklist, editar tarifas, preços entre cidades, taxa do cartão e o preço dinâmico).
+### Painel (`painel/`)
 
 ```bash
 cd painel
@@ -93,46 +281,26 @@ npm run dev                  # http://localhost:5174
 npm run build
 ```
 
-Cloudflare (Workers com arquivos estáticos): em **Settings > Build**, **Root directory** `painel`, **Build command** `npm run build`, **Deploy command** `npx wrangler deploy` (a configuração está em `painel/wrangler.jsonc`, cujo `name` precisa ser igual ao nome do Worker). Em **Build variables and secrets** coloque `VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY` e `NODE_VERSION` = `22`. As variáveis `VITE_*` são lidas na hora de compilar: depois de mudar uma, faça **Retry build**.
-
-Para liberar alguém: crie o usuário em Authentication > Users e rode no SQL Editor (troque o e-mail):
+Para liberar alguém, crie o usuário em Authentication > Users e rode no SQL Editor (troque o e-mail):
 
 ```sql
 insert into public.staff (user_id)
 select id from auth.users where email = 'equipe@exemplo.com';
 ```
 
-## Trajeto compartilhado, convite do motorista e entrega
+### Publicação (Cloudflare Workers)
 
-- **Trajeto compartilhado:** `create_ride_share` gera um código por corrida; a página `/t/CODIGO` (em `painel/src/public/SharedRide.tsx`, sem login) mostra o primeiro nome do motorista, o veículo, a placa, o status e a posição ao vivo, e vence quando a corrida termina. O SOS leva esse link na mensagem do WhatsApp. O endereço do site vem de `EXPO_PUBLIC_SHARE_BASE_URL` (padrão: o site do painel).
-- **Convite do motorista:** o QR e o link do motorista abrem `/m/CODIGO` (`DriverInvite.tsx`), que explica como baixar o app e usar o código. O endereço do app vem de `VITE_DOWNLOAD_URL` (painel).
-- **Entrega:** "Pedir entrega" na tela inicial. Tamanhos P/M/G, com nome, faixa de peso, exemplo e veículos editáveis no painel (Preços > Tamanhos de pacote; textos de reserva em `app/src/lib/delivery.ts`), preço da tabela do veículo com o desconto de entrega (painel > Preços), quem pede paga direto ao motorista, e o motorista finaliza com o código de 4 dígitos de quem recebe (`complete_delivery`, sem limite de tentativas). Quem pede copia a mensagem pronta para o destinatário (link de acompanhamento, código e convite para o app).
+O app e o painel são sites estáticos. Em cada Worker, ligado a este repositório:
 
-## Mensalidade do motorista
+- **App** (Worker `simbora-app`): **Root directory** `app`, **Build command** `npm install && npm run build:web`, **Deploy command** `npx wrangler deploy` (configuração em `app/wrangler.jsonc`). Variáveis de build: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_KEY`, `EXPO_PUBLIC_SOS_WHATSAPP`, `EXPO_PUBLIC_SHARE_BASE_URL`, `EXPO_PUBLIC_GOOGLE_MAPS_KEY` e `NODE_VERSION` = `22`. A chave do Google só vale para os endereços cadastrados no console do Google.
+- **Painel:** **Root directory** `painel`, **Build command** `npm run build`, **Deploy command** `npx wrangler deploy` (`painel/wrangler.jsonc`). Variáveis: `VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY`, `VITE_DOWNLOAD_URL`, `NODE_VERSION` = `22`. As variáveis `VITE_*` e `EXPO_PUBLIC_*` são lidas **na hora de compilar**: depois de mudar uma, faça **Retry build**.
 
-- **Asaas (Pix ou cartão):** a cobrança de cada mês é gerada no Asaas até 5 dias antes do vencimento (e vale também para mês já vencido) pela Edge Function `asaas` do Supabase (código em `pagamentos/`, ver `pagamentos/README.md`). A função guarda a chave do Asaas como segredo do Supabase, o app pede a cobrança com o login do motorista (`POST .../fee/charge`) e recebe valor, vencimento, Pix copia e cola e link da fatura (cartão). O valor vem sempre do banco (`asaas_charge_context`). Quando o pagamento cai, o Asaas avisa a função (`POST .../webhook`, eventos `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`) e a função baixa o mês (`asaas_mark_paid`, idempotente). Tabelas `asaas_customers` e `fee_charges`; as 4 funções `asaas_*` só a chave de serviço executa. O gerador antigo de Pix estático (`app/src/lib/pix.ts`) e os dados de Pix do painel não são mais usados.
-- **Estado (`private.fee_state`):** `ok`, `pending` (mês aberto, antes do vencimento), `due` (já passou do vencimento: a cobrança insistente começa no primeiro dia de atraso, mas ele ainda recebe pedidos por 5 dias) e `overdue` (passou da tolerância). Em `overdue` o motorista não fica online nem recebe pedidos (`dispatch_ride`, `can_see_offer`, `set_driver_online`).
-- **No app:** com mensalidade vencida o app cobra ao abrir (a tela de pagamento aparece sozinha), mostra um aviso vermelho no início do modo motorista e volta a cobrar a cada 5 minutos (em atraso não dá para dispensar). O motorista paga pelo QR do Pix ou pelo cartão (página do Asaas) e a tela atualiza sozinha quando o pagamento cai (confere a cada 10 s); não há mais comprovante nem "Já paguei". Quando o mês acaba, "Continuar" abre o próximo (`continue_contract`).
-- **No painel:** a equipe vê quem deve e o id da cobrança do Asaas de cada mês. O botão "Confirmar pagamento recebido por fora" (`staff_mark_fee_paid`) fica para quando o dinheiro entrou fora do Asaas.
+O app precisa de **HTTPS** (GPS, câmera e instalação exigem).
 
-## Relatórios da equipe
+### Mensalidade do motorista (Asaas)
 
-Aba **Relatórios** do painel (só leitura, nada aparece para o motorista):
+A cobrança de cada mês é gerada no Asaas (Pix ou cartão) pela Edge Function `asaas` (código e instruções em `pagamentos/`). A função guarda a chave do Asaas como segredo, o app pede a cobrança com o login do motorista e recebe valor, vencimento, Pix copia e cola e o link da fatura. Quando o pagamento cai, o Asaas avisa a função, que baixa o mês. Estados da mensalidade: `ok`, `pending` (antes do vencimento), `due` (venceu, ainda recebe chamados por 5 dias) e `overdue` (passou da tolerância: fica offline e sem chamados).
 
-- **Alerta do mês 3 em diante** (`staff_month3_alerts`): motorista na mensalidade padrão com menos de 10 corridas no mês pede conversa; mês em andamento mostra o ritmo.
-- **Fuga** (`staff_fuga_report`): corridas dos últimos 30 dias contra os 30 anteriores, horas online, mensalidade e custo por corrida; marca "muito online com poucas corridas" (20 h ou mais e 3 corridas ou menos) e queda de mais da metade; lista duplas passageiro e motorista que andavam juntas e pararam. Os limites ficam nas funções `private.fuga_*` e `private.month3_min_rides`.
-- **Reavaliação semestral** (`staff_review_list`, `staff_register_review`): quem vence em 30 dias ou já venceu; registrar a reavaliação marca hoje e a próxima vem 6 meses depois.
+### Guia da equipe
 
-## Viagens agendadas (entre cidades)
-
-- **Passageiro:** na tela "Onde deixar em…" escolhe **Agora** ou **Agendar dia e horário** (`app/src/components/SchedulePicker.tsx`), de 1 hora a 7 dias à frente, no fuso de Fortaleza (`app/src/lib/scheduling.ts`). `request_ride` ganhou `p_scheduled_for` e o preço fixo é gravado no pedido. No início aparece o cartão "Viagem agendada" e a lista de agendadas.
-- **Motorista:** botão **Viagens agendadas** (funciona offline): lista das viagens livres da cidade e do veículo dele (`open_scheduled_rides`), aceite com o adiantamento (`accept_scheduled_ride`) ou proposta de acréscimo, e **Desistir da viagem** (`release_scheduled_ride`, a viagem volta para a lista no valor original). Duas viagens do mesmo motorista a menos de 2 horas uma da outra são recusadas.
-- **Não trava ninguém:** viagem agendada para daqui a mais de 1 hora não conta como corrida em andamento (`private.ride_is_live`) para o motorista nem para o passageiro, não entra no despacho em ondas nem no preço dinâmico, e a posição de ninguém é compartilhada antes disso. Dentro de 1 hora da hora marcada vira corrida normal. Pedido que ninguém aceitou até 15 minutos depois da hora vence (`expire_scheduled_rides`).
-
-## Uma conta, um celular
-
-Quem entra num celular novo "toma" a conta (`claim_session`, `app/src/lib/sessionGuard.ts`): o celular antigo confere a cada 20 segundos (e ao voltar do segundo plano) se ainda é o válido e, se não for, sai sozinho com o aviso. O banco também recusa as gravações do celular antigo (triggers `*_guard_session` em corridas, mensagens, propostas, posições e "online"). Conta com `profiles.multi_session = true` fica fora da regra (contas de teste); a equipe do painel também. Se rodar o SQL no SQL Editor em vez de `db push`, marque a migration como aplicada: `npx supabase migration repair --status applied 20261025050000`.
-
-## Painel: Cadastrados e travar / destravar
-
-A aba **Cadastrados** lista todos os motoristas (`staff_driver_overview`) com telefone, veículo, cidade, corridas (total e 30 dias), nota, última posição e mensalidade, com busca e filtro (aprovados, online agora, aguardando, travados, bloqueados). **Travar conta** (`staff_lock_driver`) suspende o motorista com um motivo que só a equipe vê, deixa ele offline e solta as viagens agendadas que ele tinha (ainda longe da hora); **Destravar** (`staff_unlock_driver`) devolve a conta aprovada, ou "aguardando aprovação" se ele nunca foi aprovado. A aba **Motoristas** (aprovação com checklist) usa as mesmas funções.
+O passo a passo do dia a dia (aprovar motorista, mexer em preço, travar conta) está em `docs/EQUIPE.md`.
