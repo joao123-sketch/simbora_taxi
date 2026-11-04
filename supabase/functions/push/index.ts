@@ -25,7 +25,8 @@ export type PushEvent =
   | 'trip_cancelled_by_driver'
   | 'trip_cancelled_by_passenger'
   | 'trip_confirm_reminder'
-  | 'chat_message';
+  | 'chat_message'
+  | 'test';
 
 export type PushPayload = { title: string; body: string; tag: string; url: string };
 
@@ -48,6 +49,7 @@ const TEXTS: Record<PushEvent, [title: string, body: string, tag: string]> = {
   trip_cancelled_by_passenger: ['Viagem cancelada', 'O passageiro cancelou a viagem.', 'trip-cancelled'],
   trip_confirm_reminder: ['Confirme sua viagem', 'Toque para confirmar a viagem agendada.', 'confirm'],
   chat_message: ['Nova mensagem', 'Toque para ler a mensagem.', 'chat'],
+  test: ['Teste de aviso', 'Está funcionando! Este aviso chegou pelo servidor, com o app fechado.', 'teste'],
 };
 
 export function isPushEvent(value: unknown): value is PushEvent {

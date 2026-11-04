@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
 import { NotifyCard } from '../../components/NotifyCard';
 import type { Coord } from '../../components/PinMap.types';
 import { Screen } from '../../components/Screen';
 import { distanceKm } from '../../lib/geo';
-import { notify } from '../../lib/notify';
+import { notify, testServerPush } from '../../lib/notify';
 import {
   acceptRide,
   claimOpenRequests,
@@ -66,6 +66,8 @@ export function DriverHomeScreen({
   const [notice, setNotice] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Record<number, MyProposal>>({});
   const [toggling, setToggling] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
   const [accepting, setAccepting] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -210,6 +212,18 @@ export function DriverHomeScreen({
   const visible = requests.filter((ride) => proposals[ride.id]?.status !== 'declined');
   const visibleScheduled = scheduledOpen.filter((s) => proposals[s.ride_id]?.status !== 'declined');
 
+  async function runTest() {
+    setTesting(true);
+    setTestMessage(null);
+    try {
+      setTestMessage(await testServerPush());
+    } catch {
+      setTestMessage('Não conseguimos enviar o teste. Tente de novo.');
+    } finally {
+      setTesting(false);
+    }
+  }
+
   return (
     <Screen
       title={online ? 'Você está online' : 'Você está offline'}
@@ -228,6 +242,16 @@ export function DriverHomeScreen({
         </View>
       ) : null}
       <NotifyCard message="Receba um aviso quando chegar um pedido de corrida, mesmo com o app em segundo plano." />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Testar aviso"
+        disabled={testing}
+        onPress={runTest}
+        style={styles.testLink}
+      >
+        <Text style={styles.testLinkText}>🔔 Testar aviso</Text>
+      </Pressable>
+      {testMessage ? <Text style={styles.testMessage}>{testMessage}</Text> : null}
       {online && locationDenied ? (
         <Text style={styles.warning}>Libere a localização para os passageiros te acharem.</Text>
       ) : null}
@@ -277,6 +301,21 @@ export function DriverHomeScreen({
 }
 
 const styles = StyleSheet.create({
+  testLink: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  testLinkText: {
+    fontSize: fontSize.body - 6,
+    color: colors.textMuted,
+  },
+  testMessage: {
+    alignSelf: 'flex-end',
+    textAlign: 'right',
+    fontSize: fontSize.body - 4,
+    color: colors.textMuted,
+  },
   notice: {
     fontSize: fontSize.body,
     fontWeight: '700',

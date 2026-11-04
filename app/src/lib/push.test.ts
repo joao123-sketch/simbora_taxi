@@ -89,3 +89,11 @@ test('handle: evento ou usuário inválido responde 400', async () => {
   assert.equal((await call(h, { event: 'nada', user_id: '11111111-1111-1111-1111-111111111111' })).status, 400);
   assert.equal((await call(h, { event: 'new_offer', user_id: 'x; drop table' })).status, 400);
 });
+
+test('payload: aviso de teste existe e diz que veio do servidor', () => {
+  assert.equal(isPushEvent('test'), true);
+  const p = buildPayload('test');
+  assert.equal(p.title, 'Teste de aviso');
+  assert.match(p.body, /servidor/);
+  assert.equal(p.tag, 'teste');
+});

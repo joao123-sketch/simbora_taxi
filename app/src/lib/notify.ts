@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 import { enablePush } from './push';
+import { supabase } from './supabase';
 
 // Avisos do sistema (notificações do navegador). Os locais (notify) aparecem enquanto o app está
 // aberto ou em segundo plano no aparelho. Com o app fechado (ou suspenso, como no iPhone) quem avisa é
@@ -72,4 +73,19 @@ export async function postponeNotifyInvite(): Promise<void> {
 export async function inviteIsPostponed(): Promise<boolean> {
   const until = await AsyncStorage.getItem(LATER_KEY).catch(() => null);
   return !!until && Number(until) > Date.now();
+}
+
+// Teste do aviso pelo servidor: liga as permissões se faltarem e pede um push de teste, que chega depois de
+// alguns segundos para dar tempo de fechar o app. Devolve o texto para mostrar à pessoa.
+export async function testServerPush(delaySeconds = 10): Promise<string> {
+  const permission = notifyPermission();
+  if (permission === 'unsupported') return 'Este aparelho não mostra avisos aqui. No iPhone, instale o app na tela inicial.';
+  if (permission === 'denied') return 'Os avisos estão bloqueados. Libere em Ajustes do iPhone > Notificações > Simbora Car.';
+  if (permission === 'default' && (await askNotifyPermission()) !== 'granted') {
+    return 'Sem a permissão não dá para receber avisos.';
+  }
+  if (!(await enablePush())) return 'Não conseguimos inscrever este aparelho. Feche e abra o app e tente de novo.';
+  const { error } = await supabase.rpc('send_test_push', { p_delay_seconds: delaySeconds });
+  if (error) return error.message || 'Não conseguimos enviar o teste.';
+  return `Feche o app agora. O aviso chega em ${delaySeconds} segundos.`;
 }
