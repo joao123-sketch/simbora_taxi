@@ -18,3 +18,9 @@ export async function saveMyName(userId: string, name: string): Promise<void> {
   const { error } = await supabase.from('profiles').update({ full_name: name }).eq('id', userId);
   if (error) throw error;
 }
+
+// Caminho da foto de outra pessoa (o banco só deixa ver quem divide uma corrida com você).
+export async function fetchPhotoPath(userId: string): Promise<string | null> {
+  const { data } = await supabase.from('profiles').select('photo_path').eq('id', userId).maybeSingle();
+  return (data as { photo_path: string | null } | null)?.photo_path ?? null;
+}

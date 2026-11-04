@@ -297,6 +297,7 @@ export type RideProposal = {
   vehicle_model: string;
   vehicle_color: string;
   vehicle_plate: string;
+  driver_photo_path?: string | null;
 };
 
 export async function proposeExtra(rideId: number, extra: number, advancePercent: number | null = null): Promise<void> {

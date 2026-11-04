@@ -3,6 +3,8 @@ import { ActivityIndicator, Share, StyleSheet, Text, View } from 'react-native';
 
 import { PassengerAdvanceNote } from '../components/AdvancePayment';
 import { notify } from '../lib/notify';
+import { fetchPhotoPath } from '../lib/profile';
+import { Avatar } from '../components/Avatar';
 import { BigButton } from '../components/BigButton';
 import { RatingPrompt } from '../components/RatingPrompt';
 import { Screen } from '../components/Screen';
@@ -235,6 +237,20 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   }
 
   const hasDriver = ride.driver_name && status !== 'requested';
+  const [driverPhoto, setDriverPhoto] = useState<string | null>(null);
+  useEffect(() => {
+    if (!ride.driver_id || !hasDriver) {
+      setDriverPhoto(null);
+      return;
+    }
+    let alive = true;
+    fetchPhotoPath(ride.driver_id)
+      .then((path) => alive && setDriverPhoto(path))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [ride.driver_id, hasDriver]);
 
   if (chatOpen) {
     return (
@@ -313,7 +329,10 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
 
       {hasDriver ? (
         <View style={styles.driverCard}>
-          <Text style={styles.driverName}>{ride.driver_name}</Text>
+          <View style={styles.driverRow}>
+            <Avatar path={driverPhoto} size={64} />
+            <Text style={styles.driverName}>{ride.driver_name}</Text>
+          </View>
           <Text style={styles.line}>
             {ride.vehicle_model} {ride.vehicle_color}
           </Text>
@@ -330,7 +349,10 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
 
       {proposals.map((proposal) => (
         <View key={proposal.proposal_id} style={styles.driverCard}>
-          <Text style={styles.driverName}>{proposal.driver_name}</Text>
+          <View style={styles.driverRow}>
+            <Avatar path={proposal.driver_photo_path} size={64} />
+            <Text style={styles.driverName}>{proposal.driver_name}</Text>
+          </View>
           <Text style={styles.line}>
             {proposal.vehicle_model} {proposal.vehicle_color} · {proposal.vehicle_plate}
           </Text>
@@ -419,7 +441,13 @@ const styles = StyleSheet.create({
     gap: 4,
     ...cardSurface,
   },
+  driverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   driverName: {
+    flex: 1,
     fontSize: fontSize.body + 6,
     fontWeight: '700',
     color: colors.text,
