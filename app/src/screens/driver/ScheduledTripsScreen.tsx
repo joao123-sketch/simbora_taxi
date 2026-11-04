@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
+import { useChat } from '../../hooks/useChat';
+import { ChatScreen } from '../ChatScreen';
 import { Screen } from '../../components/Screen';
 import { tripEvents, type TripSnapshot } from '../../lib/intercity';
 import { notify } from '../../lib/notify';
@@ -46,6 +48,7 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
   const [proposals, setProposals] = useState<Record<number, MyProposal>>({});
   const [accepting, setAccepting] = useState<number | null>(null);
   const [confirmRelease, setConfirmRelease] = useState<number | null>(null);
+  const [chatRide, setChatRide] = useState<Ride | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Como cada viagem estava da última vez, para avisar (aviso local): proposta escolhida, passageiro
@@ -130,6 +133,10 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
     }
   }
 
+  if (chatRide) {
+    return <TripChat ride={chatRide} myId={userId} onClose={() => setChatRide(null)} />;
+  }
+
   const visible = (open ?? []).filter((s) => proposals[s.ride_id]?.status !== 'declined');
 
   return (
@@ -153,6 +160,7 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
           <Text style={styles.warning}>
             {ride.confirmed_at ? 'Confirmada pelo passageiro.' : 'Aguardando confirmação do passageiro (ele confirma de 12 h até 2 h antes).'}
           </Text>
+          <BigButton label="Mensagens" icon="chatbubbles" onPress={() => setChatRide(ride)} variant="secondary" />
           {confirmRelease === ride.id ? (
             <>
               <Text style={styles.warning}>A viagem volta para a lista e o passageiro é avisado. Confirma?</Text>
@@ -207,6 +215,12 @@ export function ScheduledTripsScreen({ userId, onBack }: Props) {
       ))}
     </Screen>
   );
+}
+
+// Conversa com o passageiro de uma viagem agendada (vale desde que o motorista foi escolhido).
+function TripChat({ ride, myId, onClose }: { ride: Ride; myId: string; onClose: () => void }) {
+  const { messages } = useChat(ride.id, myId, true, true);
+  return <ChatScreen rideId={ride.id} myId={myId} role="driver" messages={messages} canSend onClose={onClose} />;
 }
 
 const styles = StyleSheet.create({

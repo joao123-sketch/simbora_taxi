@@ -325,6 +325,9 @@ details summary {
 }
 
 .invite-code {
+  display: block;
+  color: inherit;
+  text-decoration: none;
   font-size: 34px;
   font-weight: 800;
   letter-spacing: 4px;

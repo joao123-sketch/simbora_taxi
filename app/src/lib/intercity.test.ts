@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { confirmState, nearestCity, proposalLimit, tripEvents, type TripSnapshot } from './intercity';
+import { confirmState, extraFromTotal, nearestCity, proposalLimit, proposalRange, tripEvents, type TripSnapshot } from './intercity';
 
 const trip = '2026-11-10T15:00:00Z';
 const hoursBefore = (h: number) => new Date(new Date(trip).getTime() - h * 3600_000);
@@ -104,4 +104,19 @@ test('tripEvents motorista: passageiro confirmou a viagem', () => {
   const events = tripEvents(accepted, { ...accepted, confirmedAt: '2026-11-10T08:00:00Z' }, 'driver');
   assert.equal(events.length, 1);
   assert.equal(events[0].title, 'Viagem confirmada');
+});
+
+test('proposalRange: 30% para cima e para baixo do valor calculado', () => {
+  assert.deepEqual(proposalRange(100, 0.3), { min: 70, max: 130 });
+  assert.deepEqual(proposalRange(10.55, 0.3), { min: 7.38, max: 13.72 });
+});
+
+test('proposalRange: o valor mínimo nunca fica abaixo de 1 centavo', () => {
+  assert.equal(proposalRange(0.01, 1).min, 0.01);
+});
+
+test('extraFromTotal: diferença entre o valor pedido e o calculado, com sinal', () => {
+  assert.equal(extraFromTotal(100, 120), 20);
+  assert.equal(extraFromTotal(100, 80.5), -19.5);
+  assert.equal(extraFromTotal(100, 100), 0);
 });

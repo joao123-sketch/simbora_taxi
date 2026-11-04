@@ -169,6 +169,7 @@ export function ConfirmRideScreen({ cityId, origin, destination, onRequested, on
       {quotes?.length ? (
         <>
           <Text style={styles.section}>Pagamento</Text>
+          {delivery ? <Text style={styles.extraLine}>Você paga a entrega ao motorista. Quem recebe não paga nada.</Text> : null}
           {options.map((method) => (
             <ChoiceCard
               key={method}

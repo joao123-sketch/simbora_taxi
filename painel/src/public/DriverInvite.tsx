@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { supabase } from '../lib/supabase';
-import { DOWNLOAD_URL } from './links';
+import { APP_URL, DOWNLOAD_URL } from './links';
 
 type Invite = {
   first_name: string;
@@ -15,6 +15,7 @@ type Invite = {
 export function DriverInvitePage({ code }: { code: string }) {
   const clean = code.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
   const [invite, setInvite] = useState<Invite | null | undefined>(undefined);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     supabase.rpc('driver_invite', { p_code: clean }).then(({ data, error }) => {
@@ -48,16 +49,26 @@ export function DriverInvitePage({ code }: { code: string }) {
         <h1>Peça corridas com {invite.first_name}</h1>
         <p className="hint">{vehicle}</p>
         <p>Seu código de motorista:</p>
-        <p className="invite-code">{clean}</p>
+        <a className="invite-code" href={`${APP_URL}/m/${clean}`}>{clean}</a>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            navigator.clipboard?.writeText(clean).then(() => setCopied(true)).catch(() => {});
+          }}
+        >
+          {copied ? 'Código copiado' : 'Copiar código'}
+        </button>
         <ol className="steps">
           <li>{DOWNLOAD_URL ? <a href={DOWNLOAD_URL}>Abra o Simbora Car</a> : 'Abra o Simbora Car no navegador do celular.'} Depois ponha na tela inicial (Android: “Instalar o app”; iPhone: Compartilhar, “Adicionar à Tela de Início”).</li>
           <li>Entre com o seu celular.</li>
           <li>Toque em “Meus motoristas” e digite o código acima, ou leia o QR do motorista.</li>
         </ol>
         <p className="hint">Quando {invite.first_name} estiver online, os seus pedidos chegam primeiro para ele.</p>
-        <a className="btn" href={DOWNLOAD_URL ? `${DOWNLOAD_URL.replace(/\/$/, '')}/m/${clean}` : `simboracar://motorista/${clean}`}>
+        <a className="btn" href={`${APP_URL}/m/${clean}`}>
           Já tenho o app: abrir
         </a>
+        <p className="hint">No iPhone o link abre no Safari. Se já usa o app da tela inicial, copie o código e cole em “Meus motoristas”.</p>
       </div>
     </div>
   );

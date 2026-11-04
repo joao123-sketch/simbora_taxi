@@ -38,6 +38,8 @@ import { ChatScreen } from './ChatScreen';
 type Props = {
   ride: Ride;
   onFinished: () => void;
+  // Viagem agendada ainda longe: a pessoa pode sair da tela e voltar depois pelo início.
+  onBack?: () => void;
 };
 
 const statusText: Record<RideStatus, string> = {
@@ -61,7 +63,7 @@ const deliveryStatusText: Record<RideStatus, string> = {
 const CANCELABLE: RideStatus[] = ['requested', 'accepted', 'arrived'];
 const ACTIVE_FOR_SHARE: RideStatus[] = ['requested', 'accepted', 'arrived', 'in_progress'];
 
-export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
+export function RideStatusScreen({ ride: initialRide, onFinished, onBack }: Props) {
   const [ride, setRide] = useState(initialRide);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +100,9 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
   const scheduledWait = isScheduledWait(ride);
   // Mapa e conversa existem enquanto a corrida está em andamento.
   const inRide = !!ride.driver_id && ['accepted', 'arrived', 'in_progress'].includes(status) && !scheduledWait;
-  const { messages, unread } = useChat(ride.id, ride.passenger_id, inRide, chatOpen);
+  // A conversa vale assim que há motorista (inclusive na viagem agendada, antes do dia).
+  const hasChat = !!ride.driver_id && ['accepted', 'arrived', 'in_progress'].includes(status);
+  const { messages, unread } = useChat(ride.id, ride.passenger_id, hasChat, chatOpen);
   // Enquanto espera o motorista, o passageiro compartilha onde está; ao embarcar para.
   const waitingForDriver = !!ride.driver_id && (status === 'accepted' || status === 'arrived') && !scheduledWait;
   usePassengerLocation(waitingForDriver);
@@ -132,8 +136,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
 
   // Quando a corrida acaba o chat fecha sozinho, para a avaliação aparecer.
   useEffect(() => {
-    if (!inRide) setChatOpen(false);
-  }, [inRide]);
+    if (!hasChat) setChatOpen(false);
+  }, [hasChat]);
   const waitingProposals = status === 'requested' && isIntercity(ride);
 
   // Avisos da viagem entre cidades: nova proposta, cancelamento, viagem sem efeito.
@@ -259,7 +263,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
         myId={ride.passenger_id}
         role="passenger"
         messages={messages}
-        canSend={inRide}
+        canSend={hasChat}
         onClose={() => setChatOpen(false)}
       />
     );
@@ -275,6 +279,7 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
             : (delivery ? deliveryStatusText : statusText)[status]
       }
       error={error}
+      onBack={scheduledWait ? onBack : undefined}
       backdrop={{
         center: { lat: ride.origin_lat, lng: ride.origin_lng },
         line: !driverPosition,
@@ -357,8 +362,8 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
             {proposal.vehicle_model} {proposal.vehicle_color} · {proposal.vehicle_plate}
           </Text>
           <Text style={styles.price}>
-            {proposal.extra_amount > 0
-              ? `Propõe ${formatMoney(ride.estimated_price + proposal.extra_amount)} (+ ${formatMoney(proposal.extra_amount)})`
+            {proposal.extra_amount !== 0
+              ? `Propõe ${formatMoney(ride.estimated_price + proposal.extra_amount)} (${proposal.extra_amount > 0 ? '+' : '-'} ${formatMoney(Math.abs(proposal.extra_amount))})`
               : `Aceita o valor: ${formatMoney(ride.estimated_price)}`}
           </Text>
           {proposal.advance_percent === 0 ? (
@@ -396,11 +401,13 @@ export function RideStatusScreen({ ride: initialRide, onFinished }: Props) {
         <Text style={styles.price}>
           {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}
         </Text>
-        {ride.extra_amount > 0 ? (
-          <Text style={styles.line}>Já inclui o acréscimo combinado de {formatMoney(ride.extra_amount)}</Text>
+        {ride.extra_amount !== 0 ? (
+          <Text style={styles.line}>
+            Já inclui o {ride.extra_amount > 0 ? 'acréscimo' : 'desconto'} combinado de {formatMoney(Math.abs(ride.extra_amount))}
+          </Text>
         ) : null}
       </View>
-      {inRide ? (
+      {hasChat ? (
         <BigButton label={unread > 0 ? `Mensagens (${unread} nova${unread > 1 ? 's' : ''})` : 'Mensagens'} onPress={() => setChatOpen(true)} />
       ) : null}
 

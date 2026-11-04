@@ -411,7 +411,7 @@ export function PassengerFlow({ userId, name }: Props) {
       );
 
     case 'ride':
-      return <RideStatusScreen ride={step.ride} onFinished={load} />;
+      return <RideStatusScreen ride={step.ride} onFinished={load} onBack={goHome} />;
 
     case 'settings':
       return (

@@ -6,6 +6,20 @@ export function proposalLimit(estimatedPrice: number, cap: number): number {
   return Math.round(estimatedPrice * cap * 100) / 100;
 }
 
+// Valores que o motorista pode pedir no total: o teto do painel para cima e para baixo do valor calculado.
+export function proposalRange(estimatedPrice: number, cap: number): { min: number; max: number } {
+  const limit = proposalLimit(estimatedPrice, cap);
+  return {
+    min: Math.max(Math.round((estimatedPrice - limit) * 100) / 100, 0.01),
+    max: Math.round((estimatedPrice + limit) * 100) / 100,
+  };
+}
+
+// Quanto o valor pedido difere do calculado (negativo = desconto). É isso que o banco guarda na proposta.
+export function extraFromTotal(estimatedPrice: number, total: number): number {
+  return Math.round((total - estimatedPrice) * 100) / 100;
+}
+
 // A confirmação da viagem agendada: libera 12 horas antes e o prazo vai até 2 horas antes.
 export type ConfirmState = 'not_needed' | 'too_early' | 'open' | 'expired';
 

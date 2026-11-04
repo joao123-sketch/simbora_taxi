@@ -244,8 +244,15 @@ export function DriverRideScreen({ ride: initialRide, position, onFinished }: Pr
           {ride.status === 'completed' ? 'Receba ' : ''}
           {formatMoney(ride.estimated_price)} · {paymentLabel[ride.payment_method]}
         </Text>
-        {ride.extra_amount > 0 ? (
-          <Text style={styles.line}>Já inclui o acréscimo combinado de {formatMoney(ride.extra_amount)}</Text>
+        {delivery ? (
+          <Text style={styles.place}>
+            Cobre a entrega de {ride.passenger_name ?? 'quem pediu'}, que pediu. Quem recebe não paga nada.
+          </Text>
+        ) : null}
+        {ride.extra_amount !== 0 ? (
+          <Text style={styles.line}>
+            Já inclui o {ride.extra_amount > 0 ? 'acréscimo' : 'desconto'} combinado de {formatMoney(Math.abs(ride.extra_amount))}
+          </Text>
         ) : null}
       </View>
 

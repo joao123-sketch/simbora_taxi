@@ -6,7 +6,7 @@ import { Avatar } from '../../components/Avatar';
 import { BigInput } from '../../components/BigInput';
 import { ChoiceCard } from '../../components/ChoiceCard';
 import { isDelivery, packageLabel } from '../../lib/delivery';
-import { proposalLimit } from '../../lib/intercity';
+import { extraFromTotal, proposalRange } from '../../lib/intercity';
 import { fetchProposalCap, formatScheduled } from '../../lib/scheduling';
 import { formatKm } from '../../lib/geo';
 import {
@@ -49,10 +49,11 @@ export function OpenRequestCard({
 }: Props) {
   const [confirmingBlock, setConfirmingBlock] = useState(false);
   const [proposing, setProposing] = useState(false);
-  const [extraText, setExtraText] = useState('');
+  const [totalText, setTotalText] = useState('');
   const [sending, setSending] = useState(false);
   const [advance, setAdvance] = useState<number | null>(null);
-  const extra = parseMoney(extraText);
+  // O motorista digita o valor total que quer cobrar; o banco guarda a diferença para o calculado (pode ser desconto).
+  const total = parseMoney(totalText);
   // O teto da proposta (do painel): quanto a mais o motorista pode pedir sobre o valor calculado.
   const [cap, setCap] = useState(0.3);
   useEffect(() => {
@@ -60,14 +61,15 @@ export function OpenRequestCard({
       .then(setCap)
       .catch(() => {});
   }, []);
-  const limit = proposalLimit(ride.estimated_price, cap);
-  const extraOk = extra !== null && extra > 0 && extra <= limit;
+  const range = proposalRange(ride.estimated_price, cap);
+  const extra = total === null ? null : extraFromTotal(ride.estimated_price, total);
+  const totalOk = total !== null && extra !== 0 && total >= range.min && total <= range.max;
   const waiting = proposal?.status === 'pending';
   // Viagem para outra cidade: o adiantamento é escolhido junto com o aceite.
   const intercity = isIntercity(ride);
   const needsAdvance = intercity && advance === null;
   // O adiantamento incide sobre o valor final (com o acréscimo, se houver).
-  const baseForAdvance = proposing ? ride.estimated_price + (extra ?? 0) : ride.estimated_price;
+  const baseForAdvance = proposing && total !== null ? total : ride.estimated_price;
 
   const advanceChoices = intercity ? (
     <View style={styles.advance}>
@@ -90,7 +92,7 @@ export function OpenRequestCard({
     try {
       await onPropose(extra, advance);
       setProposing(false);
-      setExtraText('');
+      setTotalText('');
     } finally {
       setSending(false);
     }
@@ -147,6 +149,9 @@ export function OpenRequestCard({
           <Text style={styles.placeText}>{packageLabel(ride.package_size)}</Text>
           <Text style={styles.line}>Quem recebe: {ride.recipient_name}</Text>
           {ride.recipient_note ? <Text style={styles.line}>Recado: {ride.recipient_note}</Text> : null}
+          <Text style={styles.warning}>
+            Quem paga é {ride.passenger_name ?? 'quem pediu'}, que pediu a entrega. Não cobre de quem recebe.
+          </Text>
           <Text style={styles.warning}>Para finalizar, peça o código a quem recebe.</Text>
         </View>
       ) : null}
@@ -174,7 +179,7 @@ export function OpenRequestCard({
           <Text style={styles.placeLabel}>Deixar em</Text>
           <Text style={styles.placeText}>{ride.destination_place}</Text>
           <Text style={styles.warning}>
-            O passageiro quer ser deixado fora do centro. Aceite pelo valor, ou proponha um acréscimo.
+            O passageiro quer ser deixado fora do centro. Aceite pelo valor, ou proponha outro valor.
           </Text>
         </View>
       ) : null}
@@ -182,7 +187,7 @@ export function OpenRequestCard({
       {waiting ? (
         <>
           <Text style={styles.waiting}>
-            {proposal.extra_amount > 0
+            {proposal.extra_amount !== 0
               ? `Proposta de ${formatMoney(ride.estimated_price + proposal.extra_amount)}`
               : `Você aceitou o valor de ${formatMoney(ride.estimated_price)}`}
             {proposal.advance_percent === 0
@@ -197,28 +202,34 @@ export function OpenRequestCard({
         </>
       ) : proposing ? (
         <>
-          <Text style={styles.line}>Quanto a mais você quer pedir? (em reais)</Text>
+          <Text style={styles.line}>Quanto você quer cobrar no total? (em reais)</Text>
           <Text style={styles.warning}>
-            No máximo + {formatMoney(limit)} (total {formatMoney(ride.estimated_price + limit)}).
+            O valor calculado é {formatMoney(ride.estimated_price)}. Você pode pedir de {formatMoney(range.min)} até {formatMoney(range.max)}.
           </Text>
           <BigInput
-            accessibilityLabel="Acréscimo em reais"
-            placeholder="20,00"
+            accessibilityLabel="Valor total em reais"
+            placeholder={String(Math.round(ride.estimated_price)).replace('.', ',')}
             keyboardType="decimal-pad"
-            value={extraText}
-            onChangeText={setExtraText}
+            value={totalText}
+            onChangeText={setTotalText}
           />
-          {extra !== null && extra > limit ? (
+          {total !== null && (total < range.min || total > range.max) ? (
             <Text style={styles.warning}>Esse valor passa do limite.</Text>
           ) : null}
-          {extra !== null ? (
-            <Text style={styles.line}>Total para o passageiro: {formatMoney(ride.estimated_price + extra)}</Text>
+          {total !== null && extra === 0 ? (
+            <Text style={styles.warning}>Esse é o valor calculado. Use o botão Aceitar.</Text>
+          ) : null}
+          {extra !== null && extra !== 0 ? (
+            <Text style={styles.line}>
+              Total para o passageiro: {formatMoney(ride.estimated_price + extra)} ({extra > 0 ? '+ ' : '- '}
+              {formatMoney(Math.abs(extra))})
+            </Text>
           ) : null}
           {advanceChoices}
           <BigButton
             label="Enviar proposta"
             onPress={send}
-            disabled={!extraOk || needsAdvance}
+            disabled={!totalOk || needsAdvance}
             loading={sending}
           />
           <BigButton label="Voltar" onPress={() => setProposing(false)} variant="link" />
