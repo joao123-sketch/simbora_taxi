@@ -14,10 +14,12 @@ type Props = {
   onBack?: () => void;
   // Foto atual, para mostrar enquanto ela não tira outra.
   currentPath?: string | null;
+  // Texto de apoio; o padrão fala com o passageiro.
+  subtitle?: string;
 };
 
 // Selfie obrigatória: o motorista vê esta foto antes de aceitar a corrida.
-export function PhotoScreen({ userId, onSaved, onBack, currentPath }: Props) {
+export function PhotoScreen({ userId, onSaved, onBack, currentPath, subtitle }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -53,7 +55,7 @@ export function PhotoScreen({ userId, onSaved, onBack, currentPath }: Props) {
   return (
     <Screen
       title="Sua foto"
-      subtitle="O motorista vê esta foto antes de aceitar a corrida. Tire uma selfie de rosto, com boa luz."
+      subtitle={subtitle ?? 'O motorista vê esta foto antes de aceitar a corrida. Tire uma selfie de rosto, com boa luz.'}
       error={error}
       onBack={onBack}
     >
