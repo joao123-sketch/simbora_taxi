@@ -1,7 +1,7 @@
 type Props = {
   onCapture: (uri: string) => void;
   onCancel: () => void;
-  onUnavailable: (reason: 'denied' | 'missing') => void;
+  onUnavailable: (reason: 'denied' | 'missing' | 'busy') => void;
 };
 
 // Fora do navegador (Expo Go, só para desenvolver) a foto vem do seletor do sistema:

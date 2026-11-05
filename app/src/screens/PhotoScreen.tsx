@@ -71,7 +71,9 @@ export function PhotoScreen({ userId, onSaved, onBack, currentPath, subtitle }: 
             setError(
               reason === 'missing'
                 ? 'Não encontramos uma câmera neste aparelho. Use um celular ou ligue uma câmera.'
-                : 'A câmera está bloqueada. Permita o acesso à câmera no navegador e tente de novo.',
+                : reason === 'busy'
+                  ? 'A câmera ainda estava ocupada. Espere um instante e toque em Tirar de novo.'
+                  : 'A câmera está bloqueada. Permita o acesso à câmera no navegador e tente de novo.',
             );
           }}
         />
@@ -83,7 +85,7 @@ export function PhotoScreen({ userId, onSaved, onBack, currentPath, subtitle }: 
           <Avatar path={currentPath} size={160} />
         )}
       </View>
-      {preview ? (
+      {cameraOpen ? null : preview ? (
         <>
           <BigButton label="Usar esta foto" icon="checkmark" onPress={save} loading={busy} />
           <BigButton label="Tirar de novo" icon="camera" onPress={take} variant="secondary" disabled={busy} />

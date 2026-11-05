@@ -8,7 +8,8 @@ type Props = {
   onCapture: (uri: string) => void;
   onCancel: () => void;
   // A câmera não abriu (sem câmera no aparelho ou a pessoa não deixou usar).
-  onUnavailable: (reason: 'denied' | 'missing') => void;
+  // 'busy': a câmera ainda estava presa pela abertura anterior (acontece no iPhone ao tirar de novo).
+  onUnavailable: (reason: 'denied' | 'missing' | 'busy') => void;
 };
 
 // Câmera ao vivo no navegador (computador ou celular), com a câmera da frente.
@@ -20,27 +21,43 @@ export function SelfieCamera({ onCapture, onCancel, onUnavailable }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 } }, audio: false })
-      .then((stream) => {
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
-        const video = videoRef.current;
-        if (video) {
-          video.srcObject = stream;
-          video.play().then(() => setReady(true)).catch(() => setReady(true));
-        }
-      })
-      .catch((e: { name?: string }) => {
-        if (!cancelled) onUnavailable(e?.name === 'NotFoundError' || e?.name === 'OverconstrainedError' ? 'missing' : 'denied');
-      });
+    let retry: ReturnType<typeof setTimeout> | null = null;
+
+    const open = (attempt: number) => {
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 } }, audio: false })
+        .then((stream) => {
+          if (cancelled) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          streamRef.current = stream;
+          const video = videoRef.current;
+          if (video) {
+            video.srcObject = stream;
+            video.play().then(() => setReady(true)).catch(() => setReady(true));
+          }
+        })
+        .catch((e: { name?: string }) => {
+          if (cancelled) return;
+          const name = e?.name;
+          // Logo depois de fechar a câmera, o iPhone ainda a segura por um instante: tenta de novo.
+          const busy = name === 'NotReadableError' || name === 'AbortError' || name === 'TrackStartError';
+          if (busy && attempt < 4) {
+            retry = setTimeout(() => open(attempt + 1), 700);
+            return;
+          }
+          onUnavailable(busy ? 'busy' : name === 'NotFoundError' || name === 'OverconstrainedError' ? 'missing' : 'denied');
+        });
+    };
+    open(0);
+
     return () => {
       cancelled = true;
+      if (retry) clearTimeout(retry);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
     };
     // Abre a câmera uma vez.
     // eslint-disable-next-line react-hooks/exhaustive-deps
