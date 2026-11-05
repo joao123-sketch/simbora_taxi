@@ -5,5 +5,6 @@ import { defineConfig } from 'vite';
 // hospedagem (Cloudflare Pages, Netlify, Vercel) entrega como está.
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5174, strictPort: true },
+  // /termos e /privacidade leem o texto de app/src/legal, para ficar igual ao do app.
+  server: { port: 5174, strictPort: true, fs: { allow: ['..'] } },
 });

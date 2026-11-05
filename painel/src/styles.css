@@ -313,6 +313,20 @@ details summary {
   gap: 12px;
 }
 
+.legal h1 {
+  margin: 8px 0 4px;
+}
+
+.legal h2 {
+  font-size: 18px;
+  margin: 16px 0 4px;
+}
+
+.legal p {
+  margin: 0;
+  line-height: 1.5;
+}
+
 .share-map {
   height: 380px;
   border-radius: 12px;

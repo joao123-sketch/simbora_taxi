@@ -2,7 +2,7 @@
 // acordo com o que o app faz hoje. Precisa da revisão de um advogado antes do
 // lançamento (principalmente o contato do responsável pelos dados e o prazo de
 // guarda). Ao mudar o texto, mude a versão.
-export const GENERAL_LEGAL_VERSION = 'rascunho-1';
+export const GENERAL_LEGAL_VERSION = 'rascunho-2';
 
 export type LegalSection = { title: string; text: string };
 
@@ -43,12 +43,20 @@ export const TERMS: LegalSection[] = [
     title: 'Mudanças',
     text: 'Estes termos podem mudar. Quando mudarem de forma importante, o app avisa antes de você continuar usando.',
   },
+  {
+    title: 'Foro',
+    text: 'Qualquer questão sobre estes termos será resolvida no foro da comarca de Guaraciaba do Norte, no Ceará.',
+  },
 ];
 
 export const PRIVACY: LegalSection[] = [
   {
     title: 'Que dados usamos',
-    text: 'Seu nome e o número do celular. Sua localização, para marcar onde você está e, para o motorista, enquanto ele está online. O histórico das suas corridas e as mensagens do chat da corrida. Do motorista, também CPF, data de nascimento, CNH e dados do veículo, guardados em área privada.',
+    text: 'Seu nome e o número do celular. Sua foto de perfil, tirada pela câmera. Sua localização, para marcar onde você está e, para o motorista, enquanto ele está online. O histórico das suas corridas e as mensagens do chat da corrida. Do motorista, também CPF, data de nascimento, CNH e dados do veículo, guardados em área privada.',
+  },
+  {
+    title: 'Quem ajuda a fazer o app funcionar',
+    text: 'Para o app funcionar usamos serviços de terceiros, que recebem só o necessário: Supabase (guarda a conta, as corridas, as fotos e as mensagens), Google Maps (mapa, busca de endereço e rota: recebe os endereços que você digita e a localização), a Comtele (envia o código de entrada para o seu celular), o serviço de avisos do seu navegador, o Web Push (entrega os avisos com o app fechado), Cloudflare (hospeda o app) e, para o motorista, Asaas (cobra a mensalidade).',
   },
   {
     title: 'Para que usamos',
@@ -60,10 +68,10 @@ export const PRIVACY: LegalSection[] = [
   },
   {
     title: 'Por quanto tempo guardamos',
-    text: 'Guardamos o histórico enquanto a sua conta existir. Quando você excluir a conta, apagamos seus dados pessoais, menos o que a lei mandar guardar. Do motorista guardamos só um código irreversível do CPF, para não repetir o mês grátis.',
+    text: 'Guardamos o mínimo possível. O histórico fica enquanto a sua conta existir. Quando você excluir a conta, apagamos todos os seus dados pessoais (nome, telefone, foto e login), menos o que a lei mandar guardar. As corridas antigas continuam para a outra pessoa, mas sem o seu nome. Do motorista guardamos só um código irreversível do CPF, para não repetir o mês grátis.',
   },
   {
     title: 'Seus direitos',
-    text: 'Pela Lei Geral de Proteção de Dados você pode saber quais dados temos, corrigir, pedir a exclusão e tirar o seu consentimento. É só pedir à equipe do Simbora Car. Contato do responsável pelos dados: a definir antes do lançamento.',
+    text: 'Pela Lei Geral de Proteção de Dados você pode saber quais dados temos, corrigir, pedir a exclusão e tirar o seu consentimento. É só pedir à equipe do Simbora Car. Contato do responsável pelos dados: telefone (88) 98894-1408.',
   },
 ];

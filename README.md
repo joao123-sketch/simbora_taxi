@@ -226,7 +226,7 @@ Página web (`painel/`, Vite + React + TypeScript). Entra com e-mail e senha; s�
 
 - `/t/CODIGO` — trajeto compartilhado (sem login).
 - `/m/CODIGO` — convite do motorista: explica como baixar o app e usar o código. Abrir o app por esse link favorita o motorista sozinho.
-- Os **termos de uso e a política de privacidade** ficam dentro do app (tela de login e Configurações), com texto provisório à espera do advogado. Ainda não há páginas públicas `/termos` e `/privacidade`.
+- `/termos` (termos de uso e do motorista) e `/privacidade` — mesmo texto do app (`app/src/legal`), sem login. O texto também aparece dentro do app (login e Configurações).
 
 ---
 
