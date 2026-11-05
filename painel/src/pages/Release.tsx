@@ -1,69 +1,70 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { friendlyError, supabase } from '../lib/supabase';
 
 type Released = { code: string | null; code_at: string | null; expires_at: string };
 
-const POLL_MS = 2000;
-const POLL_TRIES = 22;
+const POLL_MS = 3000;
 
-// Para quem não recebe o SMS (ex.: chip de operadora pequena): a equipe digita o número, o sistema pede o código
-// ao login e mostra aqui, em vez de mandar o SMS. A equipe passa o código à pessoa por WhatsApp ou ligação.
+function timeOf(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+}
+
+// Para quem não recebe o SMS (ex.: chip de operadora pequena): a equipe libera o número aqui e a pessoa pede o
+// código no app. Em vez de ir por SMS, o código aparece nesta tela (sempre o último pedido). A equipe passa o
+// código à pessoa por WhatsApp ou ligação.
 export function ReleasePage() {
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
-  const [code, setCode] = useState<string | null>(null);
   const [shownPhone, setShownPhone] = useState<string | null>(null);
+  const [released, setReleased] = useState<Released | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [timedOut, setTimedOut] = useState(false);
-  const alive = useRef(true);
-
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
 
   async function release() {
     setBusy(true);
     setError(null);
-    setCode(null);
-    setTimedOut(false);
+    setReleased(null);
     const { error: rpcError } = await supabase.rpc('staff_release_phone', { p_phone: phone });
+    setBusy(false);
     if (rpcError) {
-      setBusy(false);
       setError(friendlyError(rpcError));
       return;
     }
     setShownPhone(phone);
-
-    // O código chega ao banco em alguns segundos: o login chama o hook, que o guarda.
-    for (let i = 0; i < POLL_TRIES && alive.current; i++) {
-      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-      const { data, error: readError } = await supabase.rpc('staff_released_code', { p_phone: phone });
-      if (readError) {
-        setError(friendlyError(readError));
-        break;
-      }
-      const row = (data as Released[] | null)?.[0];
-      if (row?.code) {
-        if (alive.current) setCode(row.code);
-        setBusy(false);
-        return;
-      }
-    }
-    if (alive.current) {
-      setBusy(false);
-      setTimedOut(true);
-    }
   }
 
-  async function cancel() {
+  // Enquanto o número está liberado, olha a cada 3 s se chegou (ou mudou) o código.
+  useEffect(() => {
+    if (!shownPhone) return;
+    let alive = true;
+    const look = async () => {
+      const { data, error: readError } = await supabase.rpc('staff_released_code', { p_phone: shownPhone });
+      if (!alive) return;
+      if (readError) {
+        setError(friendlyError(readError));
+        return;
+      }
+      const row = (data as Released[] | null)?.[0] ?? null;
+      setReleased(row);
+      if (!row) {
+        // A liberação venceu (30 minutos).
+        setShownPhone(null);
+        setError('A liberação venceu. Libere o número de novo.');
+      }
+    };
+    look();
+    const timer = setInterval(look, POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [shownPhone]);
+
+  async function finish() {
     if (shownPhone) await supabase.rpc('staff_cancel_release', { p_phone: shownPhone });
-    setCode(null);
     setShownPhone(null);
-    setTimedOut(false);
+    setReleased(null);
   }
 
   return (
@@ -71,8 +72,9 @@ export function ReleasePage() {
       <div>
         <h1>Liberar número</h1>
         <p className="hint">
-          Para quem não recebe o SMS de entrada. Digite o celular da pessoa: o código aparece aqui em vez de ir por SMS.
-          Passe o código a ela por WhatsApp ou ligação.
+          Para quem não recebe o SMS de entrada. Libere o celular da pessoa aqui e peça para ela tocar em “Receber
+          código” no app. Em vez de ir por SMS, o código aparece nesta tela. Passe o código a ela por WhatsApp ou
+          ligação.
         </p>
       </div>
 
@@ -89,32 +91,35 @@ export function ReleasePage() {
           />
         </label>
         <button type="button" className="btn" disabled={busy || !phone.trim()} onClick={release}>
-          {busy ? 'Pedindo o código...' : 'Gerar código de entrada'}
+          {busy ? 'Liberando...' : 'Liberar este número'}
         </button>
         {error ? <div className="msg error">{error}</div> : null}
       </div>
 
-      {code ? (
+      {shownPhone ? (
         <div className="card">
-          <p className="hint">Código para {shownPhone}:</p>
-          <p style={{ fontSize: 44, fontWeight: 800, letterSpacing: 8, margin: '8px 0' }}>{code}</p>
-          <ol className="steps">
-            <li>Peça para a pessoa abrir o app e digitar o número dela (se ainda não digitou).</li>
-            <li>Na tela “Digite o código”, ela digita estes 6 números.</li>
-          </ol>
-          <p className="hint">
-            O código vale por até 1 hora. Se a pessoa pedir outro código no app, este deixa de valer: gere de novo aqui.
-          </p>
-          <button type="button" className="btn" onClick={cancel}>
+          <p className="hint">Número liberado: {shownPhone}</p>
+          {released?.code ? (
+            <>
+              <p style={{ fontSize: 44, fontWeight: 800, letterSpacing: 8, margin: '8px 0' }}>{released.code}</p>
+              {released.code_at ? <p className="hint">Código pedido às {timeOf(released.code_at)}.</p> : null}
+              <ol className="steps">
+                <li>Passe estes 6 números à pessoa.</li>
+                <li>Ela digita na tela “Digite o código” do app, sem pedir outro código.</li>
+              </ol>
+              <p className="hint">
+                Se ela tocar em “Reenviar código”, este número muda sozinho aqui: use sempre o que está na tela.
+              </p>
+            </>
+          ) : (
+            <p className="hint">
+              Aguardando a pessoa pedir o código no app. Peça para ela digitar o número e tocar em “Receber código”
+              (ou “Reenviar código”). Ele aparece aqui em poucos segundos.
+            </p>
+          )}
+          <button type="button" className="btn" onClick={finish}>
             Terminei
           </button>
-        </div>
-      ) : null}
-
-      {timedOut ? (
-        <div className="msg error">
-          O código não apareceu. Se a pessoa acabou de pedir um código no app, espere 1 minuto e gere de novo. Se
-          continuar, veja Authentication e Edge Functions (send-sms) no Supabase.
         </div>
       ) : null}
     </>

@@ -1,6 +1,7 @@
 -- Liberar número pelo painel: quando o SMS não chega (ex.: chip de operadora pequena), a equipe digita o
 -- número no painel e recebe na tela o código de entrada para passar à pessoa por WhatsApp ou ligação.
 --
+-- (Depois, a migration 20261112010000 simplificou: a equipe só libera o número e a própria pessoa pede o código no app.)
 -- Como funciona:
 --   1. staff_release_phone(telefone) marca o número como liberado por 30 minutos e pede o código ao Supabase Auth
 --      (o mesmo pedido que o app faz), pelo pg_net.
