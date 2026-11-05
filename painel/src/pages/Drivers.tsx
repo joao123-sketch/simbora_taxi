@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { formatCpf, formatDate, vehicleLabel } from '../lib/format';
+import { formatCpf, formatDate, todayIso, vehicleLabel } from '../lib/format';
 import { friendlyError, supabase } from '../lib/supabase';
 
 type Status = 'pending' | 'approved' | 'suspended' | 'blocked';
@@ -36,12 +36,17 @@ type Driver = {
   leg_guard_ok: boolean | null;
   line_cutter_ok: boolean | null;
   notes: string | null;
+  insurance_ok: boolean | null;
+  criminal_record_valid_until: string | null;
+  crlv_valid_until: string | null;
+  insurance_valid_until: string | null;
 };
 
 type CheckKey =
   | 'cnh_ok'
   | 'criminal_record_ok'
   | 'crlv_ok'
+  | 'insurance_ok'
   | 'inspection_ok'
   | 'helmets_ok'
   | 'vest_delivered'
@@ -55,12 +60,13 @@ const statusLabel: Record<Status, string> = {
   blocked: 'Bloqueado',
 };
 
-// O que a equipe confere antes de aprovar. Os quatro primeiros valem para todos;
+// O que a equipe confere antes de aprovar. Os cinco primeiros valem para todos;
 // os outros quatro, só para moto.
 const CAR_CHECKS: { key: CheckKey; label: string }[] = [
   { key: 'cnh_ok', label: 'CNH válida, com a observação EAR' },
   { key: 'criminal_record_ok', label: 'Antecedentes criminais' },
   { key: 'crlv_ok', label: 'Documento do veículo (CRLV) em dia' },
+  { key: 'insurance_ok', label: 'Seguro de acidentes pessoais de passageiros (APP)' },
   { key: 'inspection_ok', label: 'Vistoria do veículo' },
 ];
 const MOTO_CHECKS: { key: CheckKey; label: string }[] = [
@@ -69,6 +75,14 @@ const MOTO_CHECKS: { key: CheckKey; label: string }[] = [
   { key: 'leg_guard_ok', label: 'Protetor de pernas' },
   { key: 'line_cutter_ok', label: 'Aparador de linha' },
 ];
+
+// Documentos que têm validade: a equipe informa até quando vale (a primeira aprovação exige a data e que não esteja vencida).
+type DateKey = 'criminal_record_valid_until' | 'crlv_valid_until' | 'insurance_valid_until';
+const VALIDITY: Partial<Record<CheckKey, DateKey>> = {
+  criminal_record_ok: 'criminal_record_valid_until',
+  crlv_ok: 'crlv_valid_until',
+  insurance_ok: 'insurance_valid_until',
+};
 
 const FILTERS: { value: Status | 'all'; label: string }[] = [
   { value: 'pending', label: 'Aguardando aprovação' },
@@ -106,7 +120,10 @@ export function DriversPage() {
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <div>
           <h1>Motoristas</h1>
-          <p className="hint">Confira os documentos na reunião, marque o checklist e aprove.</p>
+          <p className="hint">
+            Confira os documentos na reunião, marque o checklist (informe até quando valem antecedentes, CRLV e seguro) e
+            aprove.
+          </p>
         </div>
         <label className="field" style={{ minWidth: 240 }}>
           Mostrar
@@ -119,6 +136,8 @@ export function DriversPage() {
           </select>
         </label>
       </div>
+
+      <ExpiringDocuments />
 
       {error ? <div className="msg error">{error}</div> : null}
       {drivers === null ? <p className="hint">Carregando...</p> : null}
@@ -138,12 +157,17 @@ function DriverCard({ driver, onChanged }: { driver: Driver; onChanged: () => Pr
   const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState(driver.notes ?? '');
   const [checks, setChecks] = useState<Record<string, boolean>>({});
+  const [dates, setDates] = useState<Record<string, string>>({});
 
   // Valores marcados agora (já aparecem na tela antes de o banco responder).
   const value = (key: CheckKey) => checks[key] ?? driver[key] ?? false;
   const isMoto = driver.vehicle_type === 'moto';
   const items = isMoto ? [...CAR_CHECKS, ...MOTO_CHECKS] : CAR_CHECKS;
-  const complete = items.every((item) => value(item.key)) && driver.terms_accepted && driver.cpf !== null;
+  const dateValue = (key: DateKey) => dates[key] ?? driver[key] ?? '';
+  const today = todayIso();
+  // Cada documento com validade precisa de data e não pode estar vencido.
+  const datesOk = Object.values(VALIDITY).every((key) => !!key && dateValue(key) !== '' && dateValue(key) >= today);
+  const complete = items.every((item) => value(item.key)) && datesOk && driver.terms_accepted && driver.cpf !== null;
 
   async function toggle(key: CheckKey) {
     const next = !value(key);
@@ -157,6 +181,16 @@ function DriverCard({ driver, onChanged }: { driver: Driver; onChanged: () => Pr
       setChecks((c) => ({ ...c, [key]: !next }));
       setError(friendlyError(rpcError));
     }
+  }
+
+  async function saveDate(key: DateKey, text: string) {
+    setDates((d) => ({ ...d, [key]: text }));
+    setError(null);
+    const { error: rpcError } = await supabase.rpc('staff_set_checklist', {
+      p_driver: driver.driver_id,
+      p_patch: { [key]: text },
+    });
+    if (rpcError) setError(friendlyError(rpcError));
   }
 
   async function saveNotes() {
@@ -259,12 +293,30 @@ function DriverCard({ driver, onChanged }: { driver: Driver; onChanged: () => Pr
           <div>
             <h2>Checklist da reunião</h2>
             <div className="checks">
-              {items.map((item) => (
-                <label className="check" key={item.key}>
-                  <input type="checkbox" checked={value(item.key)} onChange={() => toggle(item.key)} />
-                  {item.label}
-                </label>
-              ))}
+              {items.map((item) => {
+                const dateKey = VALIDITY[item.key];
+                return (
+                  <div key={item.key}>
+                    <label className="check">
+                      <input type="checkbox" checked={value(item.key)} onChange={() => toggle(item.key)} />
+                      {item.label}
+                    </label>
+                    {dateKey ? (
+                      <label className="field" style={{ maxWidth: 260, marginLeft: 28 }}>
+                        Vale até
+                        <input
+                          type="date"
+                          value={dateValue(dateKey)}
+                          onChange={(e) => saveDate(dateKey, e.target.value)}
+                        />
+                        {dateValue(dateKey) !== '' && dateValue(dateKey) < today ? (
+                          <span className="msg error">Vencido</span>
+                        ) : null}
+                      </label>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -311,6 +363,48 @@ function DriverCard({ driver, onChanged }: { driver: Driver; onChanged: () => Pr
           </button>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+type Expiring = {
+  driver_id: string;
+  full_name: string | null;
+  phone: string | null;
+  vehicle_type: 'car' | 'moto';
+  document: string;
+  valid_until: string | null;
+  days_left: number | null;
+};
+
+// Documentos de motoristas aprovados que vencem em até 30 dias, já venceram ou estão sem data. A equipe decide
+// se trava o motorista até ele trazer o documento novo.
+function ExpiringDocuments() {
+  const [rows, setRows] = useState<Expiring[] | null>(null);
+
+  useEffect(() => {
+    supabase.rpc('staff_expiring_documents', { p_days: 30 }).then(({ data, error }) => {
+      // Banco sem a função nova (SQL ainda não aplicado): não mostra o aviso.
+      setRows(error ? [] : (data as Expiring[]));
+    });
+  }, []);
+
+  if (!rows || rows.length === 0) return null;
+
+  return (
+    <section className="card">
+      <h2>Documentos vencendo ou vencidos</h2>
+      <p className="hint">Motoristas aprovados. Peça o documento novo e atualize a data no cadastro dele.</p>
+      {rows.map((r) => (
+        <p key={`${r.driver_id}-${r.document}`}>
+          <b>{r.full_name ?? 'Sem nome'}</b> ({r.phone ?? 'sem telefone'}): {r.document}{' '}
+          {r.days_left === null
+            ? '- sem data informada'
+            : r.days_left < 0
+              ? `- vencido há ${-r.days_left} dia(s), em ${formatDate(r.valid_until)}`
+              : `- vence em ${r.days_left} dia(s), em ${formatDate(r.valid_until)}`}
+        </p>
+      ))}
     </section>
   );
 }

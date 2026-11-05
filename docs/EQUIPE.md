@@ -17,11 +17,15 @@ Tudo o que não está no painel é feito no painel do Supabase (supabase.com →
 
 O motorista faz o cadastro pelo app (CPF, nascimento, CNH, veículo e aceite dos termos). Na reunião, a equipe confere os documentos originais e o carro ou a moto.
 
+**Pelo painel (aba Motoristas):** marque o checklist de cada motorista. Três documentos têm validade: **antecedentes criminais**, **documento do veículo (CRLV)** e **seguro de acidentes pessoais de passageiros (APP)**. Marque que conferiu e informe até quando vale (campo **Vale até**). A primeira aprovação só passa com os três marcados, com data e ainda não vencidos. Depois de aprovado, o topo da aba Motoristas mostra **Documentos vencendo ou vencidos** (em até 30 dias, já vencidos ou sem data): peça o documento novo, atualize a data e, se quiser, trave o motorista até ele regularizar. O sistema não trava ninguém sozinho.
+
+
 1. Abra a tabela **driver_private** e ache a linha do motorista pelo CPF. Confira com a CNH e o documento dele.
 2. Abra a tabela **driver_checklist**, na mesma linha (o mesmo `driver_id`), e marque como `true` o que foi conferido:
    - `cnh_ok`: CNH válida, com a observação EAR
-   - `criminal_record_ok`: antecedentes criminais
-   - `crlv_ok`: documento do veículo em dia
+   - `criminal_record_ok`: antecedentes criminais (e a data em `criminal_record_valid_until`)
+   - `crlv_ok`: documento do veículo em dia (e a data em `crlv_valid_until`)
+   - `insurance_ok`: seguro de acidentes pessoais de passageiros (e a data em `insurance_valid_until`)
    - `inspection_ok`: vistoria do veículo
    - só para moto: `helmets_ok` (dois capacetes), `vest_delivered` (colete entregue), `leg_guard_ok` (protetor de pernas) e `line_cutter_ok` (aparador de linha)
    O que o motorista declarou no cadastro (capacetes, protetor de pernas e aparador de linha) fica em **driver_private** (`declared_*`), só para você saber. Quem se cadastra sem algum item pode instalar até a vistoria: o que vale é o que você confere e marca aqui.
