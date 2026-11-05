@@ -1,7 +1,7 @@
 // Testes sem rede: node --experimental-strip-types supabase/functions/send-sms/test.mjs
 import assert from 'node:assert/strict';
 
-import { receiverFrom, sendViaComtele, smsText } from './index.ts';
+import { receiverFrom, sendViaComtele, smsText, storeReleasedCode } from './index.ts';
 
 let n = 0;
 async function t(name, fn) {
@@ -62,3 +62,25 @@ await t('envio: resposta sem JSON usa o status', async () => {
 });
 
 console.log(`${n} testes ok`);
+
+await t('liberado: guarda o código pelo banco e avisa que foi guardado', async () => {
+  const calls = [];
+  const fake = async (url, init) => {
+    calls.push({ url, init });
+    return { ok: true, status: 200, json: async () => true };
+  };
+  const stored = await storeReleasedCode(fake, 'https://x.supabase.co', 'chave', '+5588988941408', '123456');
+  assert.equal(stored, true);
+  assert.equal(calls[0].url, 'https://x.supabase.co/rest/v1/rpc/hook_store_release_code');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { p_phone: '+5588988941408', p_code: '123456' });
+});
+
+await t('não liberado: o banco responde false e o SMS segue normal', async () => {
+  const fake = async () => ({ ok: true, status: 200, json: async () => false });
+  assert.equal(await storeReleasedCode(fake, 'https://x.supabase.co', 'chave', '+5588988941408', '123456'), false);
+});
+
+await t('erro do banco: não conta como liberado', async () => {
+  const fake = async () => ({ ok: false, status: 500, json: async () => ({}) });
+  assert.equal(await storeReleasedCode(fake, 'https://x.supabase.co', 'chave', '+5588988941408', '123456'), false);
+});

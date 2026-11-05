@@ -55,6 +55,24 @@ export async function sendViaComtele(
   }
 }
 
+// Número liberado pela equipe no painel: o código não vai por SMS, fica guardado para a equipe passar à pessoa.
+// Devolve true se o número estava liberado (e o código foi guardado).
+export async function storeReleasedCode(
+  fetchImpl: Fetch,
+  supabaseUrl: string,
+  serviceKey: string,
+  phone: string,
+  otp: string,
+): Promise<boolean> {
+  const res = await fetchImpl(`${supabaseUrl}/rest/v1/rpc/hook_store_release_code`, {
+    method: 'POST',
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_phone: phone, p_code: otp }),
+  });
+  if (!res.ok) return false;
+  return (await res.json()) === true;
+}
+
 function json(status: number, data: unknown): Response {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
 }
@@ -79,6 +97,17 @@ export async function handle(req: Request): Promise<Response> {
     ) as { user: { phone: string }; sms: { otp: string } });
   } catch {
     return json(401, { error: { http_code: 401, message: 'Assinatura inválida' } });
+  }
+
+  // Número liberado pela equipe: guarda o código para o painel em vez de mandar o SMS. Se falhar, segue o envio normal.
+  const supabaseUrl = env.get('SUPABASE_URL');
+  const serviceKey = env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (supabaseUrl && serviceKey) {
+    try {
+      if (await storeReleasedCode(fetch as unknown as Fetch, supabaseUrl, serviceKey, user.phone, sms.otp)) return json(200, {});
+    } catch {
+      // sem a liberação, o SMS sai como sempre
+    }
   }
 
   try {

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import { Linking, Text } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { BigInput } from '../components/BigInput';
 import { Screen } from '../components/Screen';
 import { formatPhone } from '../lib/phone';
+import { supportWhatsappUrl } from '../lib/supportLink';
 import { supabase } from '../lib/supabase';
 
 type Props = {
@@ -96,6 +97,12 @@ export function CodeScreen({ phone, onBack }: Props) {
         disabled={wait > 0}
         loading={resending}
         variant="link"
+      />
+      <BigButton
+        label="Seu código não chegou? Fale com o suporte"
+        icon="logo-whatsapp"
+        onPress={() => Linking.openURL(supportWhatsappUrl(phone.slice(3))).catch(() => {})}
+        variant="secondary"
       />
       <BigButton label="Trocar o número" onPress={onBack} variant="link" />
     </Screen>

@@ -69,9 +69,14 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
     setError(null);
     try {
       const me = await fetchMyDriver(userId);
-      setRide(me?.status === 'approved' ? await fetchActiveRide('driver', userId) : null);
+      // Corrida em andamento e mensalidade vêm juntas (uma ida ao servidor só).
       // A mensalidade não trava o carregamento: sem ela o motorista segue normal.
-      setFee(me?.status === 'approved' ? await fetchFeeStatus().catch(() => null) : null);
+      const [active, feeStatus] =
+        me?.status === 'approved'
+          ? await Promise.all([fetchActiveRide('driver', userId), fetchFeeStatus().catch(() => null)])
+          : [null, null];
+      setRide(active);
+      setFee(feeStatus);
       setDriver(me);
     } catch {
       setError('Sem conexão com o Simbora Car. Confira a internet.');

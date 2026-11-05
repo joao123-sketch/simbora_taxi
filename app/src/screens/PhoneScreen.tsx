@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text } from 'react-native';
+import { Linking, Text } from 'react-native';
 
 import { BigButton } from '../components/BigButton';
 import { BigInput } from '../components/BigInput';
@@ -8,6 +8,7 @@ import { Screen } from '../components/Screen';
 import { LegalScreen } from './LegalScreen';
 import { formatPhone, isValidPhone, onlyDigits, toE164 } from '../lib/phone';
 import { supabase } from '../lib/supabase';
+import { supportWhatsappUrl } from '../lib/supportLink';
 
 type Props = {
   // Aviso mostrado em cima (ex.: a conta foi aberta em outro celular).
@@ -65,6 +66,12 @@ export function PhoneScreen({ notice, onCodeSent }: Props) {
       <Text style={{ fontSize: 18, color: '#555555' }}>
         Ao entrar, você aceita os termos de uso e a política de privacidade.
       </Text>
+      <BigButton
+        label="Seu código não chegou? Fale com o suporte"
+        icon="logo-whatsapp"
+        onPress={() => Linking.openURL(supportWhatsappUrl(digits)).catch(() => {})}
+        variant="link"
+      />
       <BigButton label="Ler termos e privacidade" onPress={() => setShowLegal(true)} variant="link" />
       <InstallCard />
     </Screen>

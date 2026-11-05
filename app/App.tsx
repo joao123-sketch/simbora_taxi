@@ -72,28 +72,20 @@ export default function App() {
   useEffect(() => {
     if (!userId) {
       setName(undefined);
-      return;
-    }
-    setPendingPhone(null);
-    supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', userId)
-      .single()
-      .then(({ data }) => setName(data?.full_name ?? null));
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId) {
       setHasPhoto(undefined);
       return;
     }
+    setPendingPhone(null);
+    // Nome e foto vêm numa consulta só.
     supabase
       .from('profiles')
-      .select('photo_path')
+      .select('full_name, photo_path')
       .eq('id', userId)
       .single()
-      .then(({ data, error }) => setHasPhoto(error ? true : !!data?.photo_path));
+      .then(({ data, error }) => {
+        setName(data?.full_name ?? null);
+        setHasPhoto(error ? true : !!data?.photo_path);
+      });
   }, [userId]);
 
   let content;

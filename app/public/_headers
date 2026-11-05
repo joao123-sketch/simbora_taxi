@@ -1,0 +1,10 @@
+# Arquivos do build têm hash no nome: o navegador guarda por um ano e não pergunta de novo ao servidor.
+/_expo/static/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+# Os ícones e o manifest mudam raramente: um dia.
+/icon-*.png
+  Cache-Control: public, max-age=86400
+/apple-touch-icon.png
+  Cache-Control: public, max-age=86400

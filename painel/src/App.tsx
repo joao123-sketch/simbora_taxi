@@ -9,6 +9,7 @@ import { CitiesPage } from './pages/Cities';
 import { PricesPage } from './pages/Prices';
 import { PassengersPage } from './pages/Passengers';
 import { RegisteredPage } from './pages/Registered';
+import { ReleasePage } from './pages/Release';
 import { ReportsPage } from './pages/Reports';
 
 const TABS = [
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'reports', label: 'Relatórios', Page: ReportsPage },
   { id: 'prices', label: 'Preços', Page: PricesPage },
   { id: 'cities', label: 'Cidades', Page: CitiesPage },
+  { id: 'release', label: 'Liberar número', Page: ReleasePage },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];

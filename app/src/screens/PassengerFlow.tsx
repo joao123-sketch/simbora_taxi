@@ -173,20 +173,21 @@ export function PassengerFlow({ userId, name }: Props) {
         .then((driver) => setIsDriver(!!driver))
         .catch(() => {});
       refreshScheduled();
+      // O início abre sem esperar a mensalidade (mais uma ida ao servidor); ela chega logo depois.
+      setStep(activeRide ? { kind: 'ride', ride: activeRide } : { kind: 'home' });
       // A mensalidade não trava nada: sem ela (ou sem ser motorista) segue normal.
-      const feeStatus = await fetchFeeStatus().catch(() => null);
-      const reminder = reminderText(feeStatus);
-      setFeeReminder(reminder);
-      if (reminder) notifyOncePerDay('fee-reminder', 'Mensalidade do Simbora Car', reminder, todayLocal());
-      if (activeRide) {
-        setStep({ kind: 'ride', ride: activeRide });
-      } else if (!feeNagged.current && feeNeedsAttention(feeStatus)) {
-        // Motorista com a mensalidade vencida: o app cobra logo ao abrir.
-        feeNagged.current = true;
-        setStep({ kind: 'driver' });
-      } else {
-        setStep({ kind: 'home' });
-      }
+      fetchFeeStatus()
+        .catch(() => null)
+        .then((feeStatus) => {
+          const reminder = reminderText(feeStatus);
+          setFeeReminder(reminder);
+          if (reminder) notifyOncePerDay('fee-reminder', 'Mensalidade do Simbora Car', reminder, todayLocal());
+          if (!activeRide && !feeNagged.current && feeNeedsAttention(feeStatus)) {
+            // Motorista com a mensalidade vencida: o app cobra logo ao abrir (se a pessoa ainda está no início).
+            feeNagged.current = true;
+            setStep((current) => (current && current.kind === 'home' ? { kind: 'driver' } : current));
+          }
+        });
     } catch {
       setError('Sem conexão com o Simbora Car. Confira a internet.');
     }
