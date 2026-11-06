@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Share, StyleSheet, Text, View } from 'react-native';
 
 import { PassengerAdvanceNote } from '../components/AdvancePayment';
 import { notify } from '../lib/notify';
@@ -31,6 +31,7 @@ import {
 } from '../lib/rides';
 import { confirmState, tripEvents, type TripSnapshot } from '../lib/intercity';
 import { confirmScheduledRide, formatScheduled, isScheduledWait } from '../lib/scheduling';
+import { driverRecruitMessage, whatsappUrl } from '../lib/inviteLinks';
 import { createRideShare, recipientMessage, tripShareMessage } from '../lib/share';
 import { colors, fontSize, cardSurface } from '../theme';
 import { ChatScreen } from './ChatScreen';
@@ -40,6 +41,10 @@ type Props = {
   onFinished: () => void;
   // Viagem agendada ainda longe: a pessoa pode sair da tela e voltar depois pelo início.
   onBack?: () => void;
+  // Convite para virar motorista, mostrado enquanto procura. Sem isso (ou se já for motorista), some.
+  onBecomeDriver?: () => void;
+  // Nome da cidade, para o convite de WhatsApp.
+  cityName?: string;
 };
 
 const statusText: Record<RideStatus, string> = {
@@ -63,7 +68,7 @@ const deliveryStatusText: Record<RideStatus, string> = {
 const CANCELABLE: RideStatus[] = ['requested', 'accepted', 'arrived'];
 const ACTIVE_FOR_SHARE: RideStatus[] = ['requested', 'accepted', 'arrived', 'in_progress'];
 
-export function RideStatusScreen({ ride: initialRide, onFinished, onBack }: Props) {
+export function RideStatusScreen({ ride: initialRide, onFinished, onBack, onBecomeDriver, cityName }: Props) {
   const [ride, setRide] = useState(initialRide);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -424,6 +429,27 @@ export function RideStatusScreen({ ride: initialRide, onFinished, onBack }: Prop
         <BigButton label={delivery ? 'Cancelar entrega' : 'Cancelar corrida'} onPress={cancel} loading={cancelling} variant="link" />
       ) : null}
 
+      {status === 'requested' && onBecomeDriver ? (
+        <View style={styles.driverInvite}>
+          <Text style={styles.inviteText}>
+            Você ou alguém que você conhece pode ser motorista do Simbora Car. O primeiro mês é grátis.
+          </Text>
+          <View style={styles.inviteLinks}>
+            <Text style={styles.inviteLink} onPress={onBecomeDriver} accessibilityRole="button">
+              Quero ser motorista
+            </Text>
+            <Text style={styles.inviteText}>·</Text>
+            <Text
+              style={styles.inviteLink}
+              onPress={() => Linking.openURL(whatsappUrl(driverRecruitMessage(cityName))).catch(() => {})}
+              accessibilityRole="button"
+            >
+              Indicar no WhatsApp
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       {inRide ? <SosButton ride={ride} role="passenger" /> : null}
 
       {status === 'cancelled' ? <BigButton label="Voltar ao início" onPress={onFinished} /> : null}
@@ -474,6 +500,27 @@ const styles = StyleSheet.create({
   },
   details: {
     gap: 4,
+  },
+  driverInvite: {
+    gap: 2,
+    alignItems: 'center',
+  },
+  inviteLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  inviteText: {
+    fontSize: fontSize.body - 4,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  inviteLink: {
+    fontSize: fontSize.body - 4,
+    fontWeight: '700',
+    color: colors.primary,
+    textDecorationLine: 'underline',
   },
   line: {
     fontSize: fontSize.body,

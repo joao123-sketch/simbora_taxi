@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { confirmState, extraFromTotal, nearestCity, proposalLimit, proposalRange, tripEvents, type TripSnapshot } from './intercity';
+import { cityAt, confirmState, extraFromTotal, nearestCity, proposalLimit, proposalRange, tripEvents, type TripSnapshot } from './intercity';
 
 const trip = '2026-11-10T15:00:00Z';
 const hoursBefore = (h: number) => new Date(new Date(trip).getTime() - h * 3600_000);
@@ -35,8 +35,8 @@ test('confirmState: com 2h ou menos o prazo acabou', () => {
 });
 
 const cities = [
-  { id: 2, name: 'São Benedito', state: 'CE', active: true, lat: -4.05, lng: -40.86 },
-  { id: 3, name: 'Ubajara', state: 'CE', active: true, lat: -3.85, lng: -40.92 },
+  { id: 2, name: 'São Benedito', state: 'CE', active: true, lat: -4.05, lng: -40.86, radius_km: 8 },
+  { id: 3, name: 'Ubajara', state: 'CE', active: true, lat: -3.85, lng: -40.92, radius_km: 8 },
 ];
 
 test('nearestCity devolve a cidade mais próxima do ponto', () => {
@@ -119,4 +119,31 @@ test('extraFromTotal: diferença entre o valor pedido e o calculado, com sinal',
   assert.equal(extraFromTotal(100, 120), 20);
   assert.equal(extraFromTotal(100, 80.5), -19.5);
   assert.equal(extraFromTotal(100, 100), 0);
+});
+
+// cityAt: a cidade ativa mais próxima cujo raio cobre o ponto
+const ipu = { id: 10, name: 'Ipu', state: 'CE', active: true, lat: -4.32, lng: -40.71, radius_km: 8 };
+const ipueiras = { id: 11, name: 'Ipueiras', state: 'CE', active: true, lat: -4.39, lng: -40.71, radius_km: 8 };
+
+test('cityAt: no centro da cidade devolve ela', () => {
+  assert.equal(cityAt({ lat: -4.32, lng: -40.71 }, [ipu, ipueiras])?.id, 10);
+});
+
+test('cityAt: fora do raio de todas devolve null', () => {
+  assert.equal(cityAt({ lat: -3.0, lng: -39.0 }, [ipu, ipueiras]), null);
+});
+
+test('cityAt: com raios que se sobrepõem vale a mais próxima, não a primeira da lista', () => {
+  // Ponto a ~2 km de Ipueiras e ~5,5 km de Ipu: as duas cobrem, vence Ipueiras.
+  assert.equal(cityAt({ lat: -4.372, lng: -40.71 }, [ipu, ipueiras])?.id, 11);
+});
+
+test('cityAt: cidade desativada nunca é devolvida', () => {
+  assert.equal(cityAt({ lat: -4.32, lng: -40.71 }, [{ ...ipu, active: false }]), null);
+});
+
+test('cityAt: o limite do raio vale (<=) e passou dele não vale', () => {
+  // 1 grau de latitude = 111,19 km: 7,9 km ~ 0,0711 grau, 8,1 km ~ 0,0729 grau.
+  assert.equal(cityAt({ lat: -4.32 + 0.0711, lng: -40.71 }, [ipu])?.id, 10);
+  assert.equal(cityAt({ lat: -4.32 + 0.0729, lng: -40.71 }, [ipu]), null);
 });

@@ -11,6 +11,8 @@ export type City = Coord & {
   name: string;
   state: string;
   active: boolean;
+  // Raio de atendimento ao redor do centro, em km (a pessoa precisa estar dentro para pedir).
+  radius_km: number;
 };
 
 export type Place = Coord & {

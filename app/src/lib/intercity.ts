@@ -35,6 +35,22 @@ export function confirmState(scheduledFor: string, confirmedAt: string | null, n
 
 // A cidade (entre as recebidas) mais perto do ponto. Serve para marcar a viagem como entre cidades
 // e mostrar o nome ao motorista; o preço vem da distância do endereço, não daqui.
+// A cidade ativa onde o ponto está: a mais próxima entre as que têm o ponto dentro do raio.
+// Devolve null quando nenhuma cidade aberta cobre o ponto.
+export function cityAt(point: { lat: number; lng: number }, cities: City[]): City | null {
+  let best: City | null = null;
+  let bestKm = Infinity;
+  for (const city of cities) {
+    if (!city.active) continue;
+    const km = distanceKm(point, city);
+    if (km <= city.radius_km && km < bestKm) {
+      best = city;
+      bestKm = km;
+    }
+  }
+  return best;
+}
+
 export function nearestCity(point: { lat: number; lng: number }, cities: City[]): City | null {
   let best: City | null = null;
   let bestKm = Infinity;

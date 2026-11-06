@@ -23,3 +23,10 @@ export function directionsUrl(to: Coord): string {
 export function etaMinutes(straightKm: number): number {
   return Math.max(1, Math.round(((straightKm * 1.3) / 30) * 60));
 }
+
+// Metade do lado, em graus, do quadrado de busca de endereços ao redor do centro da cidade:
+// o raio de atendimento mais uma folga de 30% (lugar na borda), com piso de 0,03 grau (~3 km).
+// Vem do raio de cada cidade: abrir uma cidade nova não pede configurar a busca.
+export function searchBoxDegrees(city: { radius_km: number }, factor = 1.3): number {
+  return Math.max(0.03, (city.radius_km * factor) / 111);
+}

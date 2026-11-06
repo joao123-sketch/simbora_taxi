@@ -14,6 +14,7 @@ import { colors, fontSize } from '../../theme';
 
 type Props = {
   cityId: number;
+  cityName?: string;
   onRegistered: () => void;
   onBack: () => void;
 };
@@ -21,7 +22,7 @@ type Props = {
 const VEHICLES: VehicleType[] = ['car', 'moto'];
 const STEPS = 4;
 
-export function DriverSignupScreen({ cityId, onRegistered, onBack }: Props) {
+export function DriverSignupScreen({ cityId, cityName, onRegistered, onBack }: Props) {
   const [step, setStep] = useState(1);
   const [vehicleType, setVehicleType] = useState<VehicleType>('car');
   const [cpf, setCpf] = useState('');
@@ -115,6 +116,7 @@ export function DriverSignupScreen({ cityId, onRegistered, onBack }: Props) {
     <Screen title={titles[step - 1]} subtitle={`Passo ${step} de ${STEPS}`} error={error} onBack={back}>
       {step === 1 ? (
         <>
+          {cityName ? <Text style={styles.hint}>Você vai atender em {cityName}.</Text> : null}
           <Text style={styles.label}>Você vai dirigir</Text>
           <View style={styles.row}>
             {VEHICLES.map((type) => (
@@ -263,8 +265,9 @@ export function DriverSignupScreen({ cityId, onRegistered, onBack }: Props) {
 
       {step === 4 ? (
         <>
+          {cityName ? <Text style={styles.label}>Cidade: {cityName}</Text> : null}
           <Text style={styles.hint}>
-            Versão provisória, em revisão. Leia com calma: ela vale para o mês grátis, e o contrato completo vem se
+            Leia com calma: ela vale para o mês grátis, e o contrato completo vem se
             você decidir continuar.
           </Text>
           {DRIVER_TERMS.map((item) => (

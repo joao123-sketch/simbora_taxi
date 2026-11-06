@@ -6,14 +6,14 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { BigButton } from '../components/BigButton';
 import type { Coord } from '../components/PinMap.types';
 import { Screen } from '../components/Screen';
-import { driverCodeFromUrl } from '../lib/deeplink';
+import { driverCodeFromUrl, isDriverSignupUrl } from '../lib/deeplink';
 import { expireScheduled, fetchMyScheduled } from '../lib/scheduling';
 import { loadPackageOptions } from '../lib/delivery';
 import { fetchMyDriver } from '../lib/drivers';
 import { reverseGeocode } from '../lib/geocode';
 import { feeNeedsAttention, fetchFeeStatus } from '../lib/fees';
 import { reminderText, todayLocal } from '../lib/feeReminder';
-import { confirmState, tripEvents, type TripSnapshot } from '../lib/intercity';
+import { cityAt, confirmState, tripEvents, type TripSnapshot } from '../lib/intercity';
 import { notify, notifyOncePerDay } from '../lib/notify';
 import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
 import {
@@ -71,6 +71,11 @@ type Props = {
   name: string;
 };
 
+function outsideAreaText(cities: City[]): string {
+  const names = cities.filter((c) => c.active).map((c) => c.name);
+  return `O Simbora Car ainda não atende onde você está. Funciona em: ${names.join(', ')}.`;
+}
+
 export function PassengerFlow({ userId, name }: Props) {
   const [cities, setCities] = useState<City[] | null>(null);
   const [step, setStep] = useState<Step | null>(null);
@@ -91,9 +96,22 @@ export function PassengerFlow({ userId, name }: Props) {
   const feeNagged = useRef(false);
   // O link do convite de um motorista (aberto com o app fechado ou aberto).
   const handledLink = useRef<string | null>(null);
+  // Link "/motorista" aberto antes de o início carregar: o load() usa depois, uma vez só.
+  const pendingDriverLink = useRef(false);
 
   useEffect(() => {
     function openLink(url: string | null) {
+      if (isDriverSignupUrl(url) && handledLink.current !== url) {
+        handledLink.current = url;
+        setStep((current) => {
+          if (current === null) {
+            pendingDriverLink.current = true;
+            return current;
+          }
+          return current.kind === 'ride' ? current : { kind: 'driver' };
+        });
+        return;
+      }
       const code = driverCodeFromUrl(url);
       if (!code || handledLink.current === url) return;
       handledLink.current = url;
@@ -174,7 +192,9 @@ export function PassengerFlow({ userId, name }: Props) {
         .catch(() => {});
       refreshScheduled();
       // O início abre sem esperar a mensalidade (mais uma ida ao servidor); ela chega logo depois.
-      setStep(activeRide ? { kind: 'ride', ride: activeRide } : { kind: 'home' });
+      const openDriver = pendingDriverLink.current && !activeRide;
+      pendingDriverLink.current = false;
+      setStep(activeRide ? { kind: 'ride', ride: activeRide } : { kind: openDriver ? 'driver' : 'home' });
       // A mensalidade não trava nada: sem ela (ou sem ser motorista) segue normal.
       fetchFeeStatus()
         .catch(() => null)
@@ -210,6 +230,10 @@ export function PassengerFlow({ userId, name }: Props) {
   }, [load]);
 
   async function startDelivery() {
+    if (outsideArea && cities) {
+      setLocationError(outsideAreaText(cities));
+      return;
+    }
     setStep({ kind: 'deliveryOrigin' });
     try {
       const { granted } = await Location.requestForegroundPermissionsAsync();
@@ -237,6 +261,10 @@ export function PassengerFlow({ userId, name }: Props) {
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const coord = { lat: position.coords.latitude, lng: position.coords.longitude };
       setHere(coord);
+      if (cities && !cityAt(coord, cities)) {
+        setLocationError(outsideAreaText(cities));
+        return;
+      }
       const address = (await reverseGeocode(coord)) ?? 'Minha localização';
       setStep({ kind: 'destination', origin: { ...coord, address } });
     } catch {
@@ -252,7 +280,10 @@ export function PassengerFlow({ userId, name }: Props) {
     );
   }
 
-  const city = cities?.find((c) => c.active);
+  // A cidade é onde o GPS diz que a pessoa está. Sem GPS ainda, o mapa usa a primeira cidade aberta só como fundo.
+  const detected = cities && here ? cityAt(here, cities) : null;
+  const city = detected ?? cities?.find((c) => c.active);
+  const outsideArea = !!here && !detected;
   if (!step || !cities || !city) {
     return (
       <View style={styles.loading}>
@@ -272,7 +303,7 @@ export function PassengerFlow({ userId, name }: Props) {
           isDriver={isDriver}
           center={here ?? city}
           here={here}
-          error={locationError}
+          error={locationError ?? (outsideArea && cities ? outsideAreaText(cities) : null)}
           scheduled={scheduled}
           proposalTotal={Object.values(proposalCounts).reduce((sum, n) => sum + n, 0)}
           onOpenScheduled={() => setStep({ kind: 'scheduledList' })}
@@ -280,7 +311,7 @@ export function PassengerFlow({ userId, name }: Props) {
           onRequestDelivery={startDelivery}
           onRequestForOther={() => setStep({ kind: 'riderName' })}
           onOpenFavorites={() => setStep({ kind: 'favorites', from: 'home' })}
-          onDriverMode={() => setStep({ kind: 'driver' })}
+          onDriverMode={() => (isDriver || detected ? setStep({ kind: 'driver' }) : setLocationError(cities ? outsideAreaText(cities) : null))}
           onOpenHistory={() => setStep({ kind: 'history', from: 'home' })}
           onOpenSettings={() => setStep({ kind: 'settings' })}
           reminder={feeReminder}
@@ -412,7 +443,15 @@ export function PassengerFlow({ userId, name }: Props) {
       );
 
     case 'ride':
-      return <RideStatusScreen ride={step.ride} onFinished={load} onBack={goHome} />;
+      return (
+        <RideStatusScreen
+          ride={step.ride}
+          onFinished={load}
+          onBack={goHome}
+          onBecomeDriver={isDriver ? undefined : () => setStep({ kind: 'driver' })}
+          cityName={detected?.name}
+        />
+      );
 
     case 'settings':
       return (
@@ -442,7 +481,7 @@ export function PassengerFlow({ userId, name }: Props) {
       return <LegalScreen onBack={goSettings} />;
 
     case 'driver':
-      return <DriverFlow userId={userId} cityId={city.id} onExit={load} />;
+      return <DriverFlow userId={userId} cityId={detected?.id ?? null} cityName={detected?.name} onExit={load} />;
   }
 }
 

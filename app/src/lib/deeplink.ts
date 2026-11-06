@@ -7,3 +7,9 @@ export function driverCodeFromUrl(url: string | null | undefined): string | null
   const match = url.match(/(?:simboracar:\/\/(?:\/)?motorista\/|\/m\/)([A-Za-z0-9]{4,16})(?:[/?#]|$)/);
   return match ? match[1].toUpperCase() : null;
 }
+
+// Link do convite para virar motorista: https://<app>/motorista (ou simboracar://motorista).
+export function isDriverSignupUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /(?:simboracar:\/\/(?:\/)?|^https?:\/\/[^/]+\/)motorista\/?(?:[?#]|$)/.test(url);
+}

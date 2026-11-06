@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '../../components/BigButton';
 import { Screen } from '../../components/Screen';
@@ -9,7 +9,7 @@ import { fetchMyDriver, setOnline, type Driver } from '../../lib/drivers';
 import { feeNeedsAttention, fetchFeeStatus, nagText, type FeeStatus } from '../../lib/fees';
 import { reminderText } from '../../lib/feeReminder';
 import { fetchActiveRide, type Ride } from '../../lib/rides';
-import { colors } from '../../theme';
+import { colors, fontSize } from '../../theme';
 import { HistoryScreen } from '../HistoryScreen';
 import { DriverHomeScreen } from './DriverHomeScreen';
 import { DriverPendingScreen } from './DriverPendingScreen';
@@ -25,11 +25,13 @@ import { FeeScreen } from './FeeScreen';
 
 type Props = {
   userId: string;
-  cityId: number;
+  // A cidade onde o GPS acha a pessoa; null quando não está em nenhuma cidade aberta (ou sem GPS).
+  cityId: number | null;
+  cityName?: string;
   onExit: () => void;
 };
 
-export function DriverFlow({ userId, cityId, onExit }: Props) {
+export function DriverFlow({ userId, cityId, cityName, onExit }: Props) {
   // undefined = carregando; null = ainda não se cadastrou.
   const [driver, setDriver] = useState<Driver | null | undefined>(undefined);
   const [ride, setRide] = useState<Ride | null>(null);
@@ -130,7 +132,16 @@ export function DriverFlow({ userId, cityId, onExit }: Props) {
   }
 
   if (driver === null) {
-    return <DriverSignupScreen cityId={cityId} onRegistered={load} onBack={onExit} />;
+    if (cityId === null) {
+      return (
+        <Screen title="Quero ser motorista" onBack={onExit}>
+          <Text style={{ fontSize: fontSize.body, color: colors.text }}>
+            Para se cadastrar, o Simbora Car precisa saber em que cidade você está. Ligue a localização do aparelho e abra de novo estando em uma cidade onde o Simbora Car funciona.
+          </Text>
+        </Screen>
+      );
+    }
+    return <DriverSignupScreen cityId={cityId} cityName={cityName} onRegistered={load} onBack={onExit} />;
   }
 
   if (driver.status !== 'approved') {
