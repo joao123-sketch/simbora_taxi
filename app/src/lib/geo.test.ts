@@ -12,5 +12,11 @@ test('searchBoxDegrees: cidade muito pequena não passa do piso de 0,03 grau', (
 });
 
 test('searchBoxDegrees cresce com o raio', () => {
-  assert.ok(searchBoxDegrees({ radius_km: 20 }) > searchBoxDegrees({ radius_km: 8 }));
+  assert.ok(searchBoxDegrees({ radius_km: 6 }) > searchBoxDegrees({ radius_km: 3 }));
+});
+
+test('searchBoxDegrees: raio grande (folga de GPS) não alarga a busca além de 0,1 grau', () => {
+  // Mais que ~11 km traz as cidades vizinhas na frente dos lugares da própria cidade.
+  assert.equal(searchBoxDegrees({ radius_km: 20 }), 0.1);
+  assert.equal(searchBoxDegrees({ radius_km: 50 }), 0.1);
 });

@@ -10,10 +10,11 @@ import { driverCodeFromUrl, isDriverSignupUrl } from '../lib/deeplink';
 import { expireScheduled, fetchMyScheduled } from '../lib/scheduling';
 import { loadPackageOptions } from '../lib/delivery';
 import { fetchMyDriver } from '../lib/drivers';
+import { distanceKm, formatKm } from '../lib/geo';
 import { reverseGeocode } from '../lib/geocode';
 import { feeNeedsAttention, fetchFeeStatus } from '../lib/fees';
 import { reminderText, todayLocal } from '../lib/feeReminder';
-import { cityAt, confirmState, tripEvents, type TripSnapshot } from '../lib/intercity';
+import { confirmState, locateCity, nearestCity, tripEvents, type TripSnapshot } from '../lib/intercity';
 import { notify, notifyOncePerDay } from '../lib/notify';
 import { fetchSuggestedPlaces, type SuggestedPlace } from '../lib/favorites';
 import {
@@ -71,15 +72,25 @@ type Props = {
   name: string;
 };
 
-function outsideAreaText(cities: City[]): string {
-  const names = cities.filter((c) => c.active).map((c) => c.name);
-  return `O Simbora Car ainda não atende onde você está. Funciona em: ${names.join(', ')}.`;
+function outsideAreaText(cities: City[], point?: Coord | null): string {
+  const active = cities.filter((c) => c.active);
+  const names = active.map((c) => c.name);
+  const near = point ? nearestCity(point, active) : null;
+  // Dizer a distância ajuda a ver quando é o GPS do aparelho que está impreciso (comum no computador).
+  const distance = point && near ? ` Pelo GPS do aparelho, você está a ${formatKm(distanceKm(point, near))} de ${near.name}.` : '';
+  return `O Simbora Car ainda não atende onde você está. Funciona em: ${names.join(', ')}.${distance}`;
 }
 
 export function PassengerFlow({ userId, name }: Props) {
   const [cities, setCities] = useState<City[] | null>(null);
   const [step, setStep] = useState<Step | null>(null);
   const [here, setHere] = useState<Coord | null>(null);
+  // Erro da posição em km (o navegador informa em metros); null = desconhecido.
+  const [hereAccuracyKm, setHereAccuracyKm] = useState<number | null>(null);
+  // Ainda esperando a primeira resposta do GPS (ou a permissão).
+  const [locating, setLocating] = useState(true);
+  // As duas tentativas (rede e GPS) já terminaram: só então a Home diz que a pessoa está fora da área.
+  const [settled, setSettled] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedPlace[]>([]);
   const [error, setError] = useState<string | null>(null);
   // Aviso na tela inicial quando o GPS não deixa chamar a corrida.
@@ -214,14 +225,45 @@ export function PassengerFlow({ userId, name }: Props) {
   }, [userId, refreshScheduled]);
 
   // O mapa do início abre onde a pessoa está. Sem permissão ou sem GPS, abre no centro da cidade.
+  // A primeira resposta (Balanced) vem rápido, mas no celular é a posição pela rede, que erra por
+  // vários km; por isso logo em seguida pede a do GPS (High) e fica com ela.
   useEffect(() => {
-    Location.requestForegroundPermissionsAsync()
-      .then(({ granted }) => (granted ? Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }) : null))
-      .then((position) => {
-        if (position) setHere({ lat: position.coords.latitude, lng: position.coords.longitude });
-      })
-      .catch(() => {});
+    let alive = true;
+    (async () => {
+      try {
+        const { granted } = await Location.requestForegroundPermissionsAsync();
+        if (!granted) return;
+        for (const accuracy of [Location.Accuracy.Balanced, Location.Accuracy.High]) {
+          try {
+            const position = await Location.getCurrentPositionAsync({ accuracy });
+            if (!alive) return;
+            applyFix(position);
+            setLocating(false);
+          } catch {
+            // Sem resposta nesta precisão: tenta a próxima.
+          }
+        }
+      } catch {
+        // Sem permissão ou sem GPS: o mapa abre no centro da cidade.
+      } finally {
+        if (alive) {
+          setLocating(false);
+          setSettled(true);
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
+
+  function applyFix(position: Location.LocationObject): { coord: Coord; accuracyKm: number | null } {
+    const coord = { lat: position.coords.latitude, lng: position.coords.longitude };
+    const accuracyKm = typeof position.coords.accuracy === 'number' ? position.coords.accuracy / 1000 : null;
+    setHere(coord);
+    setHereAccuracyKm(accuracyKm);
+    return { coord, accuracyKm };
+  }
 
   useEffect(() => {
     load();
@@ -231,15 +273,14 @@ export function PassengerFlow({ userId, name }: Props) {
 
   async function startDelivery() {
     if (outsideArea && cities) {
-      setLocationError(outsideAreaText(cities));
+      setLocationError(outsideAreaText(cities, here));
       return;
     }
     setStep({ kind: 'deliveryOrigin' });
     try {
       const { granted } = await Location.requestForegroundPermissionsAsync();
       if (!granted) return;
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setHere({ lat: position.coords.latitude, lng: position.coords.longitude });
+      applyFix(await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }));
     } catch {
       // Sem GPS a pessoa ainda pode marcar no mapa a partir do centro da cidade.
     }
@@ -259,10 +300,10 @@ export function PassengerFlow({ userId, name }: Props) {
         return;
       }
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      const coord = { lat: position.coords.latitude, lng: position.coords.longitude };
-      setHere(coord);
-      if (cities && !cityAt(coord, cities)) {
-        setLocationError(outsideAreaText(cities));
+      const { coord, accuracyKm } = applyFix(position);
+      // Só barra quem está fora mesmo descontando o erro do GPS; na dúvida o banco confere a origem na cotação.
+      if (cities && locateCity(coord, accuracyKm, cities).outside) {
+        setLocationError(outsideAreaText(cities, coord));
         return;
       }
       const address = (await reverseGeocode(coord)) ?? 'Minha localização';
@@ -281,9 +322,11 @@ export function PassengerFlow({ userId, name }: Props) {
   }
 
   // A cidade é onde o GPS diz que a pessoa está. Sem GPS ainda, o mapa usa a primeira cidade aberta só como fundo.
-  const detected = cities && here ? cityAt(here, cities) : null;
+  // "Fora" é só quem continua fora do raio mesmo descontando o erro da posição.
+  const located = cities && here ? locateCity(here, hereAccuracyKm, cities) : null;
+  const detected = located?.city ?? null;
   const city = detected ?? cities?.find((c) => c.active);
-  const outsideArea = !!here && !detected;
+  const outsideArea = settled && !!located?.outside;
   if (!step || !cities || !city) {
     return (
       <View style={styles.loading}>
@@ -303,7 +346,7 @@ export function PassengerFlow({ userId, name }: Props) {
           isDriver={isDriver}
           center={here ?? city}
           here={here}
-          error={locationError ?? (outsideArea && cities ? outsideAreaText(cities) : null)}
+          error={locationError ?? (outsideArea && cities ? outsideAreaText(cities, here) : null)}
           scheduled={scheduled}
           proposalTotal={Object.values(proposalCounts).reduce((sum, n) => sum + n, 0)}
           onOpenScheduled={() => setStep({ kind: 'scheduledList' })}
@@ -311,7 +354,7 @@ export function PassengerFlow({ userId, name }: Props) {
           onRequestDelivery={startDelivery}
           onRequestForOther={() => setStep({ kind: 'riderName' })}
           onOpenFavorites={() => setStep({ kind: 'favorites', from: 'home' })}
-          onDriverMode={() => (isDriver || detected ? setStep({ kind: 'driver' }) : setLocationError(cities ? outsideAreaText(cities) : null))}
+          onDriverMode={() => setStep({ kind: 'driver' })}
           onOpenHistory={() => setStep({ kind: 'history', from: 'home' })}
           onOpenSettings={() => setStep({ kind: 'settings' })}
           reminder={feeReminder}
@@ -481,7 +524,7 @@ export function PassengerFlow({ userId, name }: Props) {
       return <LegalScreen onBack={goSettings} />;
 
     case 'driver':
-      return <DriverFlow userId={userId} cityId={detected?.id ?? null} cityName={detected?.name} onExit={load} />;
+      return <DriverFlow userId={userId} cityId={detected?.id ?? null} cityName={detected?.name} locating={locating} onExit={load} />;
   }
 }
 

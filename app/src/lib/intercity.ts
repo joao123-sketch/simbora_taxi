@@ -51,6 +51,31 @@ export function cityAt(point: { lat: number; lng: number }, cities: City[]): Cit
   return best;
 }
 
+// Onde a pessoa está, levando em conta o erro da posição (accuracyKm; null = desconhecido).
+// O celular sem GPS fino (posição pela rede) erra por vários km: só é "fora" (outside) quem
+// continua fora do raio de todas as cidades abertas mesmo descontando esse erro. Na dúvida,
+// fica a cidade aberta mais próxima entre as que o erro alcança.
+export function locateCity(
+  point: { lat: number; lng: number },
+  accuracyKm: number | null,
+  cities: City[],
+): { city: City | null; outside: boolean } {
+  const exact = cityAt(point, cities);
+  if (exact) return { city: exact, outside: false };
+  const slack = accuracyKm ?? 0;
+  let best: City | null = null;
+  let bestKm = Infinity;
+  for (const city of cities) {
+    if (!city.active) continue;
+    const km = distanceKm(point, city);
+    if (km - slack <= city.radius_km && km < bestKm) {
+      best = city;
+      bestKm = km;
+    }
+  }
+  return { city: best, outside: best === null };
+}
+
 export function nearestCity(point: { lat: number; lng: number }, cities: City[]): City | null {
   let best: City | null = null;
   let bestKm = Infinity;

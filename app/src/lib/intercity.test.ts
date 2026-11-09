@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { cityAt, confirmState, extraFromTotal, nearestCity, proposalLimit, proposalRange, tripEvents, type TripSnapshot } from './intercity';
+import { cityAt, confirmState, locateCity, extraFromTotal, nearestCity, proposalLimit, proposalRange, tripEvents, type TripSnapshot } from './intercity';
 
 const trip = '2026-11-10T15:00:00Z';
 const hoursBefore = (h: number) => new Date(new Date(trip).getTime() - h * 3600_000);
@@ -146,4 +146,34 @@ test('cityAt: o limite do raio vale (<=) e passou dele não vale', () => {
   // 1 grau de latitude = 111,19 km: 7,9 km ~ 0,0711 grau, 8,1 km ~ 0,0729 grau.
   assert.equal(cityAt({ lat: -4.32 + 0.0711, lng: -40.71 }, [ipu])?.id, 10);
   assert.equal(cityAt({ lat: -4.32 + 0.0729, lng: -40.71 }, [ipu]), null);
+});
+
+// locateCity: leva em conta a imprecisão da posição (celular sem GPS fino erra por vários km)
+test('locateCity: posição dentro do raio devolve a cidade, sem bloquear', () => {
+  assert.deepEqual(locateCity({ lat: -4.32, lng: -40.71 }, 0.02, [ipu, ipueiras]), { city: ipu, outside: false });
+});
+
+test('locateCity: posição grosseira fora do raio, mas com erro que alcança a cidade, não bloqueia', () => {
+  // ~11 km ao norte de Ipu (raio 8 km) com erro de 5 km: pode estar dentro.
+  const result = locateCity({ lat: -4.32 + 0.1, lng: -40.71 }, 5, [ipu]);
+  assert.equal(result.outside, false);
+  assert.equal(result.city?.id, 10);
+});
+
+test('locateCity: fora do raio mesmo descontando o erro bloqueia', () => {
+  // ~11 km de Ipu com erro de 50 m: está fora de verdade.
+  assert.deepEqual(locateCity({ lat: -4.32 + 0.1, lng: -40.71 }, 0.05, [ipu]), { city: null, outside: true });
+});
+
+test('locateCity: sem saber o erro, vale a posição como veio', () => {
+  assert.deepEqual(locateCity({ lat: -4.32 + 0.1, lng: -40.71 }, null, [ipu]), { city: null, outside: true });
+});
+
+test('locateCity: na dúvida entre duas cidades, fica a mais próxima', () => {
+  // Fora das duas (Ipu a ~12,2 km, Ipueiras a ~20 km), erro de 15 km alcança as duas.
+  assert.equal(locateCity({ lat: -4.21, lng: -40.71 }, 15, [ipueiras, ipu]).city?.id, 10);
+});
+
+test('locateCity: cidade desativada não entra nem na dúvida', () => {
+  assert.deepEqual(locateCity({ lat: -4.32, lng: -40.71 }, 30, [{ ...ipu, active: false }]), { city: null, outside: true });
 });

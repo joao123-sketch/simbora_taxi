@@ -28,10 +28,12 @@ type Props = {
   // A cidade onde o GPS acha a pessoa; null quando não está em nenhuma cidade aberta (ou sem GPS).
   cityId: number | null;
   cityName?: string;
+  // O GPS ainda não respondeu: espera em vez de dizer que não achou a cidade.
+  locating?: boolean;
   onExit: () => void;
 };
 
-export function DriverFlow({ userId, cityId, cityName, onExit }: Props) {
+export function DriverFlow({ userId, cityId, cityName, locating, onExit }: Props) {
   // undefined = carregando; null = ainda não se cadastrou.
   const [driver, setDriver] = useState<Driver | null | undefined>(undefined);
   const [ride, setRide] = useState<Ride | null>(null);
@@ -123,7 +125,7 @@ export function DriverFlow({ userId, cityId, cityName, onExit }: Props) {
     );
   }
 
-  if (driver === undefined) {
+  if (driver === undefined || (driver === null && cityId === null && locating)) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={colors.primary} />
